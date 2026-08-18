@@ -145,8 +145,9 @@ Git LFS's exact checksum-pinned license as `licenses/git-lfs.md`; Git Credential
 and notice remain inside the portable tree. The Dugite Native build inputs identify the exact
 bundled revisions. The reviewed archive names, byte lengths, URLs, and SHA-256 digests are pinned in
 `release-source-ledger.json`. The production candidate workflow downloads and verifies every entry,
-then places the exact source set beside the installers. Legal adequacy remains a release review; a
-GitHub link alone is not treated as completion of that gate.
+then packages the exact source set and these notices into one corresponding-source archive beside
+the installers. Legal adequacy remains a release review; a GitHub link alone is not treated as
+completion of that gate.
 
 ## npm
 
@@ -156,7 +157,7 @@ GitHub link alone is not treated as completion of that gate.
 - Exact source package: <https://registry.npmjs.org/npm/-/npm-11.19.0.tgz>
 
 The exact npm source package is also pinned in `release-source-ledger.json` and included in the
-staged release bundle.
+staged corresponding-source archive.
 
 ## Dugite package wrapper
 

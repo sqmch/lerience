@@ -238,9 +238,16 @@ jobs:
       contents: write
     env:
       PRODUCT_NAME: Lerience
+      EXECUTABLE_NAME: Lerience
       RELEASE_TAG: ${{ inputs.release_tag }}
 
     steps:
+      - name: Check out exact release notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.build.outputs.source_commit }}
+          persist-credentials: false
+
       - name: Download staged release bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -257,9 +264,27 @@ jobs:
           if ($metadata.isPrivate) { throw 'The canonical source repository must be public.' }
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) { throw 'A release already exists for this tag.' }
-          $assets = Get-ChildItem -LiteralPath 'dist/release-bundle' -File | ForEach-Object FullName
-          gh release create $env:RELEASE_TAG @assets `
+          $version = '${{ needs.build.outputs.version }}'
+          $expected = @(
+            "$env:EXECUTABLE_NAME-$version-corresponding-source.tar.gz"
+            "$env:EXECUTABLE_NAME-Portable-$version-x64.exe"
+            "$env:EXECUTABLE_NAME-Setup-$version-x64.exe"
+            'release-manifest.json'
+            'release-manifest.sig'
+            'SHA256SUMS'
+          ) | Sort-Object
+          $assets = Get-ChildItem -LiteralPath 'dist/release-bundle' -File
+          $actual = $assets.Name | Sort-Object
+          if (Compare-Object -ReferenceObject $expected -DifferenceObject $actual) {
+            throw 'The staged release bundle does not contain exactly the six approved uploads.'
+          }
+          $notes = "distribution/releases/$env:RELEASE_TAG.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) {
+            throw "Missing reviewed release notes at $notes."
+          }
+          $assetPaths = $assets | ForEach-Object FullName
+          gh release create $env:RELEASE_TAG @assetPaths `
             --repo $env:GITHUB_REPOSITORY `
             --title "$env:PRODUCT_NAME $env:RELEASE_TAG" `
-            --notes-file 'dist/release-bundle/RELEASE-NOTES.md' `
+            --notes-file $notes `
             --draft

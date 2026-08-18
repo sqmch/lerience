@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/pro
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertLedger } from "./collect-release-sources.mjs";
+import { createCorrespondingSourceArchive } from "./create-corresponding-source-archive.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -73,6 +74,9 @@ export async function stageWindowsRelease(options) {
   );
   const output = path.resolve(options.output);
   await mkdir(output, { recursive: true });
+  if ((await readdir(output)).length !== 0) {
+    throw new Error("The release output directory must be empty.");
+  }
   const copy = async (source, destinationName) => {
     await copyFile(
       path.resolve(source),
@@ -83,20 +87,18 @@ export async function stageWindowsRelease(options) {
 
   await copy(options.nsis, expectedNames.nsis);
   await copy(options.portable, expectedNames.portable);
-  const aliases = {
-    nsis: `${options.executableName}-Setup-x64.exe`,
-    portable: `${options.executableName}-Portable-x64.exe`,
-  };
-  await copy(options.nsis, aliases.nsis);
-  await copy(options.portable, aliases.portable);
   await copy(path.join(signedDirectory, "release-manifest.json"), "release-manifest.json");
   await copy(path.join(signedDirectory, "release-manifest.sig"), "release-manifest.sig");
-  await copy(options.publicKey, "release-public-key.pem");
-  await copy(options.notes, "RELEASE-NOTES.md");
-  await copy(options.notices, "THIRD-PARTY-NOTICES.md");
-  for (const fileName of sources.fileNames) {
-    await copy(path.join(options.sources, fileName), fileName);
-  }
+  const correspondingSourceName = `${options.executableName}-${version}-corresponding-source.tar.gz`;
+  const correspondingSourceBytes = await createCorrespondingSourceArchive({
+    sourceDirectory: path.resolve(options.sources),
+    sourceFileNames: sources.fileNames,
+    noticesPath: path.resolve(options.notices),
+  });
+  await writeFile(path.join(output, correspondingSourceName), correspondingSourceBytes, {
+    flag: "wx",
+  });
+  const correspondingSource = await describeFile(path.join(output, correspondingSourceName));
 
   const bundle = {
     schemaVersion: 1,
@@ -108,25 +110,17 @@ export async function stageWindowsRelease(options) {
     artifacts: {
       nsis: {
         versioned: expectedNames.nsis,
-        latestAlias: aliases.nsis,
         bytes: artifacts.nsis.bytes,
         sha256: artifacts.nsis.sha256,
       },
       portable: {
         versioned: expectedNames.portable,
-        latestAlias: aliases.portable,
         bytes: artifacts.portable.bytes,
         sha256: artifacts.portable.sha256,
       },
     },
+    correspondingSource,
   };
-  await writeFile(
-    path.join(output, "release-bundle.json"),
-    `${JSON.stringify(bundle, null, 2)}\n`,
-    {
-      flag: "wx",
-    },
-  );
 
   const stagedNames = (await readdir(output)).sort((left, right) => left.localeCompare(right));
   const sums = [];

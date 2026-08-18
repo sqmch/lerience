@@ -23,16 +23,19 @@ export interface WindowsReleaseBundle {
   artifacts: {
     nsis: {
       versioned: string;
-      latestAlias: string;
       bytes: number;
       sha256: string;
     };
     portable: {
       versioned: string;
-      latestAlias: string;
       bytes: number;
       sha256: string;
     };
+  };
+  correspondingSource: {
+    fileName: string;
+    bytes: number;
+    sha256: string;
   };
 }
 
