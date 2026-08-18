@@ -24,10 +24,7 @@ async function main() {
   const releaseNotes = (await readFile(path.resolve(options.notes), "utf8")).trim();
   assertReleaseNotes(releaseNotes);
   const publishedAt = normalizePublishedAt(options.publishedAt);
-  const artifacts = await Promise.all([
-    describeArtifact("nsis", options.nsis),
-    describeArtifact("portable", options.portable),
-  ]);
+  const artifacts = [await describeArtifact("nsis", options.nsis)];
   const manifest = {
     schemaVersion: 1,
     productId: "praxeum-desktop",
@@ -63,13 +60,12 @@ function parseArguments(args) {
     if (!name?.startsWith("--") || value === undefined) throw new Error(usage());
     values.set(name, value);
   }
-  const names = ["--nsis", "--portable", "--notes", "--published-at", "--private-key", "--output"];
+  const names = ["--nsis", "--notes", "--published-at", "--private-key", "--output"];
   if (values.size !== names.length || names.some((name) => !values.has(name))) {
     throw new Error(usage());
   }
   return {
     nsis: values.get("--nsis"),
-    portable: values.get("--portable"),
     notes: values.get("--notes"),
     publishedAt: values.get("--published-at"),
     privateKey: values.get("--private-key"),
@@ -125,7 +121,7 @@ function isWithin(root, candidate) {
 }
 
 function usage() {
-  return "Usage: sign-release-manifest --nsis <exe> --portable <exe> --notes <file> --published-at <iso> --private-key <pem> --output <directory>";
+  return "Usage: sign-release-manifest --nsis <exe> --notes <file> --published-at <iso> --private-key <pem> --output <directory>";
 }
 
 if (path.resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

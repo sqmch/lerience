@@ -22,10 +22,7 @@ export default {
     icon: "build/icon.ico",
     executableName: inputs.executableName,
     compression: "maximum",
-    target: [
-      { target: "nsis", arch: ["x64"] },
-      { target: "portable", arch: ["x64"] },
-    ],
+    target: [{ target: "nsis", arch: ["x64"] }],
   },
   nsis: {
     oneClick: false,
@@ -33,9 +30,6 @@ export default {
     allowToChangeInstallationDirectory: true,
     deleteAppDataOnUninstall: false,
     artifactName: `${inputs.executableName}-Setup-\${version}-\${arch}.\${ext}`,
-  },
-  portable: {
-    artifactName: `${inputs.executableName}-Portable-\${version}-\${arch}.\${ext}`,
   },
   afterPack: async (context) => {
     const report = await assertDistributionInventory(context.appOutDir, {

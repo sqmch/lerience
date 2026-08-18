@@ -2,7 +2,7 @@ allowBuilds:
   dugite: true
   electron: true
   # Squirrel.Windows is an unused optional peer; its architecture-selecting
-  # install script must not run for the NSIS/portable release path.
+  # install script must not run for the NSIS release path.
   electron-winstaller: false
   esbuild: true
 

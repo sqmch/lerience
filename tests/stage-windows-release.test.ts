@@ -49,11 +49,8 @@ function fixture() {
   roots.push(root);
   const executableName = "ApprovedProduct";
   const nsis = path.join(root, `${executableName}-Setup-0.0.1-x64.exe`);
-  const portable = path.join(root, `${executableName}-Portable-0.0.1-x64.exe`);
   const nsisBytes = Buffer.from("installer");
-  const portableBytes = Buffer.from("portable");
   fs.writeFileSync(nsis, nsisBytes);
-  fs.writeFileSync(portable, portableBytes);
   const notes = path.join(root, "notes.md");
   const notices = path.join(root, "notices.md");
   fs.writeFileSync(notes, "A reviewed release candidate.\n");
@@ -79,14 +76,6 @@ function fixture() {
         fileName: path.basename(nsis),
         size: nsisBytes.length,
         sha256: sha256(nsisBytes),
-      },
-      {
-        platform: "win32",
-        architecture: "x64",
-        packageType: "portable",
-        fileName: path.basename(portable),
-        size: portableBytes.length,
-        sha256: sha256(portableBytes),
       },
     ],
   };
@@ -130,7 +119,6 @@ function fixture() {
     root,
     options: {
       nsis,
-      portable,
       signedDir,
       sources,
       notes,
@@ -150,7 +138,7 @@ afterEach(() => {
 });
 
 describe("Windows release staging", () => {
-  it("verifies trust inputs and emits exactly six intentional release uploads", async () => {
+  it("verifies trust inputs and emits exactly five intentional release uploads", async () => {
     const value = fixture();
     const result = await stageWindowsRelease(value.options);
 
@@ -169,7 +157,6 @@ describe("Windows release staging", () => {
     });
     expect(fs.readdirSync(value.options.output).sort()).toEqual([
       "ApprovedProduct-0.0.1-corresponding-source.tar.gz",
-      "ApprovedProduct-Portable-0.0.1-x64.exe",
       "ApprovedProduct-Setup-0.0.1-x64.exe",
       "SHA256SUMS",
       "release-manifest.json",
@@ -185,7 +172,7 @@ describe("Windows release staging", () => {
       "THIRD-PARTY-NOTICES.md",
     ]);
     const sums = fs.readFileSync(path.join(value.options.output, "SHA256SUMS"), "utf8");
-    expect(sums.trim().split("\n")).toHaveLength(5);
+    expect(sums.trim().split("\n")).toHaveLength(4);
     expect(sums).toContain("ApprovedProduct-Setup-0.0.1-x64.exe");
     expect(sums).toContain("ApprovedProduct-0.0.1-corresponding-source.tar.gz");
     expect(sums).toContain("release-manifest.sig");

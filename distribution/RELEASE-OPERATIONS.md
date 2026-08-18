@@ -1,7 +1,7 @@
 # Release operations
 
-Status: process defined and Lerience identity fixed; an external `preview-v1` key and committed
-public key exist, but production custody is not yet accepted.
+Status: process defined and Lerience identity fixed; the protected `preview-v1` key, committed
+public key, and encrypted recovery copy are accepted for the first community release.
 
 This runbook applies ADR-024's unsigned, learner-approved release model. Operating-system signing is
 deferred, but application-level release authenticity is not.
@@ -13,15 +13,15 @@ deferred, but application-level release authenticity is not.
 - GitHub Releases in that repository hosts immutable versioned artifacts only after acceptance.
 - The Ed25519 private key remains outside the source checkout and ordinary build artifacts. The
   release process may receive it only through a protected environment or offline signing step.
-- At least one encrypted offline recovery copy must exist before the first public release. A
-  GitHub-only secret with no recovery copy is not an acceptable key ceremony.
+- At least one encrypted recovery copy independent of the source repository and protected release
+  environment must exist before the first public release. A GitHub-only secret with no independent
+  recovery copy is not an acceptable key ceremony.
 - Only the corresponding public key is committed and compiled into the app.
 
-The preview key allows package/feed integration to be proved before production custody is accepted.
-It does not waive the attended custody step: before the first public release, the maintainer must
-create and test the encrypted offline recovery copy, record custody without recording secret bytes,
-and import the private key into the protected release environment. Custody is not complete merely
-because a key exists.
+The preview key allows package/feed integration to be proved before publication. Before the first
+public release, the maintainer must confirm the encrypted recovery copy, record custody without
+recording secret bytes or storage details, and import the private key into the protected release
+environment. Custody is not complete merely because a key exists.
 
 ## Generate or replace the preview key
 
@@ -37,8 +37,9 @@ icacls $privateKey /inheritance:r /grant:r "${identity}:(F)" "SYSTEM:(F)"
 
 Record only the printed public-key fingerprint, never the private PEM. Confirm the ACL with
 `icacls $privateKey`, verify a manifest signed with the private half against the committed public
-half, and then create the encrypted offline recovery copy on separate media. A same-disk copy or a
-GitHub secret is not an offline recovery copy.
+half, and then create an encrypted recovery copy outside the repository and protected release
+environment. Do not record the recovery provider, account, filename, or other private storage
+detail in the public repository.
 
 Before any public release, replacement is simple: generate a new versioned pair, replace the
 committed public key in a reviewed change, rebuild every preview artifact, and securely retire the
@@ -75,14 +76,13 @@ before creating a release draft.
 - Git tags and GitHub releases use `vMAJOR.MINOR.PATCH`.
 - `releases/latest/download/release-manifest.json` and `.sig` identify the latest candidate.
 - Signed artifact filenames resolve only beneath `releases/download/vMAJOR.MINOR.PATCH/`.
-- Published releases include both Windows package types when supported; omitting a target means the
-  app offers no update for that installation type.
+- The supported Windows release surface is the per-user installer. Omitting another target means
+  the app offers no update for that installation type.
 
 Required Windows assets:
 
 ```text
 <Executable>-Setup-<version>-x64.exe
-<Executable>-Portable-<version>-x64.exe
 release-manifest.json
 release-manifest.sig
 <Executable>-<version>-corresponding-source.tar.gz
@@ -92,7 +92,7 @@ SHA256SUMS
 The combined corresponding-source archive contains the third-party notices, reviewed source ledger,
 source checksums, and approved corresponding-source files. GitHub displays the tagged release notes
 as the release description and automatically adds its own source snapshots; those are not duplicate
-prepared assets. `SHA256SUMS` covers the other five prepared assets.
+prepared assets. `SHA256SUMS` covers the other four prepared assets.
 
 ## Promotion
 
@@ -105,12 +105,12 @@ prepared assets. `SHA256SUMS` covers the other five prepared assets.
    the canonical repository's `https://github.com/<owner>/<repository>/releases/` URL, and committed
    public key. Draft creation fails while the repository is private because an anonymous app cannot
    consume private GitHub Releases.
-5. Run package inventory and `--verify-installation` against the exact unpacked application and each
-   wrapper artifact. Record file sizes and SHA-256 digests.
+5. Run package inventory and `--verify-installation` against the exact unpacked application. Record
+   installer size and SHA-256 digest.
 6. Sign the exact manifest bytes with `pnpm release:sign-manifest`; immediately verify the emitted
    signature, selected targets, artifact sizes, and hashes independently.
 7. Run the Windows release-candidate workflow with `create_draft: true`. It creates a **draft** in
-   the canonical public source repository and attaches exactly the six required uploads above. It
+   the canonical public source repository and attaches exactly the five required uploads above. It
    cannot publish the release. Do not replace accepted bytes in place.
 8. Perform target acceptance against the draft's downloaded bytes. Compare the downloaded hashes to
    the signed manifest and recorded build evidence.

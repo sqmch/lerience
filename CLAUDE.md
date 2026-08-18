@@ -42,5 +42,5 @@ relevant records in [`docs/DECISIONS/`](docs/DECISIONS/). Read
 - `pnpm check` runs type checks, tests, linting, formatting checks, and the production build.
 - `pnpm package:windows:dir` builds the unpacked Windows x64 application with explicit distribution
   inputs.
-- `pnpm package:windows` builds Windows x64 installer and portable artifacts.
+- `pnpm package:windows` builds the Windows x64 installer.
 - `pnpm publication:preflight` checks the tracked tree for private machine-specific remnants.

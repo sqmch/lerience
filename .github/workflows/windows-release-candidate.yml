@@ -92,22 +92,18 @@ jobs:
       - name: Assemble reviewed Windows runtime
         run: pnpm runtime:assemble -- --output dist/runtime/win32-x64-release
 
-      - name: Build release packages
+      - name: Build release installer
         env:
           PRAXEUM_RUNTIME_ROOT: dist/runtime/win32-x64-release
         run: pnpm package:windows
 
-      - name: Verify unpacked and portable applications
+      - name: Verify unpacked application
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $version = '${{ steps.release.outputs.version }}'
           $unpacked = "dist/package/windows-x64/win-unpacked/$env:PRAXEUM_EXECUTABLE_NAME.exe"
-          $portable = "dist/package/windows-x64/$env:PRAXEUM_EXECUTABLE_NAME-Portable-$version-x64.exe"
-          foreach ($candidate in @($unpacked, $portable)) {
-            $verification = Start-Process -FilePath $candidate -ArgumentList '--verify-installation' -WindowStyle Hidden -Wait -PassThru
-            if ($verification.ExitCode -ne 0) { exit $verification.ExitCode }
-          }
+          $verification = Start-Process -FilePath $unpacked -ArgumentList '--verify-installation' -WindowStyle Hidden -Wait -PassThru
+          if ($verification.ExitCode -ne 0) { exit $verification.ExitCode }
 
       - name: Collect checksum-pinned corresponding sources
         run: pnpm release:collect-sources -- --output dist/release-sources
@@ -119,7 +115,6 @@ jobs:
           $version = '${{ steps.release.outputs.version }}'
           New-Item -ItemType Directory -Path 'dist/release-inputs/release-sources' | Out-Null
           Copy-Item -LiteralPath "dist/package/windows-x64/$env:PRAXEUM_EXECUTABLE_NAME-Setup-$version-x64.exe" -Destination 'dist/release-inputs/'
-          Copy-Item -LiteralPath "dist/package/windows-x64/$env:PRAXEUM_EXECUTABLE_NAME-Portable-$version-x64.exe" -Destination 'dist/release-inputs/'
           Copy-Item -Path 'dist/release-sources/*' -Destination 'dist/release-inputs/release-sources/'
 
       - name: Upload unsigned candidate inputs
@@ -187,7 +182,6 @@ jobs:
         run: |
           pnpm release:sign-manifest -- `
             --nsis "dist/release-inputs/$env:EXECUTABLE_NAME-Setup-${{ needs.build.outputs.version }}-x64.exe" `
-            --portable "dist/release-inputs/$env:EXECUTABLE_NAME-Portable-${{ needs.build.outputs.version }}-x64.exe" `
             --notes "distribution/releases/$env:RELEASE_TAG.md" `
             --published-at '${{ steps.signing.outputs.published_at }}' `
             --private-key '${{ steps.signing.outputs.private_key }}' `
@@ -198,7 +192,6 @@ jobs:
         run: |
           pnpm release:stage-windows -- `
             --nsis "dist/release-inputs/$env:EXECUTABLE_NAME-Setup-${{ needs.build.outputs.version }}-x64.exe" `
-            --portable "dist/release-inputs/$env:EXECUTABLE_NAME-Portable-${{ needs.build.outputs.version }}-x64.exe" `
             --signed-dir dist/release-signed `
             --sources dist/release-inputs/release-sources `
             --notes "distribution/releases/$env:RELEASE_TAG.md" `
@@ -267,7 +260,6 @@ jobs:
           $version = '${{ needs.build.outputs.version }}'
           $expected = @(
             "$env:EXECUTABLE_NAME-$version-corresponding-source.tar.gz"
-            "$env:EXECUTABLE_NAME-Portable-$version-x64.exe"
             "$env:EXECUTABLE_NAME-Setup-$version-x64.exe"
             'release-manifest.json'
             'release-manifest.sig'
@@ -276,7 +268,7 @@ jobs:
           $assets = Get-ChildItem -LiteralPath 'dist/release-bundle' -File
           $actual = $assets.Name | Sort-Object
           if (Compare-Object -ReferenceObject $expected -DifferenceObject $actual) {
-            throw 'The staged release bundle does not contain exactly the six approved uploads.'
+            throw 'The staged release bundle does not contain exactly the five approved uploads.'
           }
           $notes = "distribution/releases/$env:RELEASE_TAG.md"
           if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) {
