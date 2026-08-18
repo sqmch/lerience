@@ -315,7 +315,7 @@ describe("repository publication hygiene", () => {
     const status = read("docs/STATUS.md");
     expect(status).toContain("No binary is public yet");
     expect(status).toContain("stable application ID is `io.github.sqmch.lerience`");
-    expect(status).toContain("minimal six-upload");
+    expect(status).toContain("six-upload layout");
     expect(status).toContain("downloaded-byte package");
     expect(status).toContain("encrypted offline recovery copy");
     expect(status).toContain("normal learner-path smoke check");
