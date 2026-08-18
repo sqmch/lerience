@@ -1,5 +1,5 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
-import { COPYFILE_EXCL } from "node:fs";
+import { constants as fsConstants } from "node:fs";
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,7 +74,11 @@ export async function stageWindowsRelease(options) {
   const output = path.resolve(options.output);
   await mkdir(output, { recursive: true });
   const copy = async (source, destinationName) => {
-    await copyFile(path.resolve(source), path.join(output, destinationName), COPYFILE_EXCL);
+    await copyFile(
+      path.resolve(source),
+      path.join(output, destinationName),
+      fsConstants.COPYFILE_EXCL,
+    );
   };
 
   await copy(options.nsis, expectedNames.nsis);

@@ -1,4 +1,5 @@
 import { createHash, generateKeyPairSync, sign } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,6 +7,17 @@ import { afterEach, describe, expect, it } from "vitest";
 import { stageWindowsRelease } from "../scripts/stage-windows-release.mjs";
 
 const roots: string[] = [];
+
+it("loads as a direct Node CLI on the release workflow runtime", () => {
+  const result = spawnSync(process.execPath, ["scripts/stage-windows-release.mjs"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("Usage: stage-windows-release");
+  expect(result.stderr).not.toContain("SyntaxError");
+});
 
 function sha256(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
