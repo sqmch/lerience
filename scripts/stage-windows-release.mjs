@@ -23,18 +23,13 @@ export async function stageWindowsRelease(options) {
   const tag = `v${version}`;
   const expectedNames = {
     nsis: `${options.executableName}-Setup-${version}-x64.exe`,
-    portable: `${options.executableName}-Portable-${version}-x64.exe`,
   };
   if (path.basename(options.nsis) !== expectedNames.nsis) {
     throw new Error(`The NSIS artifact must be named ${expectedNames.nsis}.`);
   }
-  if (path.basename(options.portable) !== expectedNames.portable) {
-    throw new Error(`The portable artifact must be named ${expectedNames.portable}.`);
-  }
 
   const artifacts = {
     nsis: await describeFile(options.nsis),
-    portable: await describeFile(options.portable),
   };
   const signedDirectory = path.resolve(options.signedDir);
   const manifestBytes = await readFile(path.join(signedDirectory, "release-manifest.json"));
@@ -86,7 +81,6 @@ export async function stageWindowsRelease(options) {
   };
 
   await copy(options.nsis, expectedNames.nsis);
-  await copy(options.portable, expectedNames.portable);
   await copy(path.join(signedDirectory, "release-manifest.json"), "release-manifest.json");
   await copy(path.join(signedDirectory, "release-manifest.sig"), "release-manifest.sig");
   const correspondingSourceName = `${options.executableName}-${version}-corresponding-source.tar.gz`;
@@ -113,11 +107,6 @@ export async function stageWindowsRelease(options) {
         bytes: artifacts.nsis.bytes,
         sha256: artifacts.nsis.sha256,
       },
-      portable: {
-        versioned: expectedNames.portable,
-        bytes: artifacts.portable.bytes,
-        sha256: artifacts.portable.sha256,
-      },
     },
     correspondingSource,
   };
@@ -142,16 +131,7 @@ function assertOptions(options) {
   ) {
     throw new Error("The release identity or source commit is unsafe.");
   }
-  for (const name of [
-    "nsis",
-    "portable",
-    "signedDir",
-    "sources",
-    "notes",
-    "notices",
-    "publicKey",
-    "output",
-  ]) {
+  for (const name of ["nsis", "signedDir", "sources", "notes", "notices", "publicKey", "output"]) {
     if (typeof options[name] !== "string" || options[name].trim() === "") {
       throw new Error(`The release option ${name} is required.`);
     }
@@ -165,11 +145,11 @@ function assertManifest(manifest, version, artifacts) {
     manifest.channel !== "stable" ||
     manifest.version !== version ||
     !Array.isArray(manifest.artifacts) ||
-    manifest.artifacts.length !== 2
+    manifest.artifacts.length !== 1
   ) {
     throw new Error("The signed release manifest does not describe this stable release.");
   }
-  for (const packageType of ["nsis", "portable"]) {
+  for (const packageType of ["nsis"]) {
     const expected = artifacts[packageType];
     const candidate = manifest.artifacts.find((artifact) => artifact.packageType === packageType);
     if (
@@ -242,7 +222,6 @@ function parseArguments(args) {
   }
   const names = [
     "--nsis",
-    "--portable",
     "--signed-dir",
     "--sources",
     "--notes",
@@ -264,7 +243,7 @@ function toCamelCase(value) {
 }
 
 function usage() {
-  return "Usage: stage-windows-release --nsis <exe> --portable <exe> --signed-dir <directory> --sources <directory> --notes <md> --notices <md> --public-key <pem> --product-name <name> --executable-name <name> --source-commit <sha> --output <directory>";
+  return "Usage: stage-windows-release --nsis <exe> --signed-dir <directory> --sources <directory> --notes <md> --notices <md> --public-key <pem> --product-name <name> --executable-name <name> --source-commit <sha> --output <directory>";
 }
 
 if (path.resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

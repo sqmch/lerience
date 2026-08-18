@@ -53,7 +53,7 @@ describe("repository publication hygiene", () => {
       "run: pnpm runtime:assemble -- --output dist/runtime/win32-x64-rehearsal",
     );
     expect(workflow).toMatch(
-      /- name: Build rehearsal packages\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/win32-x64-rehearsal\r?\n\s+run: pnpm package:windows/u,
+      /- name: Build rehearsal installer\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/win32-x64-rehearsal\r?\n\s+run: pnpm package:windows/u,
     );
   });
 
@@ -91,7 +91,7 @@ describe("repository publication hygiene", () => {
       "Release drafts may be created only in the canonical public source repository.",
     );
     expect(workflow).toContain("The canonical source repository must be public.");
-    expect(workflow).toContain("exactly the six approved uploads");
+    expect(workflow).toContain("exactly the five approved uploads");
     const staging = read("scripts/stage-windows-release.mjs");
     expect(staging).toContain("-corresponding-source.tar.gz");
     expect(staging).not.toContain("-Setup-x64.exe");
@@ -315,10 +315,10 @@ describe("repository publication hygiene", () => {
     const status = read("docs/STATUS.md");
     expect(status).toContain("No binary is public yet");
     expect(status).toContain("stable application ID is `io.github.sqmch.lerience`");
-    expect(status).toContain("six-upload layout");
-    expect(status).toContain("downloaded-byte package");
-    expect(status).toContain("encrypted offline recovery copy");
-    expect(status).toContain("normal learner-path smoke check");
+    expect(status).toContain("five-upload draft");
+    expect(status).toContain("downloaded-byte signature");
+    expect(status).toContain("Encrypted recovery of the release key has been confirmed");
+    expect(status).toContain("normal learner-path smoke check are complete");
     expect(status).toContain("manual publication");
     expect(status).not.toContain("private development-history");
   });

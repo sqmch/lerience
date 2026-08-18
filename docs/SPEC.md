@@ -1,7 +1,7 @@
 # Lerience — product and architecture specification
 
-Status: accepted product and architecture baseline; M0–M4.5 complete
-Last updated: 2026-08-15
+Status: accepted product and architecture baseline; M0–M5 complete
+Last updated: 2026-08-19
 Decisions referenced here are recorded individually in `DECISIONS/`.
 
 ## 1. What this is
@@ -238,7 +238,7 @@ This is maintenance/power use, not a second study UI. The app embeds no terminal
 | M3 | Session lifecycle: context assembly, transcript persistence, abandonment + wrap-up, check lens | the product loop end to end | Complete |
 | M4 | Course creation: engine materialization + onboarding interview + arc review gate | new-learner journey | Complete; design accepted 2026-08-14 |
 | M4.5 | Tutor connection: provider choice, vendor-owned sign-in, readiness, Codex adapter, and honest usage limits | the non-terminal connection journey | Complete |
-| M5 | Packaging: lean app-owned artifacts, installed-provider compatibility, update trust, user-approved updates, uninstall | shippable | In progress: M5.1 installed-provider/lean-runtime work |
+| M5 | Packaging: lean app-owned artifacts, installed-provider compatibility, update trust, user-approved updates, uninstall | shippable | Complete; installer-only v0.0.1 publication pending |
 | M6 | Codex adapter behind the seam | provider independence | Absorbed into M4.5 |
 
 Each milestone lands with typecheck, tests, and lint green and is reviewed against this spec before

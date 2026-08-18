@@ -1,6 +1,5 @@
 export interface WindowsReleaseStageOptions {
   nsis: string;
-  portable: string;
   signedDir: string;
   sources: string;
   notes: string;
@@ -22,11 +21,6 @@ export interface WindowsReleaseBundle {
   sourceCommit: string;
   artifacts: {
     nsis: {
-      versioned: string;
-      bytes: number;
-      sha256: string;
-    };
-    portable: {
       versioned: string;
       bytes: number;
       sha256: string;

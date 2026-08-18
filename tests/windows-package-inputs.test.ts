@@ -63,14 +63,14 @@ describe("Windows package inputs", () => {
     expect(result.stderr).toContain("does not match this Windows x64 app build");
   });
 
-  it("materializes only the pinned NSIS and portable configuration", () => {
+  it("materializes only the pinned NSIS configuration", () => {
     const runtimeRoot = runtimeFixture();
     const result = spawnSync(
       process.execPath,
       [
         "--input-type=module",
         "--eval",
-        "const c=(await import('./electron-builder.config.mjs')).default; console.log(JSON.stringify({appId:c.appId,productName:c.productName,publish:c.publish,win:c.win,nsis:c.nsis,portable:c.portable,resources:c.extraResources}))",
+        "const c=(await import('./electron-builder.config.mjs')).default; console.log(JSON.stringify({appId:c.appId,productName:c.productName,publish:c.publish,win:c.win,nsis:c.nsis,resources:c.extraResources}))",
       ],
       {
         cwd: path.resolve("."),
@@ -93,13 +93,9 @@ describe("Windows package inputs", () => {
       win: {
         icon: "build/icon.ico",
         executableName: "ApprovedProduct",
-        target: [
-          { target: "nsis", arch: ["x64"] },
-          { target: "portable", arch: ["x64"] },
-        ],
+        target: [{ target: "nsis", arch: ["x64"] }],
       },
       nsis: { perMachine: false, artifactName: "ApprovedProduct-Setup-${version}-${arch}.${ext}" },
-      portable: { artifactName: "ApprovedProduct-Portable-${version}-${arch}.${ext}" },
       resources: [
         { to: "runtime" },
         { from: "distribution/THIRD-PARTY-NOTICES.md", to: "THIRD-PARTY-NOTICES.md" },

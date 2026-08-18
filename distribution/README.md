@@ -53,7 +53,7 @@ M5.2's non-publishing scaffold is pinned in `electron-builder.config.mjs`. It re
 owned identity inputs and an exact assembled runtime; it has no publish target. ADR-032 fixes the
 public Lerience identity while the rehearsal workflow uses isolated `Lerience Preview` values.
 `pnpm package:windows:dir` builds the unpacked directory, while `pnpm package:windows` builds
-the per-user NSIS and portable targets. Both run the runtime preflight first, and the post-pack hook
+the per-user NSIS target. Both run the runtime preflight first, and the post-pack hook
 checks physical files plus ASAR contents with a 600 MiB unpacked ceiling. Preflight also repeats
 CourseCreator and ADR-027 Course Engine update acceptance with the exact assembled Git/runtime; a
 developer-machine Git success is not package proof.
@@ -68,9 +68,9 @@ repository; it does not generate a key or upload anything. ADR-024 and `RELEASE-
 define the remaining custody and promotion gates.
 
 `pnpm release:stage-windows` verifies the signer key against the public key compiled into the app,
-the signature over the exact manifest bytes, both versioned packages, release notes, and the full
-corresponding-source set. It then emits exactly six uploads: two versioned packages, the manifest
-and signature, one combined corresponding-source archive, and `SHA256SUMS`. Release notes come from
+the signature over the exact manifest bytes, the versioned installer, release notes, and the full
+corresponding-source set. It then emits exactly five uploads: the installer, the manifest and
+signature, one combined corresponding-source archive, and `SHA256SUMS`. Release notes come from
 the tagged repository document, and the signed updater selects the versioned package filenames.
 
 `.github/workflows/windows-release-candidate.yml` runs that chain from an existing annotated tag on

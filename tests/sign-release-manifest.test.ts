@@ -16,13 +16,11 @@ function fixture() {
   const privateKey = path.join(root, "release-private.pem");
   const notes = path.join(root, "notes.txt");
   const nsis = path.join(root, "ApprovedProduct-Setup-0.0.1-x64.exe");
-  const portable = path.join(root, "ApprovedProduct-Portable-0.0.1-x64.exe");
   const output = path.join(root, "release", "signed");
   fs.writeFileSync(privateKey, keys.privateKey.export({ type: "pkcs8", format: "pem" }));
   fs.writeFileSync(notes, "A bounded release test.");
   fs.writeFileSync(nsis, "installer");
-  fs.writeFileSync(portable, "portable");
-  return { keys, privateKey, notes, nsis, portable, output };
+  return { keys, privateKey, notes, nsis, output };
 }
 
 function run(value: ReturnType<typeof fixture>, privateKey = value.privateKey) {
@@ -32,8 +30,6 @@ function run(value: ReturnType<typeof fixture>, privateKey = value.privateKey) {
       script,
       "--nsis",
       value.nsis,
-      "--portable",
-      value.portable,
       "--notes",
       value.notes,
       "--published-at",
@@ -52,7 +48,7 @@ afterEach(() => {
 });
 
 describe("release manifest signer", () => {
-  it("hashes both Windows artifacts and signs the exact emitted bytes", () => {
+  it("hashes the Windows installer and signs the exact emitted bytes", () => {
     const value = fixture();
     const result = run(value);
     expect(result.status).toBe(0);
@@ -70,9 +66,9 @@ describe("release manifest signer", () => {
       version: "0.0.1",
       artifact: { fileName: path.basename(value.nsis), size: 9 },
     });
-    expect(fs.readFileSync(path.join(value.output, "SHA256SUMS"), "utf8")).toContain(
-      path.basename(value.portable),
-    );
+    const sums = fs.readFileSync(path.join(value.output, "SHA256SUMS"), "utf8");
+    expect(sums).toContain(path.basename(value.nsis));
+    expect(sums.trim().split("\n")).toHaveLength(2);
   });
 
   it("refuses to create or use a repository-owned release key", () => {

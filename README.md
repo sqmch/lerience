@@ -2,10 +2,15 @@
 
 <img src="build/icon.svg" alt="Lerience icon" width="96" height="96" />
 
-Lerience is a local-first learning environment for structured, agent-guided courses. It
-turns a supported, learner-installed tutor provider into a focused learn-by-building application:
-course creation, onboarding, seminar dialogue, exercises, checks, progress, and recovery all live
-in one desktop experience.
+Lerience is a desktop learning environment for people who want to learn by building with a
+frontier-model tutor, not just ask one-off questions in a chat. It gives a supported,
+learner-installed Codex or Claude Code client the durable structure of a real course: an onboarding
+interview, a curriculum the learner reviews, substantial lessons, practical work, checks, graduated
+hints, retrieval practice, progress, and recovery across sessions.
+
+The course itself remains an ordinary folder on the learner's computer. Lerience supplies the
+focused interface and deterministic Course Engine around it, while the learner's provider supplies
+the tutor. There is no Lerience account, hosted backend, or separate developer setup.
 
 The public source and release repository is `sqmch/lerience`. The Windows product and executable
 name are `Lerience`, with the stable application ID `io.github.sqmch.lerience`. Internal
@@ -20,8 +25,7 @@ unchanged.
 
 Windows x64 downloads are published on the
 [GitHub Releases](https://github.com/sqmch/lerience/releases/latest) page. Choose the versioned
-`Lerience-Setup-...exe` installer for normal use. The versioned `Lerience-Portable-...exe` is the
-no-install alternative.
+`Lerience-Setup-...exe` installer.
 
 Lerience requires a compatible, separately installed Codex or Claude Code client. Provider
 installation, sign-in, billing, and updates remain with the provider; Lerience never packages or
@@ -42,8 +46,7 @@ copies provider credentials.
   learner still approves download and installation.
 
 Provider support is experimental and subject to each provider's current product and authentication
-terms. Architecture proof is not vendor permission; public distribution will not proceed while
-that boundary is unresolved.
+terms. Lerience does not claim ownership of, or authorization beyond, those provider products.
 
 ## Architecture
 
