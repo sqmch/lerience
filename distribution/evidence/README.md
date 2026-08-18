@@ -1,7 +1,8 @@
 # Release evidence
 
 This directory holds exact release-candidate evidence, not a chronological development
-log. No accepted release candidate exists yet.
+log. A record may distinguish package acceptance from learner-path acceptance; publication
+still requires every release-blocking check named by that record to pass.
 
 ## Candidate record requirements
 
