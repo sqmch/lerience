@@ -1,0 +1,5 @@
+/* Tailwind detects sources from the vite root, which is this folder — so the
+   renderer's own classes would never be emitted and the harness would show a
+   layout the app does not have. Point it at src explicitly. */
+@import "../../src/renderer/src/design/index.css";
+@source "../../src";

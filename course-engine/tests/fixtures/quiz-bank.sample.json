@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "id": "00-statelessness",
+      "module": "00-orientation",
+      "question": "The API is stateless. What does your code have to do as a consequence in a multi-turn conversation?",
+      "interval": 3,
+      "due": "2026-06-16",
+      "history": [
+        { "date": "2026-06-11", "result": "correct", "note": "pre-test at module close" },
+        { "date": "2026-06-13", "result": "rescheduled", "note": "re-spaced after the flattening fix; not re-asked today" }
+      ]
+    },
+    {
+      "id": "01-cosine-formula",
+      "module": "01-embeddings",
+      "question": "Write the cosine similarity formula from memory and name what each part computes.",
+      "interval": 2,
+      "due": "2026-07-07",
+      "history": [
+        { "date": "2026-07-05", "result": "correct" }
+      ]
+    },
+    {
+      "id": "02-store-anatomy",
+      "module": "02-vector-store",
+      "question": "A vector store is three operations in a trench coat. Name them and say what each does.",
+      "interval": 1,
+      "due": "2026-06-17",
+      "history": []
+    }
+  ]
+}

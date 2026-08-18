@@ -1,0 +1,18 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ico binary
+*.icns binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.woff2 binary
+*.zip binary
+*.exe binary
+*.dmg binary
+
+# Preserve the imported canonical tutor protocol byte-for-byte. Its three
+# prose lines with trailing spaces are upstream content, not generated source.
+course-engine/template/CLAUDE.md whitespace=-blank-at-eol

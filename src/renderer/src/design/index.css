@@ -1,0 +1,217 @@
+/* ── the design layer's single entry (ADR-017) ───────────────────────────────
+   Everything the renderer styles with is imported from here, in one declared
+   cascade order. main.tsx imports this file and nothing else from the layer.
+
+   WHY AN ENTRY FILE AT ALL: cascade layers, and the trap already recorded in
+   tokens.css. Unlayered CSS beats every layered rule regardless of specificity,
+   so if our component CSS stayed unlayered it would silently outrank every
+   Tailwind utility — the override would fail in the one direction we need. JS
+   `import "./x.css"` cannot assign a layer, so the layer assignment has to
+   happen in CSS, which means one entry file doing `@import ... layer(...)`.
+
+   ORDER: theme (Tailwind's own vars) → base (our reset) → components (our
+   signature CSS) → utilities (Tailwind). Later layers win, so a utility can
+   always override a component rule, and a component rule always beats the
+   reset. tokens.css and fonts.css stay UNLAYERED on purpose: they only declare
+   custom properties and @font-face, and the tokens must never lose a cascade
+   fight to anything. */
+
+@layer theme, base, components, utilities;
+
+/* Tailwind, without its preflight: base.css is our reset and it is documented,
+   :where()-based, and proven. Two resets stacked is a bug waiting to happen. */
+@import "tailwindcss/theme.css" layer(theme);
+
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./base.css" layer(base);
+/* Two components-layer sheets remain, and both are permanent rather than
+   pending migration (ADR-019): `prose.css` styles sanitizer-generated HTML that
+   cannot carry utility classes, and `lab.css` is the engine port (ADR-012),
+   kept byte-close to its source on purpose. */
+@import "./prose.css" layer(components);
+@import "../labs/lab.css" layer(components);
+
+/* Last on purpose: source order then matches the cascade order above, so the
+   layering does not depend on Tailwind choosing to emit utilities at the end. */
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* ── Tailwind's theme, derived from the tokens (ADR-017) ─────────────────────
+   Every stock namespace is cleared first. `bg-zinc-900` and friends must not
+   compile: a non-token colour should fail the build, not fail review.
+
+   Scales that Tailwind and D2 name identically (--text-*, --leading-*,
+   --radius-*) are DEFINED HERE rather than in tokens.css, so each value exists
+   exactly once and serves both consumers — `var(--text-md)` in hand-written CSS
+   and `text-md` as a utility. They are theme-independent, so they do not belong
+   in tokens.css's mirrored palette blocks anyway. */
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --leading-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --blur-*: initial;
+  --breakpoint-*: initial;
+
+  /* Breakpoints, restored deliberately after the blanket clearing above: the
+     clearing exists so stock COLOURS cannot compile, but it also silenced
+     md:/lg: variants — responsive utilities compiled to nothing (the
+     dashboard's md:grid-cols-2 was dead). Two named steps, added as needed:
+     md is the dashboard's two-column point, lg is where onboarding's plan
+     pane earns its own column. */
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+
+  /* Container-query sizes, and LITERAL for the same reason the breakpoints
+     are: Tailwind resolves these when it writes the `@container` rule, so a
+     `var(--measure-pane)` here produces `@container (width <= var(...))`,
+     which is not valid and is dropped in silence. The material pane's
+     `@max-pane:` gutters were dead until this was found by diffing the built
+     CSS against the classes the source uses. */
+  --container-pane: 30rem;
+
+  /* type scale — the D2 ladder, unchanged */
+  --text-2xs: 0.6875rem; /* 11 — grade-mark captions, keycap-scale labels */
+  --text-xs: 0.75rem; /*    12 — meta labels, eyebrows, timestamps */
+  --text-sm: 0.8125rem; /*  13 — secondary UI, table data, code in prose */
+  --text-md: 0.9375rem; /*  15 — UI default: controls, nav, learner turns */
+  --text-read: 1.0625rem; /* 17 — the reading body (Literata) */
+  --text-lg: 1.1875rem; /*  19 — reading-surface subheads, lede lines */
+  --text-xl: 1.4375rem; /*  23 — section headings */
+  --text-2xl: 1.75rem; /*   28 — page headings */
+  --text-3xl: 2.25rem; /*   36 — display */
+  --text-4xl: 3rem; /*      48 — hero display */
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-read: 1.65;
+
+  /* motion, composed from the tokens so a surface reaches it as a utility
+     rather than as hand-written CSS beside a component. base.css already
+     neutralizes all three under prefers-reduced-motion. */
+  --animate-settle: settle var(--dur-enter) var(--ease);
+  --animate-spin: spin var(--dur-spin) linear infinite;
+  --animate-dot: dot var(--dur-pulse) var(--ease) infinite;
+  --animate-sweep: sweep var(--dur-sweep) var(--ease) infinite;
+
+  @keyframes settle {
+    from {
+      opacity: 0;
+      transform: translateY(var(--space-1));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes dot {
+    0%,
+    100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes sweep {
+    from {
+      transform: translateX(-110%);
+    }
+    to {
+      transform: translateX(280%);
+    }
+  }
+
+  /* radii — one rule (ADR-015): controls are fully round, cards are 14px */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+}
+
+/* `inline` so a utility resolves straight to the token: the palette switches at
+   runtime with the theme, and an extra layer of indirection would only be one
+   more place for a switch to fail to propagate. */
+@theme inline {
+  /* the 4px ladder's base unit, so p-4 and var(--space-4) are the same 16px */
+  --spacing: var(--space-1);
+
+  /* voices, named for whose words they are (ADR-015) */
+  --font-app: var(--sans);
+  --font-course: var(--read);
+  --font-data: var(--mono);
+
+  /* grounds */
+  --color-chrome: var(--chrome);
+  --color-surface: var(--bg);
+  --color-surface-raised: var(--bg-raised);
+  --color-surface-panel: var(--bg-panel);
+  --color-surface-read: var(--bg-read);
+  --color-surface-input: var(--bg-input);
+  --color-surface-deep: var(--bg-deep);
+
+  /* ink */
+  --color-hi: var(--hi);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-faint: var(--ink-faint);
+
+  /* edges */
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+
+  /* action, and the states that earn colour */
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-wash: var(--accent-wash);
+  --color-attention: var(--attention);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+  --color-focus: var(--focus);
+  --color-wash: var(--wash);
+  --color-wash-soft: var(--wash-soft);
+
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --shadow-popover: var(--elev-popover);
+  --shadow-overlay: var(--elev-overlay);
+
+  /* measures, so a layout width is a named decision rather than a number */
+  --container-start: var(--measure-start);
+  --container-converse: var(--measure-converse);
+  --container-page: var(--measure-page);
+  --container-read: var(--measure-read);
+}
+
+/* Window dragging has no Tailwind equivalent and is not a value, so it lives
+   here as real utilities rather than as stray CSS next to a component. The
+   whole bar drags; every control inside it must opt back out (ADR-016). */
+/* Focus for COMPACT controls (menu triggers, chips) where the standard offset
+   ring is wrong: at pill scale an outline sits away from a 999px radius as two
+   arcs and reads as a rendering fault. This draws the indicator ON the control
+   instead — an inset hairline that follows the shape exactly, and never
+   changes the element's size. The standard ring stays the default everywhere
+   else; only controls that opt in use this. */
+@utility focus-frame {
+  outline: none;
+  box-shadow: inset 0 0 0 var(--stroke-hair) var(--focus);
+}
+
+@utility drag-region {
+  -webkit-app-region: drag;
+}
+@utility no-drag {
+  -webkit-app-region: no-drag;
+}

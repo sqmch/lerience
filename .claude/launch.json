@@ -1,0 +1,10 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "renderer harness",
+      "url": "http://localhost:5199",
+      "port": 5199
+    }
+  ]
+}

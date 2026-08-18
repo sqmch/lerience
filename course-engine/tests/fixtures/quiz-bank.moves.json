@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "id": "00-statelessness",
+      "module": "00-orientation",
+      "question": "The API is stateless. What does your code have to do in a multi-turn conversation?",
+      "interval": 3,
+      "due": "2026-06-16",
+      "history": [
+        { "date": "2026-06-11", "result": "correct", "note": "pre-test at module close" }
+      ],
+      "moves": [
+        { "date": "2026-06-13", "action": "rescheduled", "note": "migrated from legacy history; destination unrecoverable" },
+        { "date": "2026-07-01", "action": "rescheduled", "to": "2026-07-05", "note": "fresh reschedule, carries its target" }
+      ]
+    },
+    {
+      "id": "01-cosine-formula",
+      "module": "01-embeddings",
+      "question": "Write the cosine similarity formula from memory and name what each part computes.",
+      "interval": 2,
+      "due": "2026-07-07",
+      "history": [
+        { "date": "2026-07-05", "result": "correct" }
+      ],
+      "moves": []
+    }
+  ]
+}

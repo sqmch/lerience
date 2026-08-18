@@ -1,0 +1,203 @@
+/* The course view's docked conversation.
+ *
+ * There is ONE chat in this app, and this file is where that stops being a
+ * promise. Behaviour comes from `use-seminar.ts` (it always did); the LOOK now
+ * comes from `parts.tsx`, the same components the onboarding surface renders.
+ * The D2 markup this column used to carry is gone with `course.css`'s
+ * `.course-talk` family (ADR-019).
+ *
+ * The shared column provides the auto-growing composer, the session-control
+ * pills (ADR-018), mid-turn sends
+ * that queue instead of being refused, the session-scoped file-edit grant, the
+ * silent-turn retry, and scroll pinning that survives late layout.
+ *
+ * What it loses: the TUTOR / YOU eyebrows. The two type voices are the labels —
+ * the tutor speaks the reading face on the ground, the learner speaks sans in a
+ * raised card. Screen readers still get both, via aria-label on the turns. */
+
+import { useState } from "react";
+import { PRIMARY, QUIET } from "../components/controls";
+import {
+  ApprovalCard,
+  Composer,
+  FailureNotice,
+  LimitNotice,
+  LearnerTurn,
+  Thinking,
+  TutorTurn,
+  useFollowBottom,
+} from "./parts";
+import type { SeminarController } from "./use-seminar";
+
+export function SeminarColumn({
+  seminar,
+  onboarding,
+  onStart,
+}: {
+  /** Created by the course view, not here: the status bar reads the same
+   *  session, and two `useSeminar` calls would be two reducers over one real
+   *  conversation. */
+  seminar: SeminarController;
+  onboarding: boolean;
+  onStart: () => void;
+}): React.JSX.Element {
+  const { state, busy, recoveryPending } = seminar;
+  const [draft, setDraft] = useState("");
+  const { viewportRef, onScroll, showLatest, jumpToLatest } = useFollowBottom(state);
+  const closed = state.phase === "closed" || state.phase === "opening";
+
+  const sendDraft = async (): Promise<void> => {
+    const text = draft;
+    setDraft("");
+    const sent = await seminar.send(text);
+    if (!sent) setDraft(text);
+  };
+
+  return (
+    /* No left border: the SEAM is the divider between these columns. A border
+       here put a second rule a pixel from the seam's own, and the material
+       pane's scrollbar track made it a third. One divider per division. */
+    <section
+      className="bg-surface flex min-h-0 min-w-0 flex-1 flex-col"
+      aria-label="Course conversation"
+    >
+      {/* Head height matches the material pane's tab row so the two line up
+          across the workspace. It names the column and holds the one action
+          that must not sit next to Send. */}
+      <header className="border-line-soft flex h-12 shrink-0 items-center gap-3 border-b px-5">
+        <h2 className="text-ink-dim text-xs font-medium">Seminar</h2>
+        {state.phase === "idle" ? (
+          <button
+            type="button"
+            className="text-ink-faint hover:text-hi focus-visible:outline-focus ml-auto rounded-pill px-1 text-xs underline underline-offset-4 transition-colors focus-visible:outline-2"
+            title="Wrap this session up: journal entry, quiz seeds, progress, commit"
+            onClick={() => {
+              void seminar.end();
+            }}
+          >
+            End session
+          </button>
+        ) : null}
+      </header>
+
+      <div ref={viewportRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={onScroll}>
+        <div className="flex flex-col gap-5 px-5 pt-5 pb-6">
+          {state.items.length === 0 && !busy ? (
+            <div className="flex flex-col gap-2 py-6">
+              <p className="text-hi font-course text-lg font-semibold text-balance">
+                {onboarding ? "Plan this course with your tutor" : "Your tutor, in this folder"}
+              </p>
+              <p className="text-ink-dim text-sm leading-normal text-pretty">
+                {onboarding
+                  ? "Start with what you want to learn, what you already know, and the time you can honestly give it."
+                  : "It can read and adapt this course while you talk. Its work appears here; changes to your course files appear in the page beside it."}
+              </p>
+            </div>
+          ) : null}
+
+          {state.items.map((item) =>
+            item.role === "learner" ? (
+              <LearnerTurn key={item.id} content={item.content} />
+            ) : (
+              <TutorTurn key={item.id} content={item.content} streaming={item.streaming} />
+            ),
+          )}
+
+          {busy ? (
+            <Thinking
+              label={state.phase === "opening" ? "Opening this session" : "Your tutor is thinking"}
+              detail={state.toolActivity}
+            />
+          ) : null}
+
+          {state.approval === null ? null : (
+            <ApprovalCard
+              approval={state.approval}
+              answering={seminar.answering}
+              onAnswer={(allow) => void seminar.answerApproval(allow)}
+              onAllowEdits={() => {
+                void seminar.allowCourseEdits();
+              }}
+            />
+          )}
+
+          {state.phase === "closed" && state.items.length > 0 ? (
+            <p className="text-ink-faint before:bg-line-soft after:bg-line-soft flex items-center gap-3 text-xs before:h-(--stroke-hair) before:flex-1 before:content-[''] after:h-(--stroke-hair) after:flex-1 after:content-['']">
+              {recoveryPending ? "Session paused" : "Session ended"}
+            </p>
+          ) : null}
+        </div>
+
+        {showLatest ? (
+          <button
+            type="button"
+            className={`${QUIET} bg-surface-raised sticky bottom-4 left-1/2 -translate-x-1/2 px-3.5 py-1.5 text-xs shadow-popover`}
+            onClick={jumpToLatest}
+          >
+            Jump to latest
+          </button>
+        ) : null}
+      </div>
+
+      <div className="border-line-soft shrink-0 border-t px-5 pt-3.5 pb-4">
+        {state.limitWarning === null ? null : (
+          <div className="mb-3">
+            <LimitNotice warning={state.limitWarning} />
+          </div>
+        )}
+        {state.failure === null ? null : (
+          <div className="mb-3">
+            <FailureNotice
+              failure={state.failure}
+              {...(state.failure.kind === "silent" && state.phase === "idle"
+                ? {
+                    onRetry: () => {
+                      void seminar.retry();
+                    },
+                  }
+                : {})}
+            />
+          </div>
+        )}
+
+        {closed ? (
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-ink-dim text-sm leading-normal text-pretty">
+              {recoveryPending
+                ? "Your last session ended without a verified close. Your tutor reviews it before opening the next one."
+                : "Open a tutor session in this course folder. Provider sign-in stays with your coding agent."}
+            </p>
+            <button
+              type="button"
+              className={`${PRIMARY} text-sm`}
+              disabled={state.phase === "opening"}
+              onClick={onStart}
+            >
+              {state.phase === "opening"
+                ? recoveryPending
+                  ? "Recovering…"
+                  : "Opening…"
+                : recoveryPending
+                  ? "Recover previous session"
+                  : "Start session"}
+            </button>
+          </div>
+        ) : (
+          <Composer
+            draft={draft}
+            onDraft={setDraft}
+            onSend={() => void sendDraft()}
+            onStop={seminar.interrupt}
+            busy={busy}
+            controls={seminar.controls}
+            onControls={(patch) => void seminar.setControls(patch)}
+            controlNotice={state.controlNotice}
+            queued={seminar.queued}
+            onUnqueue={seminar.unqueue}
+            placeholder="Reply to your tutor…"
+          />
+        )}
+      </div>
+    </section>
+  );
+}

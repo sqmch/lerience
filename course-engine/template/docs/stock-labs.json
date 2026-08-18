@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "labs": [
+    {
+      "id": "vectors",
+      "title": "Vectors & Similarity",
+      "blurb": "Drag two arrows. Feel dot product, length, cosine, and distance move."
+    },
+    {
+      "id": "chunking",
+      "title": "Chunking & Overlap",
+      "blurb": "Why long text gets split, and what overlapping windows buy you."
+    },
+    {
+      "id": "topk",
+      "title": "Top-k Retrieval",
+      "blurb": "Drag a query through a corpus. Feel what k buys (recall) and costs (junk)."
+    },
+    {
+      "id": "precision-recall",
+      "title": "Precision & Recall",
+      "blurb": "Slide a cutoff over a ranked list; watch precision and recall pull apart."
+    }
+  ]
+}

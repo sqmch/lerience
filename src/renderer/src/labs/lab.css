@@ -1,0 +1,1500 @@
+/* ── math lab — reuses the study's :root tokens (neutral, two themes) ────── */
+
+.lab-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: lab-in var(--dur-slow) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lab-overlay.hidden {
+  display: none;
+}
+@keyframes lab-in {
+  from {
+    opacity: 0;
+    transform: scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lab-topbar {
+  flex: none;
+  /* raw px: a bar height, not spacing — the space scale tops out at 40 */
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  border-bottom: var(--stroke-hair) solid var(--line);
+}
+/* the mark is drawn now, so the wordmark is a flex line: the gap replaces the
+   glyph's old margin plus the space that used to sit in the text node */
+.lab-wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-weight: 600;
+  font-size: var(--text-xl);
+  color: var(--hi);
+  letter-spacing: 0.01em;
+}
+.lab-mark {
+  color: var(--ink-dim);
+}
+.lab-sub {
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+  /* + the wordmark's gap = the 10px this sat at before the flex line */
+  margin-left: var(--space-1);
+  letter-spacing: 0.005em;
+  font-weight: 400;
+}
+.lab-close {
+  font-family: var(--sans);
+  font-size: var(--text-md);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  color: var(--ink-dim);
+  background: transparent;
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2-5);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.lab-close:hover {
+  color: var(--hi);
+  border-color: var(--ink-faint);
+  background: var(--bg-panel);
+}
+.lab-close kbd {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-xs);
+  padding: 0 var(--space-1);
+  margin-left: var(--space-1);
+}
+
+.lab-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* ── lab rail ── */
+.lab-rail {
+  border-right: var(--stroke-hair) solid var(--line);
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-3-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+.lab-rail-heading {
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  margin-bottom: var(--space-2-5);
+}
+.lab-rail-item {
+  text-align: left;
+  background: none;
+  border: var(--stroke-hair) solid transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-2-5) var(--space-3);
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast);
+}
+.lab-rail-item:hover {
+  background: var(--bg-raised);
+}
+.lab-rail-item.active {
+  background: var(--bg-panel);
+  border-color: var(--line);
+}
+.lab-rail-item.planned {
+  opacity: 0.62;
+}
+.lab-rail-item.planned:hover {
+  opacity: 0.85;
+}
+.lab-rail-title {
+  font-weight: 500;
+  font-size: var(--text-lg);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.lab-chip {
+  font-family: var(--sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: var(--space-px) var(--space-1-5);
+}
+.lab-chip.current {
+  color: var(--bg-deep);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.lab-rail-blurb {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--ink-dim);
+  margin-top: var(--space-1);
+}
+.lab-rail-modules {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  margin-top: var(--space-1-5);
+}
+.lab-rail-foot {
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-read);
+  color: var(--ink-dim);
+  border-top: var(--stroke-hair) solid var(--line-soft);
+  padding-top: var(--space-3);
+  margin-top: auto;
+}
+.lab-rail-foot code {
+  font-family: var(--mono);
+  color: var(--ink);
+}
+
+/* ── lab main ── */
+.lab-main {
+  overflow: auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* course-owned HTML visuals render full-bleed in a sandboxed iframe */
+.lab-iframe {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: var(--bg-deep);
+}
+
+.lab-focus {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2-5);
+  margin: var(--space-3-5) var(--space-4) 0;
+  padding: var(--space-2-5) var(--space-3);
+  border: var(--stroke-hair) solid var(--line);
+  border-left: var(--stroke) solid var(--ink-dim);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--ink-dim);
+}
+.lab-focus-tag {
+  flex: none;
+  font-family: var(--sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: var(--space-px) var(--space-1-5);
+}
+
+.lab-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-2-5);
+  padding: var(--space-10);
+  color: var(--ink-dim);
+}
+/* The empty state's mark reads as an illustration rather than an icon, so it
+   sits past the icon scale at 28px — roughly where the ◇ glyph it replaced
+   actually drew at font-size 40. The compound selector is load-bearing: lab.css
+   is evaluated before ui.css (main.tsx imports App ahead of it), so a single
+   class would lose the size tie to .icon-lg. */
+.lab-placeholder .lab-placeholder-mark {
+  width: 28px;
+  height: 28px;
+  color: var(--ink-faint);
+  opacity: 0.6;
+}
+.lab-placeholder h2 {
+  color: var(--hi);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  margin: 0;
+}
+.lab-placeholder p {
+  max-width: 44ch;
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-read);
+}
+.lab-placeholder-meta {
+  color: var(--ink-faint);
+  font-size: var(--text-md);
+}
+
+/* ── vector lab ─────────────────────────────────────────────────────────── */
+.vlab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 392px;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+}
+.vlab-stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--space-6) var(--space-7);
+  border-right: var(--stroke-hair) solid var(--line);
+}
+.vlab-svg {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: min(100%, 78vh);
+  margin: 0 auto;
+  display: block;
+  user-select: none;
+}
+.vlab-foot {
+  font-size: var(--text-sm);
+  line-height: var(--leading-read);
+  color: var(--ink-faint);
+  max-width: 64ch;
+  margin: var(--space-3-5) auto 0;
+  text-align: center;
+}
+.vlab-foot strong {
+  color: var(--ink-dim);
+}
+
+/* svg primitives — plotted, not laid out. Every length from here to the panel
+   (stroke-width, dasharray, font-size, r) is in the plane's viewBox units: it
+   scales with the drawing and answers to the geometry the lab components compute,
+   never to the spacing scale. The two transition durations are the only design
+   decisions in the block and the only things tokenised — the hint's 1.8s pulse
+   is an attention cadence rather than a UI transition, and has no step. */
+.lab-grid {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+.lab-axis {
+  stroke: var(--line);
+  stroke-width: 1.25;
+}
+.lab-axis-label {
+  fill: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+.lab-unit {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 4;
+  transition: stroke var(--dur-slow);
+}
+.lab-unit.active {
+  stroke: var(--ink-faint);
+  stroke-dasharray: none;
+}
+.lab-unit-label {
+  fill: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.lab-sector {
+  fill: var(--wash);
+  stroke: none;
+}
+.lab-angle-label {
+  fill: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.lab-dist {
+  stroke: var(--ink-faint);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 4;
+}
+.lab-dist-label {
+  fill: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.lab-origin {
+  fill: var(--ink-faint);
+}
+
+/* dot-product projection */
+.lab-proj-along {
+  stroke: var(--hi);
+  stroke-width: 3.5;
+  stroke-opacity: 0.32;
+  stroke-linecap: round;
+}
+.lab-proj {
+  stroke: var(--ink-faint);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+.lab-proj-dot {
+  fill: var(--ink-dim);
+}
+
+.lab-hint {
+  fill: var(--ink-dim);
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-anchor: middle;
+  animation: lab-hint-pulse 1.8s ease-in-out infinite;
+}
+@keyframes lab-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.lab-vec-line {
+  stroke-width: 2.25;
+}
+.lab-vec-a .lab-vec-line,
+.lab-vec-a .lab-vec-head {
+  stroke: var(--hi);
+  fill: var(--hi);
+}
+.lab-vec-b .lab-vec-line,
+.lab-vec-b .lab-vec-head {
+  stroke: var(--ink-dim);
+  fill: var(--ink-dim);
+}
+.lab-vec-head {
+  stroke: none;
+}
+/* only the grab rings are interactive; every other svg primitive is inert so a
+   pointer-down anywhere on a tip (including dead-centre) always starts a drag */
+.vlab-svg * {
+  pointer-events: none;
+}
+.lab-grab {
+  pointer-events: all;
+  fill: transparent;
+  cursor: grab;
+}
+.lab-grab:active {
+  cursor: grabbing;
+}
+.lab-handle {
+  stroke-width: 1.5;
+  transition: r var(--dur-fast) cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lab-vec:hover .lab-handle {
+  r: 8.5;
+}
+.lab-vec-a .lab-handle {
+  fill: var(--hi);
+  stroke: var(--hi);
+}
+.lab-vec-b .lab-handle {
+  fill: var(--bg);
+  stroke: var(--ink-dim);
+}
+.lab-vec-tag {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.lab-vec-a .lab-vec-tag {
+  fill: var(--hi);
+}
+.lab-vec-b .lab-vec-tag {
+  fill: var(--ink-dim);
+}
+.lab-vec-mag {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--ink-faint);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* ── panel ── */
+.vlab-panel {
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-5) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+}
+.vlab-card {
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  padding: var(--space-3-5);
+}
+.vlab-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+}
+.vlab-big {
+  font-family: var(--mono);
+  font-size: var(--text-4xl);
+  font-weight: 600;
+  color: var(--hi);
+  letter-spacing: -0.01em;
+}
+
+/* The cosine gauge is a drawn mark, not a laid-out box: the track's height and
+   inset, and the marker's 3×14 body, −3px overhang, 2px rounding and clearance
+   ring are its shape — they hold the needle legible over a gradient and answer
+   to each other, not to the spacing scale. Only the gauge's outer margin is
+   spacing. Same rule for every bar and meter below. */
+.vlab-gauge {
+  position: relative;
+  height: 8px;
+  margin: var(--space-4) 0 var(--space-1-5);
+}
+.vlab-gauge-track {
+  position: absolute;
+  inset: 2px 0;
+  background: linear-gradient(90deg, var(--bg-deep), var(--line), var(--ink-faint));
+  border-radius: var(--radius-pill);
+}
+.vlab-gauge-marker {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 14px;
+  background: var(--hi);
+  border-radius: 2px;
+  transform: translateX(-50%);
+  transition: left var(--dur-slow) cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 0 3px var(--bg-raised);
+}
+.vlab-gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  letter-spacing: 0.03em;
+}
+.vlab-verdict {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+  color: var(--ink);
+}
+
+.vlab-coach {
+  border: var(--stroke-hair) solid var(--line);
+  border-left: var(--stroke) solid var(--ink-faint);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  padding: var(--space-2-5) var(--space-3);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--ink-dim);
+}
+
+.vlab-model {
+  font-size: var(--text-md);
+  line-height: var(--leading-read);
+  color: var(--ink-dim);
+  padding: 0 var(--space-0-5);
+}
+.vlab-model b {
+  color: var(--hi);
+  font-weight: 600;
+}
+
+/* dot-product agreement breakdown */
+.vlab-agree-intro {
+  margin: var(--space-2-5) 0 var(--space-3-5);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--ink-dim);
+}
+.vlab-agree-intro b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.vlab-agree-row {
+  margin-bottom: var(--space-3);
+}
+.vlab-agree-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-1);
+}
+.vlab-agree-axis {
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+}
+.vlab-agree-calc {
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+.vlab-agree-calc b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.agree-bar {
+  position: relative;
+  height: 9px;
+  background: var(--bg-deep);
+  border: var(--stroke-hair) solid var(--line-soft);
+  border-radius: var(--radius-xs);
+}
+.agree-mid {
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: var(--ink-faint);
+}
+.agree-fill {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 2px;
+  transition: width var(--dur-slow) cubic-bezier(0.22, 1, 0.36, 1);
+}
+.agree-fill.pos {
+  background: var(--ink);
+}
+.agree-fill.neg {
+  background: repeating-linear-gradient(-45deg, var(--ink-faint) 0 2px, transparent 2px 5px);
+}
+
+.vlab-agree-total {
+  border-top: var(--stroke-hair) solid var(--line-soft);
+  padding-top: var(--space-2-5);
+  margin-top: var(--space-0-5);
+}
+.vlab-agree-total .vlab-agree-axis {
+  color: var(--ink);
+  font-weight: 500;
+}
+.vlab-agree-total .agree-fill.pos {
+  background: var(--hi);
+}
+.vlab-agree-foot {
+  margin: var(--space-3) 0 0;
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-read);
+  color: var(--ink-faint);
+}
+.vlab-agree-foot b {
+  color: var(--hi);
+}
+
+.vlab-rowsub {
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  font-style: italic;
+  padding: 0 0 var(--space-1-5);
+  /* pulled up so the quoted text reads as part of the row above it */
+  margin-top: calc(var(--space-0-5) * -1);
+  border-bottom: var(--stroke-hair) solid var(--line-soft);
+}
+
+.vlab-readout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-px);
+}
+.vlab-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-1-5) 0;
+  border-bottom: var(--stroke-hair) solid var(--line-soft);
+}
+.vlab-row:last-child {
+  border-bottom: none;
+}
+.vlab-row .k {
+  font-size: var(--text-md);
+  color: var(--ink-dim);
+}
+.vlab-row .val {
+  font-family: var(--mono);
+  font-size: var(--text-lg);
+  color: var(--ink);
+}
+
+.vlab-duality {
+  background: var(--bg-panel);
+}
+.vlab-duality-head {
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  margin-bottom: var(--space-3);
+}
+.vlab-duality-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin-bottom: var(--space-2-5);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--ink);
+}
+.vlab-duality-row .n {
+  flex: none;
+  /* raw px: wide enough that "2" and "2.24" occupy the same badge, so the two
+     senses of "length" line up down the card */
+  min-width: 46px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--hi);
+  background: var(--bg-deep);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1-5) 0;
+}
+.vlab-duality-row b {
+  color: var(--hi);
+  font-weight: 600;
+}
+.vlab-duality-row .sub {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  margin-top: var(--space-0-5);
+}
+.vlab-duality-row code {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  background: var(--bg-deep);
+  border: var(--stroke-hair) solid var(--line-soft);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-xs);
+}
+.vlab-duality-foot {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--ink-dim);
+}
+
+.vlab-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.vlab-note {
+  margin: var(--space-0-5) var(--space-0-5) 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-read);
+  color: var(--ink-dim);
+}
+.vlab-note b {
+  color: var(--hi);
+  font-family: var(--mono);
+  font-weight: 600;
+}
+.lab-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  background: var(--bg-raised);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-2-5) var(--space-3);
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: var(--text-md);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  color: var(--ink-dim);
+  transition: all var(--dur-fast);
+}
+.lab-toggle:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink);
+}
+.lab-toggle.on {
+  color: var(--hi);
+  border-color: var(--ink-faint);
+  background: var(--bg-panel);
+}
+.lab-toggle-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-xs);
+  border: var(--stroke) solid var(--ink-faint);
+  flex: none;
+  transition: all var(--dur-fast);
+}
+.lab-toggle.on .lab-toggle-dot {
+  background: var(--ink);
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--bg-panel);
+}
+
+.vlab-presets-label {
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  margin-bottom: var(--space-2);
+}
+.vlab-presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+}
+.vlab-preset {
+  background: transparent;
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1-5) var(--space-2-5);
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.vlab-preset:hover {
+  color: var(--hi);
+  border-color: var(--ink-faint);
+  background: var(--bg-raised);
+}
+
+@media (max-width: 920px) {
+  .vlab {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vlab-stage {
+    border-right: none;
+    border-bottom: var(--stroke-hair) solid var(--line);
+  }
+  .lab-body {
+    grid-template-columns: 1fr;
+  }
+  .lab-rail {
+    display: none;
+  }
+}
+
+/* ── chunking & overlap lab ───────────────────────────────────────────────── */
+.clab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 392px;
+  flex: 1;
+  min-height: 0;
+}
+.clab-stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-6) var(--space-7);
+  border-right: var(--stroke-hair) solid var(--line);
+  overflow: auto;
+}
+.clab-intro {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-read);
+  color: var(--ink-dim);
+  max-width: 72ch;
+}
+.clab-intro b {
+  color: var(--hi);
+  font-weight: 600;
+}
+
+/* The windowing picture is drawn in the grid itself: the row height and the
+   cell gap pair with the column track the component computes from the token
+   count (minmax(30px, 1fr) in ChunkingOverlapLab), so they move with the
+   drawing, not with the spacing scale. */
+.clab-grid {
+  display: grid;
+  grid-auto-rows: minmax(32px, auto);
+  gap: 4px;
+  align-items: stretch;
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
+.clab-tok {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-0-5);
+  min-width: 0;
+  padding: var(--space-1-5) var(--space-1);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  text-align: center;
+}
+.clab-tok-idx {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+.clab-tok-word {
+  word-break: break-word;
+}
+.clab-tok.fact {
+  border-color: var(--ink-faint);
+  color: var(--hi);
+  background: var(--bg-panel);
+}
+
+.clab-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0 var(--space-2-5);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    background var(--dur-slow) ease,
+    border-color var(--dur-slow) ease,
+    color var(--dur-slow) ease;
+}
+.clab-bar.partial {
+  background: repeating-linear-gradient(-45deg, var(--bg-raised) 0 5px, transparent 5px 10px);
+  color: var(--ink-dim);
+}
+.clab-bar.full {
+  background: var(--bg-panel);
+  border-color: var(--ink-faint);
+  color: var(--hi);
+}
+.clab-bar-label {
+  font-weight: 600;
+}
+/* flex so the "fact held whole" check sits on the meta line's optical centre
+   instead of on its baseline, the way the ✓ glyph used to */
+.clab-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ink-faint);
+}
+.clab-bar.full .clab-bar-meta {
+  color: var(--ink-dim);
+}
+
+.clab-fact-band {
+  z-index: 0;
+  border-left: 1px dashed var(--ink-faint);
+  border-right: 1px dashed var(--ink-faint);
+  background: var(--wash-soft);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.clab-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.clab-leg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+}
+/* the swatch restates a bar's own fill, so its box is the picture's, not the
+   chrome's — sized to read as a slice of bar at legend scale */
+.clab-leg::before {
+  content: "";
+  flex: none;
+  width: 18px;
+  height: 10px;
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-xs);
+}
+.clab-leg.full::before {
+  background: var(--bg-panel);
+  border-color: var(--ink-faint);
+}
+.clab-leg.partial::before {
+  background: repeating-linear-gradient(-45deg, var(--bg-raised) 0 4px, transparent 4px 8px);
+}
+.clab-leg.fact::before {
+  background: var(--wash);
+  border-style: dashed;
+  border-color: var(--ink-faint);
+}
+
+.clab-coach {
+  border: var(--stroke-hair) solid var(--line);
+  border-left: var(--stroke) solid var(--ink-faint);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  padding: var(--space-2-5) var(--space-3);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--ink-dim);
+}
+.clab-foot {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-read);
+  color: var(--ink-faint);
+  max-width: 72ch;
+}
+.clab-foot em {
+  color: var(--ink-dim);
+  font-style: italic;
+}
+
+.clab-panel {
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-5) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+}
+.clab-knobs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+}
+.clab-slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.clab-slider-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--sans);
+  font-size: var(--text-md);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  color: var(--ink-dim);
+}
+.clab-slider-val {
+  font-family: var(--mono);
+  color: var(--hi);
+  font-weight: 600;
+}
+.clab-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  outline: none;
+  cursor: pointer;
+}
+/* The thumb's 2px ring is drawn, not a chrome border: it cuts the knob out of
+   the track it sits on, and the 1px shadow outside it is what keeps the knob
+   visible against --bg. Both stay off the stroke scale for that reason. */
+.clab-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--hi);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--ink-faint);
+  cursor: grab;
+}
+.clab-slider input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+.clab-slider input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--hi);
+  border: 2px solid var(--bg);
+  cursor: grab;
+}
+
+@media (max-width: 920px) {
+  .clab {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clab-stage {
+    border-right: none;
+    border-bottom: var(--stroke-hair) solid var(--line);
+  }
+}
+
+/* ── top-k retrieval lab ──────────────────────────────────────────────────
+   Reuses the vectors-lab plane layout (.vlab / .vlab-stage / .vlab-svg) and the
+   panel primitives (.vlab-card / .vlab-model / .vlab-coach / .clab-slider). Adds
+   the corpus points, the query marker, retrieval connectors, and a ranked list. */
+
+/* the query's direction ray + the connectors to each retrieved chunk */
+.tk-query-ray {
+  stroke: var(--ink-faint);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 4;
+}
+.tk-conn {
+  stroke: var(--hi);
+  stroke-width: 1.25;
+  stroke-opacity: 0.5;
+}
+
+/* corpus chunks — filled + numbered when retrieved, hollow when left behind */
+.tk-chunk.in .tk-dot {
+  fill: var(--hi);
+  stroke: var(--hi);
+}
+.tk-chunk.out .tk-dot {
+  fill: var(--bg);
+  stroke: var(--ink-faint);
+  stroke-width: 1.5;
+}
+.tk-rank {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ink);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.tk-rank.junk {
+  fill: var(--ink-faint);
+  font-weight: 500;
+}
+
+/* the draggable query diamond */
+.tk-query-mark {
+  fill: var(--hi);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+
+/* budget pills: signal vs junk in the retrieved set */
+.tk-budget {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.tk-budget-pill {
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: var(--space-0-5) var(--space-2-5);
+}
+.tk-budget-pill b {
+  font-family: var(--mono);
+  color: var(--hi);
+  font-weight: 600;
+  margin-right: var(--space-0-5);
+}
+.tk-budget-pill.junk b {
+  color: var(--ink-dim);
+}
+.tk-budget-tok {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  margin-left: auto;
+}
+
+/* the ranked list */
+.tk-floor-key {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  letter-spacing: 0.03em;
+}
+.tk-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+.tk-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 78px 38px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1-5);
+  border: var(--stroke-hair) solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast);
+}
+.tk-row.in {
+  background: var(--bg-panel);
+  border-color: var(--line);
+}
+.tk-row.out {
+  opacity: 0.55;
+}
+.tk-row.in.below {
+  border-color: var(--ink-faint);
+  border-style: dashed;
+}
+.tk-rank-badge {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  text-align: right;
+}
+.tk-row.in .tk-rank-badge {
+  color: var(--ink);
+}
+.tk-text {
+  font-family: var(--sans);
+  font-size: var(--text-md);
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tk-row.in .tk-text {
+  color: var(--ink);
+}
+.tk-bar {
+  position: relative;
+  height: 7px;
+  background: var(--bg-deep);
+  border: var(--stroke-hair) solid var(--line-soft);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+.tk-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ink-faint);
+  transition: width var(--dur-fast) cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tk-row.in .tk-bar-fill {
+  background: var(--hi);
+}
+.tk-bar-floor {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: var(--ink-dim);
+}
+.tk-score {
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+  text-align: right;
+}
+.tk-row.in .tk-score {
+  color: var(--ink);
+}
+/* the cut is an annotation on the ranking, so its 2px rule is drawn weight —
+   it has to read as the line the learner is dragging, not as a hairline */
+.tk-cut {
+  grid-column: 1 / -1;
+  height: 0;
+  margin-top: var(--space-1);
+  border-top: 2px solid var(--hi);
+}
+.tk-list-foot {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--ink-faint);
+}
+.tk-query-text {
+  margin: var(--space-0-5) 0 0;
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+/* ── precision & recall lab ───────────────────────────────────────────────
+   Reuses the chunking-lab two-column layout (.clab / .clab-stage / .clab-panel)
+   and the card / model / coach primitives. The ranked list is DOM, the cutoff a
+   slider (.clab-slider) plus click-to-set on each row. */
+.prlab .clab-stage {
+  justify-content: flex-start;
+}
+.prlab-cutoff {
+  margin-top: var(--space-0-5);
+}
+
+.prlab-list {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+.prlab-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20px 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2-5);
+  text-align: left;
+  background: transparent;
+  border: var(--stroke-hair) solid transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1-5) var(--space-2-5);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast);
+}
+.prlab-row:hover {
+  border-color: var(--line);
+}
+.prlab-row.in {
+  background: var(--bg-panel);
+}
+.prlab-row.out {
+  opacity: 0.6;
+}
+.prlab-rank {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  text-align: right;
+}
+/* the row's relevance mark: filled = in the golden set, hollow = not. Drawn at
+   11px with a 1.5px ring so the two read apart at a glance down the list —
+   the legend's ● / ○ restate it in text, so the two must stay in step. */
+.prlab-mark {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  justify-self: center;
+}
+.prlab-row.rel .prlab-mark {
+  background: var(--ink);
+}
+.prlab-row.in.rel .prlab-mark {
+  background: var(--hi);
+}
+.prlab-row.irr .prlab-mark {
+  border: 1.5px solid var(--ink-faint);
+  background: transparent;
+}
+.prlab-text {
+  font-family: var(--sans);
+  font-size: var(--text-md);
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prlab-row.in .prlab-text {
+  color: var(--ink);
+}
+.prlab-tag {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.prlab-row.hit .prlab-tag {
+  color: var(--ink);
+}
+
+.prlab-cutline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  margin: var(--space-1) var(--space-0-5);
+}
+/* the cutoff rule is the same drawn 2px annotation as .tk-cut, matched on purpose */
+.prlab-cutline::before,
+.prlab-cutline::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: var(--hi);
+  border-radius: 2px;
+}
+.prlab-cutline span {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+}
+
+.prlab-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-1);
+}
+.prlab-leg {
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+.prlab-leg.rel {
+  color: var(--ink);
+}
+/* the shaded-band swatch is a slice of a retrieved row, sized like the chunking
+   lab's legend swatches so the two labs' legends read as one family */
+.prlab-leg.inband::before {
+  content: "";
+  width: 18px;
+  height: 11px;
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+}
+
+.prlab-meter {
+  height: 7px;
+  margin: var(--space-3-5) 0 var(--space-2);
+  background: var(--line);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.prlab-meter-fill {
+  height: 100%;
+  background: var(--ink-dim);
+  border-radius: var(--radius-pill);
+  transition: width var(--dur-slow) cubic-bezier(0.22, 1, 0.36, 1);
+}
+.prlab-formula {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--ink-faint);
+}
+
+.prlab-counts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.prlab-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-0-5);
+  text-align: center;
+}
+.prlab-count-n {
+  font-family: var(--mono);
+  font-size: var(--text-4xl);
+  font-weight: 600;
+  color: var(--hi);
+}
+.prlab-count-k {
+  font-family: var(--sans);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-dim);
+}

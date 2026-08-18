@@ -1,0 +1,160 @@
+/* ── the reading surface ─────────────────────────────────────────────────────
+   What is left of the carried-over D2 `course.css` after the course view was
+   rebuilt on utilities (ADR-019). Everything else in that file died with the
+   surface it belonged to; this did not, and it is not a migration debt:
+
+   `.prose` styles HTML that `marked` generates and DOMPurify sanitizes. That
+   HTML cannot carry utility classes — there is nowhere to put them — so a
+   stylesheet is the only place these rules can live. Same for the two
+   `.doc-visual-*` classes: the markdown pipeline emits the placeholder and
+   `markdown-view.tsx` swaps in the sandboxed frame by DOM after sanitizing
+   (ADR-012), so both are styled by class, not by prop.
+
+   Every value is a token; the discipline test polices this file.
+
+   ── the type pass (2026-08-13, STATUS ledger #3) ──
+   The scale was never re-cut after the contrast fix, and it showed in three
+   places, all rhythm rather than size:
+
+   1. One flat 16px gap separated every block, at a 17px/1.65 body whose lines
+      are 28px apart. Blocks read as a wall. The base gap is 20px now — under
+      one line of leading, which is what makes paragraphs read as paragraphs.
+   2. Headings sat the SAME distance from the text below them as from the text
+      above. A heading belongs to what follows it: the space above is now large
+      (28–48px, by level) and the space below is small (10px), so a section
+      reads as a group rather than as an evenly-spaced list.
+   3. Code was 13px inside 17px prose — one step too small for courses whose
+      lessons are mostly code. It is 15px now: mono runs optically large, so
+      15px mono sits at about the body's apparent size, which is where code
+      belongs when it IS the material.
+
+   (3) cost line width at first — 61 mono characters against 69 at 13px — and
+   that is why the reading measure went to 40rem in the same pass: at 640px a
+   15px mono line holds ~71 characters, so ordinary lesson code no longer
+   scrolls. The two numbers only work together; changing one wants the other
+   looked at. */
+
+.prose {
+  font-family: var(--read);
+  font-size: var(--text-read);
+  line-height: var(--leading-read);
+  color: var(--ink);
+  max-width: var(--measure-read);
+  text-wrap: pretty;
+}
+.prose > * + * {
+  margin-top: var(--space-5);
+}
+
+/* ── headings ─────────────────────────────────────────────────────────────
+   Titles in the reading voice: these belong to the course, not to the app. */
+.prose h1,
+.prose h2,
+.prose h3 {
+  font-family: var(--display);
+  color: var(--hi);
+  line-height: var(--leading-snug);
+  text-wrap: balance;
+}
+.prose h1 {
+  font-size: var(--text-2xl);
+  letter-spacing: -0.012em;
+  margin-top: var(--space-12);
+}
+.prose h2 {
+  font-size: var(--text-xl);
+  letter-spacing: -0.008em;
+  margin-top: var(--space-10);
+}
+.prose h3 {
+  font-size: var(--text-lg);
+  margin-top: var(--space-7);
+}
+/* A heading belongs to what follows it. */
+.prose :is(h1, h2, h3) + * {
+  margin-top: var(--space-2-5);
+}
+.prose :is(h1, h2, h3):first-child {
+  margin-top: 0;
+}
+
+/* ── lists ────────────────────────────────────────────────────────────────── */
+.prose ul,
+.prose ol {
+  padding-left: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.prose li::marker {
+  color: var(--ink-faint);
+}
+/* A nested list is part of its parent item, so it sits closer than siblings do. */
+.prose li > :is(ul, ol) {
+  margin-top: var(--space-2);
+  padding-left: var(--space-5);
+}
+
+.prose blockquote {
+  padding-left: var(--space-4);
+  border-left: var(--stroke) solid var(--line);
+  color: var(--ink-dim);
+  font-style: italic;
+}
+
+/* ── code ─────────────────────────────────────────────────────────────────── */
+.prose code {
+  background: var(--wash);
+  padding: var(--space-0-5) var(--space-1);
+  border-radius: var(--radius-xs);
+}
+.prose pre {
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  background: var(--bg-deep);
+  border: var(--stroke-hair) solid var(--line-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-x: auto;
+}
+.prose pre code {
+  background: none;
+  padding: 0;
+  font-size: 1em;
+}
+
+/* ── tables ───────────────────────────────────────────────────────────────
+   Data, so the app's voice rather than the course's — and `display: block` so
+   a wide table scrolls inside the column instead of widening it. */
+.prose table {
+  border-collapse: collapse;
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  display: block;
+  overflow-x: auto;
+}
+.prose th,
+.prose td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--stroke-hair) solid var(--line-soft);
+}
+.prose th {
+  font-weight: 600;
+  color: var(--hi);
+  border-bottom-color: var(--line);
+}
+
+/* ── the in-lesson sandboxed visual (ADR-012) ─────────────────────────────
+   The placeholder the markdown pipeline emits, and the frame the renderer
+   mounts into it after sanitizing. */
+.doc-visual-embed {
+  margin-top: var(--space-6);
+}
+.doc-visual-frame {
+  width: 100%;
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-deep);
+}

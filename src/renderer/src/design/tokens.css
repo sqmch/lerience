@@ -1,0 +1,364 @@
+/* ── praxeum.app design tokens ────────────────────────────────────────────────
+   The themed half of the design layer: every value that changes between light
+   and dark. Components and screens consume custom properties; a raw hex or
+   magic px outside the design layer is a review reject, and a test enforces it
+   (tests/design-discipline.test.ts).
+
+   The layer is two files by necessity, not by preference: theme-independent
+   scales whose names collide with Tailwind's own namespaces (--text-*,
+   --leading-*, --radius-*) are defined in `index.css`'s `@theme` block so each
+   value has exactly one definition (ADR-017). Everything that switches with the
+   theme lives here, in the three mirrored blocks below.
+
+   The palette is LENS (ADR-015). Its rules, which the values only express:
+
+   - Chrome carries NO brand hue. --accent is near-white on dark and near-black
+     on light, so the primary action is a value contrast, not a colour.
+   - Colour is reserved for meaning. --attention marks work waiting, --warn a
+     state the learner must repair, --ok/--bad grade feedback. The accent never
+     doubles as a status and a status is never decoration.
+   - Grounds step far enough apart to read as separate surfaces. The previous
+     palette kept them within ~6 points, which is why cards never read as cards.
+   - --chrome is the window frame (title bar, status bar) and sits a step ABOVE
+     the workspace, so a window reads as a window (ADR-016).
+   - --bg-read is the reading surface and gets a real step, not a nudge: paper
+     in light, a genuinely raised ground in dark.
+
+   Dark is the design-lead theme (:root); light mirrors it token-for-token under
+   [data-theme="light"] and the OS media query. Keep the three blocks in sync —
+   a test enforces it. */
+
+/* The neutral palette keeps hue, range, and surface separation measurable:
+
+   1. HUE. Every grey was blue-leaning (#0d0e10 is r13 g14 b16; the whole ramp
+      ran +2 to +4 on blue). A consistent blue cast over an entire interface
+      does not read as "cool", it reads as a screenshot with the white balance
+      off. The ramp is now NEUTRAL — r = g = b at every step — so the only hue
+      anywhere is the semantic set, which is what ADR-015 always said.
+   2. RANGE. The darks stopped at #0d0e10 and the lights started at #f7f7f8,
+      so neither end reached its own extreme. Dark's ground is #0b0b0b and its
+      deep is #060606; light's raised and reading surfaces are pure white.
+   3. STEPS. Grounds sat 2–6 points apart, which is why panels never read as
+      panels and the record overlay disappeared into the page behind it. The
+      steps are 4–8 points now, and the ink scale was re-measured against them.
+
+   ADR-015's rules are unchanged and this only re-expresses them: chrome
+   carries no brand hue, the accent is a value contrast rather than a colour,
+   colour means something, chrome sits above the workspace, and --bg-read is a
+   real step rather than a nudge. */
+
+:root {
+  color-scheme: dark;
+
+  /* grounds — frame, workspace, and the surfaces that sit on it */
+  --chrome: #131313;
+  --bg: #0b0b0b;
+  --bg-raised: #171717;
+  --bg-panel: #1c1c1c;
+  --bg-read: #121212;
+  --bg-input: #0e0e0e;
+  --bg-deep: #060606;
+
+  /* ink scale — hi/ink for anything that must be read without effort,
+     ink-dim for secondary text that still has to read, ink-faint for
+     peripheral only: rules, disabled, placeholders — never running text. */
+  --hi: #fafafa;
+  --ink: #e4e4e4;
+  /* --ink-dim is SUPPORTING TEXT — ledes, captions, secondary lines people
+     actually read — so it answers to comfort, not to the 4.5:1 minimum.
+     8.2:1 on its worst ground. */
+  --ink-dim: #b4b4b4;
+  /* --ink-faint is peripheral only: rules, disabled, placeholders. It carries
+     the 4.5:1 floor and nothing more, and must stay a clear step under
+     --ink-dim or the two stop meaning different things (which is exactly what
+     happened when it was raised alone, round 11). 4.9:1. */
+  --ink-faint: #8c8c8c;
+
+  /* edges — --line is the default hairline, --line-strong is for an edge that
+     has to be seen (controls, focusable surfaces, a floating layer's own
+     boundary), --line-soft for grouping */
+  --line: #262626;
+  --line-soft: #1a1a1a;
+  --line-strong: #383838;
+
+  /* the action colour, which is not a colour: value contrast only */
+  --accent: #fafafa;
+  --accent-ink: #0b0b0b; /* text/glyphs ON an accent fill */
+  --accent-wash: rgba(250, 250, 250, 0.09);
+
+  /* meaning — the only hues in the interface */
+  --attention: #e3a33c; /* work waiting: recall due */
+  --warn: #e3a33c; /* a state the learner must repair */
+  --ok: #4fc98d;
+  --bad: #f0736a;
+  --focus: #fafafa; /* whiteish in dark; each light selector overrides it below */
+
+  /* washes and elevation — the only alpha values in the system */
+  --wash: rgba(250, 250, 250, 0.06);
+  --wash-soft: rgba(250, 250, 250, 0.032);
+  --shadow: rgba(0, 0, 0, 0.62);
+  --shadow-soft: rgba(0, 0, 0, 0.42);
+  /* What sits BEHIND a modal layer. Separate from --shadow because it is doing
+     a different job: a shadow implies height, a scrim removes the page. */
+  --scrim: rgba(0, 0, 0, 0.58);
+}
+
+/* LIGHT — the mirror, and a first-class theme rather than an inversion
+   (ADR-015). Identical token list under two selectors: the explicit toggle
+   (data-theme) and the OS default. Keep in sync with :root. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --chrome: #ebebeb;
+  --bg: #f6f6f6;
+  --bg-raised: #ffffff;
+  --bg-panel: #f1f1f1;
+  --bg-read: #ffffff;
+  --bg-input: #ffffff;
+  --bg-deep: #ededed;
+  --hi: #0a0a0a;
+  --ink: #262626;
+  /* Matched to dark's RATIOS rather than to its hexes: 7.8:1 for dim, 4.8:1
+     for faint, on the darkest ground each lands on (--chrome). */
+  --ink-dim: #474747;
+  --ink-faint: #666666;
+  --line: #e2e2e2;
+  --line-soft: #eeeeee;
+  --line-strong: #cdcdcd;
+  --accent: #0a0a0a;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(10, 10, 10, 0.06);
+  --attention: #8a5a0a;
+  --warn: #8a5a0a;
+  --ok: #1f7a4d;
+  --bad: #b3261e;
+  --focus: #666666;
+  --wash: rgba(10, 10, 10, 0.05);
+  --wash-soft: rgba(10, 10, 10, 0.028);
+  --shadow: rgba(15, 15, 15, 0.18);
+  --shadow-soft: rgba(15, 15, 15, 0.1);
+  --scrim: rgba(20, 20, 20, 0.4);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --chrome: #ebebeb;
+    --bg: #f6f6f6;
+    --bg-raised: #ffffff;
+    --bg-panel: #f1f1f1;
+    --bg-read: #ffffff;
+    --bg-input: #ffffff;
+    --bg-deep: #ededed;
+    --hi: #0a0a0a;
+    --ink: #262626;
+    --ink-dim: #474747;
+    --ink-faint: #666666;
+    --line: #e2e2e2;
+    --line-soft: #eeeeee;
+    --line-strong: #cdcdcd;
+    --accent: #0a0a0a;
+    --accent-ink: #ffffff;
+    --accent-wash: rgba(10, 10, 10, 0.06);
+    --attention: #8a5a0a;
+    --warn: #8a5a0a;
+    --ok: #1f7a4d;
+    --bad: #b3261e;
+    --focus: #474747;
+    --wash: rgba(10, 10, 10, 0.05);
+    --wash-soft: rgba(10, 10, 10, 0.028);
+    --shadow: rgba(15, 15, 15, 0.18);
+    --shadow-soft: rgba(15, 15, 15, 0.1);
+    --scrim: rgba(20, 20, 20, 0.4);
+  }
+}
+
+/* ── theme-independent scales ────────────────────────────────────────────────
+   The spatial ladder is the study's (derived, proven) with three page-
+   composition steps added at the top — praxeum has marketing/landing surfaces
+   the cockpit never needed. Pick a step; if nothing fits, the scale gains a
+   step — never reintroduce a literal. */
+:root {
+  /* space — 4px base: 1, 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 64, 96 */
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* type — TWO VOICES plus data (revised 2026-08-07, D2). The old model ranked
+     faces by heading-vs-body, which is why the reading surface had no voice of
+     its own: one face ran both chrome and prose. The split is now by WHOSE
+     WORDS THESE ARE.
+
+     --sans   (Inter, self-hosted): the app speaking. Nav, controls, labels,
+              rails, tabs, meta, page heads, the wordmark.
+     --read   (Literata, drawn for long-form screen reading): the course
+              speaking. Lesson prose, tutor turns, and the titles that belong
+              to them — course titles, lesson and section headings.
+     --mono   (JetBrains Mono): code and data. Never a voice, always a readout.
+
+     --display is retained as an alias of --read so `font-heading` keeps its
+     DESIGN.md meaning ("titles in the reading voice") without a rename sweep. */
+  --sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+  --read: var(--font-read), Georgia, "Times New Roman", serif;
+  --display: var(--read);
+  --mono:
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+
+  /* The size and leading ladders live in `index.css`'s `@theme` block, because
+     Tailwind names those namespaces exactly as D2 does (--text-*, --leading-*).
+     Defining them there means one definition serving both `var(--text-md)` and
+     the `text-md` utility, instead of two that can drift (ADR-017). */
+
+  /* measures — a reading product. Prose never exceeds --measure-read.
+
+     RE-CUT 2026-08-13, and it was a real bug rather than a taste change:
+     this was `68ch`, and `ch` is the width of the digit ZERO, not of an
+     average character. In Literata at 17px a "0" is 10.4px while real prose
+     averages 7.7px — so `68ch` was 710px, which is about NINETY-TWO characters
+     a line. The classic comfortable band is 60–75. Every reading surface in
+     the app has been running a third too wide since D2, measured in the DOM
+     rather than argued from the CSS.
+
+     40rem (640px) balances lesson prose and embedded technical material for
+     two reasons:
+
+     - 640px is ~83 characters of Literata at 17px. Above the classic 60–75
+       band, but that band is set for uninterrupted narrative prose; these
+       lessons are prose interleaved with code, tables and lists, which all
+       break the line-tracking that the narrow measure protects.
+     - It ALSO settles the code trade recorded in prose.css: 640px holds ~71
+       characters of 15px mono, so ordinary lesson code stops scrolling
+       horizontally. One number fixed both complaints.
+
+     Stated in rem, not ch, for the reason the overlay column already learned:
+     `ch` resolves against each element's OWN font, so a serif paragraph and a
+     sans caption asked for the same measure get different widths — and
+     therefore different left edges. */
+  --measure-read: 40rem;
+  --measure-narrow: 34rem; /* auth forms, empty states, focused columns */
+  --measure-page: 64rem; /* dashboard/app-shell max width */
+
+  /* ── component measures (D2) ───────────────────────────────────────────────
+     Not spacing. Per the engine's UI.md: "component measures, viewport
+     breakpoints, hairlines, and anything inside an SVG viewBox answer to their
+     content or their maths, not to a rhythm" — snapping these to the 4px ladder
+     would look systematic without being so. They live here so the resize logic
+     in TS and the paint in CSS read the SAME numbers; the two disagreeing is
+     how a keyboard resize parks a pane where a drag can never reach it. */
+  --rail-w: 288px; /* course track, default */
+  --rail-w-min: 240px; /* below this the two-line module titles stop fitting */
+  --rail-w-max: 420px;
+  --talk-w: 480px; /* the seminar column, default */
+  --talk-w-min: 360px; /* the brief's binding floor: chat usable at 360 */
+  --talk-w-max: 720px;
+  --page-w-min: 420px; /* reading pane floor: 68ch of Literata plus gutters */
+  --seam-w: 9px; /* gutter hit area; the painted rule inside it is 1px */
+
+  /* The record/lab overlays. These are consumed as Tailwind utilities
+     (`w-(--overlay-w)`) rather than through a signature class, and that is
+     deliberate: shadcn's DialogContent carries `sm:max-w-md`, which lives in
+     Tailwind's UTILITIES layer. Cascade layers beat specificity, so a rule in
+     our components layer can never win against it no matter how specific it
+     is — the override has to be a utility too. */
+  /* Let them use the monitor. The old caps (76rem / 56rem) left a large display
+     mostly empty around a small window for no reason — these are full working
+     views, not confirmation prompts. The viewport terms still keep a margin so
+     the overlay reads as a layer rather than as a new page. */
+  --overlay-w: min(96vw, 108rem);
+  --overlay-h: min(92dvh, 72rem);
+  /* The reading overlay is narrower than the stage, because it holds a
+     document rather than a visualization. At stage width the record's reading
+     column sat in 420px of empty ground on each side, which reads as a layout
+     that failed rather than as a page. Column plus generous margins. */
+  --overlay-w-read: min(92vw, 54rem);
+  /* Taller than the workspace bar: this row carries a title AND the close
+     control, and 48px left the title crowding the top edge. */
+  --overlay-head-h: 56px;
+  /* (--measure-overlay retired: the record overlay reads on --measure-read
+     like every other reading surface, now that that measure is stated in rem
+     and no longer resolves differently per element. ADR-019.) */
+
+  /* Odd on purpose, and the one honest raw value in the rail: the mark's SVG
+     box is 21px so its centre lands on a HALF pixel, which is exactly what lets
+     the spine's 1px rule stay crisp where it passes behind. The study proved
+     this; D2 keeps it. Change it to an even number and the spine goes fuzzy. */
+  --rail-node: 21px;
+  /* Where a module row's TEXT starts: the row's own left padding, the node box,
+     and the gap between them. Phase labels use it so they align with the titles
+     they head instead of with the nodes. Derived, never restated. */
+  --rail-title-x: calc(var(--space-3) + var(--rail-node) + var(--space-2-5));
+  /* Where the spine is painted: the node's centre, less half a hairline so the
+     rule's own centre lands on the same half pixel the node's does. Getting
+     this wrong by that half pixel is what made the line fuzzy on first build. */
+  --rail-spine-x: calc(var(--space-3) + (var(--rail-node) / 2) - (var(--stroke-hair) / 2));
+
+  /* The window's own frame (ADR-016). --titlebar-h is duplicated in the main
+     process as TITLE_BAR_HEIGHT, because the OS needs the caption-button strip
+     sized before any renderer exists; the two must not drift. */
+  --titlebar-h: 38px;
+  --statusbar-h: 26px;
+  /* The strip at the END of the title bar that the OS draws its caption buttons
+     into (Windows: three 46px hit targets). Nothing of ours may be laid out
+     there, and title text must reserve it or a long course name slides under
+     the close button. Windows-first, like the rest of ADR-016; macOS puts its
+     traffic lights at the other end and gets its own measure when it lands. */
+  --caption-w: 138px;
+  /* the first-run column: wide enough that its one explanatory line sets on a
+     single line, which is the measure the copy was written against */
+  --measure-start: 38rem;
+  /* onboarding's centred conversation. Wider than the reading measure because
+     it carries more than prose — the arc document, decision controls, and the
+     composer all sit in this column — while the prose inside it stays bound to
+     --measure-read and never runs the full width. */
+  --measure-converse: 43rem;
+  /* (The material pane's narrow point for container queries lives in
+     `index.css` as --container-pane, and has to be a literal there: Tailwind
+     writes the @container rule at build time. See the note beside it.) */
+
+  /* The chrome blur, for the sticky reading head. Named rather than reached
+     through Tailwind's `blur-sm`, because ADR-017 clears the --blur-*
+     namespace so the stock scale cannot compile — and that clearing silently
+     took backdrop-blur-sm with it. */
+  --blur-chrome: 8px;
+  /* What a modal layer does to the page behind it. Blur plus the scrim separates
+     a floating layer from the surface under it. */
+  --blur-scrim: 3px;
+
+  /* Radii also live in `index.css`'s `@theme` (same namespace collision, same
+     reason). ADR-015's rule: controls are fully round, cards are --radius-lg. */
+
+  /* strokes */
+  --stroke-hair: 1px;
+  --stroke: 1.5px;
+
+  /* motion — respect prefers-reduced-motion at the usage site (base.css
+     zeroes these globally when reduced). */
+  --dur-fast: 120ms; /* hover, focus, small state flips */
+  --dur-slow: 200ms; /* panels, toasts, theme change */
+  --dur-enter: 320ms; /* one-shot entrances: message settle, gate reveal */
+  /* the two loops. Both mark WAITING, so they are slow enough to read as
+     breathing rather than as activity the learner should watch. */
+  --dur-pulse: 1200ms; /* the thinking dots */
+  --dur-sweep: 1400ms; /* the crossover bar, while the course view assembles */
+  --dur-spin: 700ms; /* a control's own spinner: brisk, because it is small */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* elevation */
+  --elev-popover: 0 4px 16px var(--shadow-soft);
+  --elev-overlay: 0 8px 32px var(--shadow);
+}

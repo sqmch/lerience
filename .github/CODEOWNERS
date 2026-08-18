@@ -1,0 +1,3 @@
+# Keep ownership explicit while the project has one maintainer. Expand this by
+# trust boundary if the contributor team grows.
+* @sqmch

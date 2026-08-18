@@ -1,0 +1,31 @@
+node_modules/
+dist/
+out/
+coverage/
+.vite/
+.pnpm-store/
+
+# Local configuration and credentials. Public release keys are allowlisted
+# deliberately; private release material must never live in this repository.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+!distribution/release-public-key.pem
+
+# Tool, editor, and operating-system state.
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

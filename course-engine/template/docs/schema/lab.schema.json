@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sqmch/praxeum/docs/schema/lab.schema.json",
+  "title": "curriculum/NN-name/lab.json",
+  "description": "Optional per-module visualization declaration: claims a stock lab and/or ships self-contained visuals/. See docs/FORMAT.md.",
+  "type": "object",
+  "required": ["provenance"],
+  "properties": {
+    "provenance": {
+      "type": "string",
+      "enum": ["core", "tutor-generated"]
+    },
+    "focus": {
+      "type": "string",
+      "description": "One line: the live confusion this module's picture should target."
+    },
+    "focusLab": {
+      "type": "string",
+      "description": "Which entry the focus targets, when the module has several."
+    },
+    "visuals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "$comment": "Inside this module's visuals/; inline CSS/JS only (served under a network-blocking CSP)."
+          },
+          "title": { "type": "string" },
+          "blurb": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "$comment": "additionalProperties is open: a claimed stock lab appears as its own config key (today 'vectors', 'chunking', 'topk', 'precision-recall'), whose internal shape is the lab's own contract (docs/stock-labs.json), not this schema's.",
+  "additionalProperties": true
+}

@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible desktop-app defect
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a defect. Remove credentials, transcripts, personal
+        course content, and private filesystem paths. Security issues belong in the private process
+        described by SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: App version or commit
+      placeholder: 0.0.1 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, architecture, installation type, and provider/version if relevant.
+      placeholder: Windows 11 x64, portable, Codex 0.x
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: Give the smallest safe sequence that reproduces the issue.
+      placeholder: |
+        1. Open...
+        2. Select...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, personal course content, transcripts, and private paths.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

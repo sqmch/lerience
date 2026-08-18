@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sqmch/praxeum/docs/schema/module.schema.json",
+  "title": "curriculum/NN-name/module.json",
+  "description": "Per-module manifest. The stable layer, written when the course spine is built. See docs/FORMAT.md.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "phase",
+    "prerequisites",
+    "runtime",
+    "estimatedHours",
+    "provenance",
+    "volatileLayer"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "= directory name (curriculum/<id>/).",
+      "pattern": "^[0-9]{2}-[a-z0-9-]+$"
+    },
+    "title": { "type": "string" },
+    "phase": { "type": "integer", "minimum": 0 },
+    "phaseName": {
+      "type": "string",
+      "description": "Optional display name for the phase; any module in the phase may carry it."
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "runtime": {
+      "type": "string",
+      "$comment": "Free-form on purpose: 'what the scaffold needs to run' (browser-safe, node, ...) — the set grows, so no enum."
+    },
+    "estimatedHours": {
+      "type": "number",
+      "minimum": 0,
+      "$comment": "Number, not integer: instance #1 carries 2.5."
+    },
+    "provenance": {
+      "type": "string",
+      "enum": ["core", "tutor-generated"]
+    },
+    "volatileLayer": {
+      "type": "string",
+      "enum": ["generated-at-start", "present"],
+      "$comment": "Both are live: module 00 ships its volatile layer 'present'; 01+ generate it at start."
+    },
+    "bossCheck": {
+      "type": "boolean",
+      "description": "Optional; true on the module that ends a phase gate."
+    }
+  },
+  "additionalProperties": true
+}

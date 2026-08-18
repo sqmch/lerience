@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "component": "Git for Windows source package",
+      "version": "2.53.0.windows.4",
+      "revision": "v2.53.0.windows.4/mingw-w64-git-2.52.0.1-1",
+      "fileName": "git-for-windows-2.53.0.4-source.tar.gz",
+      "url": "https://github.com/git-for-windows/git/releases/download/v2.53.0.windows.4/mingw-w64-git-2.52.0.1-1.src.tar.gz",
+      "bytes": 12366181,
+      "sha256": "2b364194004b9d889157162a41120c2400e05d23e3aecb790391da97d7df6ca5"
+    },
+    {
+      "component": "Git for Windows MinGit package manifest",
+      "version": "2.53.0.windows.4",
+      "revision": "v2.53.0.windows.4",
+      "fileName": "git-for-windows-2.53.0.4-package-versions.txt",
+      "url": "https://github.com/git-for-windows/git/releases/download/v2.53.0.windows.4/package-versions-2.53.0.4-MinGit.txt",
+      "bytes": 1788,
+      "sha256": "8fb55e09300d1b26aea7d0c469729f97e38122eea8eb7d89fcb8da2f165c7ee2"
+    },
+    {
+      "component": "Dugite Native build",
+      "version": "2.53.0-4",
+      "revision": "4098283a7ecb8a227b9d43580336c78a06f90e5d",
+      "fileName": "dugite-native-4098283a7ecb8a227b9d43580336c78a06f90e5d-source.tar.gz",
+      "url": "https://github.com/desktop/dugite-native/archive/4098283a7ecb8a227b9d43580336c78a06f90e5d.tar.gz",
+      "bytes": 43800,
+      "sha256": "88ca6b778c3daac6c58bb760cd41099b1f348b07ef3d8daf551269a142bccb5f"
+    },
+    {
+      "component": "Dugite wrapper",
+      "version": "3.2.3",
+      "revision": "84cd716e0bf0f177dfc984a3ce05dec639bf79b9",
+      "fileName": "dugite-84cd716e0bf0f177dfc984a3ce05dec639bf79b9-source.tar.gz",
+      "url": "https://github.com/desktop/dugite/archive/84cd716e0bf0f177dfc984a3ce05dec639bf79b9.tar.gz",
+      "bytes": 45574,
+      "sha256": "eefd987eea346653a382beb901942a7511e959d5b75cd1b1ff40a0ddb3df6ba7"
+    },
+    {
+      "component": "Git LFS",
+      "version": "3.7.1",
+      "revision": "b84b33847fe6458f36ef521534dc0eac953cb379",
+      "fileName": "git-lfs-b84b33847fe6458f36ef521534dc0eac953cb379-source.tar.gz",
+      "url": "https://github.com/git-lfs/git-lfs/archive/b84b33847fe6458f36ef521534dc0eac953cb379.tar.gz",
+      "bytes": 714104,
+      "sha256": "e1ef5ba4828fa632337be6a2c421a685432faec0405bf187f46a1459e82a9a62"
+    },
+    {
+      "component": "Git Credential Manager",
+      "version": "2.9.0",
+      "revision": "194ba290ce533465310d50f811684ab180536ae7",
+      "fileName": "git-credential-manager-194ba290ce533465310d50f811684ab180536ae7-source.tar.gz",
+      "url": "https://github.com/git-ecosystem/git-credential-manager/archive/194ba290ce533465310d50f811684ab180536ae7.tar.gz",
+      "bytes": 2302130,
+      "sha256": "26c67fbc391bc421632037bcd77f8a54c5e8633d4430f9bc54c350bf1df4134b"
+    },
+    {
+      "component": "npm",
+      "version": "11.19.0",
+      "revision": "11.19.0",
+      "fileName": "npm-11.19.0-source.tgz",
+      "url": "https://registry.npmjs.org/npm/-/npm-11.19.0.tgz",
+      "bytes": 2998121,
+      "sha256": "31e9770f7dc71119a58509353b27917557aaf0ac9b5ef1a0465ee7d8ec67ae75"
+    }
+  ]
+}

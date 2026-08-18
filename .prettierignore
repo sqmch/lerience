@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+.claude/
+pnpm-lock.yaml
+docs/
+README.md
+# Course Engine protocol prose and byte-exact serialization fixtures retain
+# their canonical formatting; their own test suite is the gate.
+course-engine/template/CLAUDE.md
+course-engine/tests/fixtures/

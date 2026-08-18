@@ -1,0 +1,18 @@
+allowBuilds:
+  dugite: true
+  electron: true
+  # Squirrel.Windows is an unused optional peer; its architecture-selecting
+  # install script must not run for the NSIS/portable release path.
+  electron-winstaller: false
+  esbuild: true
+
+# Match Dependabot's three-day quarantine so locally generated lockfiles pass
+# the same supply-chain policy enforced by GitHub's updater.
+minimumReleaseAge: 4320
+minimumReleaseAgeStrict: false
+
+# Lerience uses the Agent SDK protocol library with the learner's installed
+# Claude Code. Its optional native CLI packages must never be downloaded or
+# packaged as an app-owned provider runtime (ADR-025).
+ignoredOptionalDependencies:
+  - "@anthropic-ai/claude-agent-sdk-*"

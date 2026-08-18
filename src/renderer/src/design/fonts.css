@@ -1,0 +1,14 @@
+/* ── the faces behind the two voices ─────────────────────────────────────────
+   tokens.css consumes --font-sans and --font-read without defining them. The
+   desktop app self-hosts Inter, Literata, and JetBrains Mono from the exact
+   Fontsource variable packages imported in main.tsx. Their copyright notices
+   and common OFL-1.1 text ship in distribution/THIRD-PARTY-NOTICES.md.
+
+   Inter is the app voice, Literata is the reading/course voice, and JetBrains
+   Mono is reserved for code and compact data. Family names live here; every
+   other design value stays in tokens.css. */
+
+:root {
+  --font-sans: "Inter Variable";
+  --font-read: "Literata Variable";
+}

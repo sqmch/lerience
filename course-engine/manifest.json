@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "0.1.0",
+  "courseFormatVersion": 0,
+  "templateDirectory": "template",
+  "source": {
+    "kind": "learning-harness-import",
+    "repository": "https://github.com/sqmch/praxeum.git",
+    "commit": "a55d29cdc43a8caee655cf39cc96e078b224f436",
+    "importedAt": "2026-08-14"
+  }
+}
