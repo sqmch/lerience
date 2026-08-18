@@ -12,7 +12,8 @@ Each record must identify:
 - the GitHub Actions workflow run and reviewed workflow commit;
 - every downloaded draft asset by exact filename, byte size, and SHA-256 digest;
 - the signed manifest and signature digests plus the trusted public-key fingerprint;
-- the corresponding-source archives and third-party notices included in the draft;
+- the combined corresponding-source archive and its included source files, ledgers, checksums, and
+  third-party notices;
 - package inventory and `--verify-installation` results for the exact installer and portable build;
 - the Windows install, launch, provider-discovery, course-creation, update, uninstall, and
   data-preservation checks actually performed; and

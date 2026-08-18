@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { stageWindowsRelease } from "../scripts/stage-windows-release.mjs";
 
@@ -21,6 +22,26 @@ it("loads as a direct Node CLI on the release workflow runtime", () => {
 
 function sha256(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function tarEntryNames(archive: Buffer): string[] {
+  const tar = gunzipSync(archive);
+  const names: string[] = [];
+  let offset = 0;
+  while (
+    offset + 512 <= tar.length &&
+    tar.subarray(offset, offset + 512).some((byte) => byte !== 0)
+  ) {
+    const header = tar.subarray(offset, offset + 512);
+    const nameEnd = header.indexOf(0, 0);
+    names.push(header.subarray(0, nameEnd === -1 ? 100 : nameEnd).toString("ascii"));
+    const size = Number.parseInt(
+      header.subarray(124, 136).toString("ascii").replaceAll("\0", "").trim(),
+      8,
+    );
+    offset += 512 + Math.ceil(size / 512) * 512;
+  }
+  return names;
 }
 
 function fixture() {
@@ -129,7 +150,7 @@ afterEach(() => {
 });
 
 describe("Windows release staging", () => {
-  it("verifies trust inputs and emits versioned assets plus stable latest aliases", async () => {
+  it("verifies trust inputs and emits exactly six intentional release uploads", async () => {
     const value = fixture();
     const result = await stageWindowsRelease(value.options);
 
@@ -140,17 +161,36 @@ describe("Windows release staging", () => {
       artifacts: {
         nsis: {
           versioned: "ApprovedProduct-Setup-0.0.1-x64.exe",
-          latestAlias: "ApprovedProduct-Setup-x64.exe",
         },
       },
+      correspondingSource: {
+        fileName: "ApprovedProduct-0.0.1-corresponding-source.tar.gz",
+      },
     });
-    expect(
-      fs.readFileSync(path.join(value.options.output, "ApprovedProduct-Setup-x64.exe"), "utf8"),
-    ).toBe("installer");
+    expect(fs.readdirSync(value.options.output).sort()).toEqual([
+      "ApprovedProduct-0.0.1-corresponding-source.tar.gz",
+      "ApprovedProduct-Portable-0.0.1-x64.exe",
+      "ApprovedProduct-Setup-0.0.1-x64.exe",
+      "SHA256SUMS",
+      "release-manifest.json",
+      "release-manifest.sig",
+    ]);
+    const archive = fs.readFileSync(
+      path.join(value.options.output, "ApprovedProduct-0.0.1-corresponding-source.tar.gz"),
+    );
+    expect(tarEntryNames(archive)).toEqual([
+      "fixture-source.tar.gz",
+      "release-source-ledger.json",
+      "SOURCE-SHA256SUMS",
+      "THIRD-PARTY-NOTICES.md",
+    ]);
     const sums = fs.readFileSync(path.join(value.options.output, "SHA256SUMS"), "utf8");
-    expect(sums).toContain("ApprovedProduct-Setup-x64.exe");
-    expect(sums).toContain("fixture-source.tar.gz");
+    expect(sums.trim().split("\n")).toHaveLength(5);
+    expect(sums).toContain("ApprovedProduct-Setup-0.0.1-x64.exe");
+    expect(sums).toContain("ApprovedProduct-0.0.1-corresponding-source.tar.gz");
     expect(sums).toContain("release-manifest.sig");
+    expect(sums).not.toContain("ApprovedProduct-Setup-x64.exe");
+    expect(sums).not.toContain("fixture-source.tar.gz");
   });
 
   it("rejects a manifest signed by a key the application does not trust", async () => {

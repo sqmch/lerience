@@ -28,9 +28,10 @@ Supply decisions and gates:
 - `GIT-PAYLOAD-DECISION.md` accepts the complete 113.62 MiB Dugite Native Windows payload; custom
   pruning is forbidden without an upstream build profile and a new native acceptance matrix.
 - `THIRD-PARTY-NOTICES.md` records packaged-library and font notices plus exact source revisions for
-  payloads with corresponding-source delivery. A public release must place those exact source
-  archives beside the installer. `release-source-ledger.json` pins their archive URLs, byte lengths,
-  and SHA-256 digests; `pnpm release:collect-sources` fails closed on any changed byte.
+  payloads with corresponding-source delivery. A public release packages those notices, ledgers,
+  checksums, and exact source archives into one versioned corresponding-source archive beside the
+  installers. `release-source-ledger.json` pins their archive URLs, byte lengths, and SHA-256
+  digests; `pnpm release:collect-sources` fails closed on any changed byte.
 - Renderer fonts come only from the exact locked Fontsource packages; the installed notice carries
   each family copyright and the full common OFL-1.1 text.
 - npm redistribution must include its full license and dependency notices/source instructions.
@@ -68,9 +69,9 @@ define the remaining custody and promotion gates.
 
 `pnpm release:stage-windows` verifies the signer key against the public key compiled into the app,
 the signature over the exact manifest bytes, both versioned packages, release notes, and the full
-corresponding-source set. It then emits an immutable release bundle with versioned artifacts,
-same-release stable download aliases, notices, ledgers, and a complete `SHA256SUMS`. The stable
-aliases are for the landing page; the signed updater continues to select versioned filenames.
+corresponding-source set. It then emits exactly six uploads: two versioned packages, the manifest
+and signature, one combined corresponding-source archive, and `SHA256SUMS`. Release notes come from
+the tagged repository document, and the signed updater selects the versioned package filenames.
 
 `.github/workflows/windows-release-candidate.yml` runs that chain from an existing annotated tag on
 reviewed `main`. Its default result is a short-lived Actions bundle. Its optional drafting

@@ -91,7 +91,12 @@ describe("repository publication hygiene", () => {
       "Release drafts may be created only in the canonical public source repository.",
     );
     expect(workflow).toContain("The canonical source repository must be public.");
-    expect(read("scripts/stage-windows-release.mjs")).toContain("-Setup-x64.exe");
+    expect(workflow).toContain("exactly the six approved uploads");
+    const staging = read("scripts/stage-windows-release.mjs");
+    expect(staging).toContain("-corresponding-source.tar.gz");
+    expect(staging).not.toContain("-Setup-x64.exe");
+    expect(staging).not.toContain("-Portable-x64.exe");
+    expect(staging).not.toContain('"release-bundle.json"');
   });
 
   it("keeps active release documentation on the single public source repository topology", () => {
@@ -199,19 +204,17 @@ describe("repository publication hygiene", () => {
 
   it("keeps release evidence exact and omits private rehearsal records", () => {
     const evidenceRoot = path.join(root, "distribution", "evidence");
-    expect(fs.readdirSync(evidenceRoot).sort()).toEqual(["README.md", "v0.0.1-windows-x64.md"]);
+    const evidenceFiles = fs.readdirSync(evidenceRoot).sort();
+    expect(evidenceFiles).toContain("README.md");
+    for (const fileName of evidenceFiles.filter((candidate) => candidate !== "README.md")) {
+      expect(fileName).toMatch(/^v\d+\.\d+\.\d+-windows-x64\.md$/u);
+    }
 
     const policy = read("distribution/evidence/README.md");
     expect(policy).toContain("exact release-candidate evidence");
     expect(policy).toContain("source tag, commit, and tree digest");
     expect(policy).toContain("exact draft assets downloaded from GitHub");
     expect(policy).toContain("Do not record credentials");
-
-    const candidate = read("distribution/evidence/v0.0.1-windows-x64.md");
-    expect(candidate).toContain("0cfed00a86be73989e328d700d1640b2d9594c26");
-    expect(candidate).toContain("actions/runs/32174902493");
-    expect(candidate).toContain("package acceptance passed; learner-path acceptance");
-    expect(candidate).toContain("The draft remains unpublished");
   });
 
   it("keeps source rationale independent of private review sessions", () => {
@@ -312,7 +315,8 @@ describe("repository publication hygiene", () => {
     const status = read("docs/STATUS.md");
     expect(status).toContain("No binary is public yet");
     expect(status).toContain("stable application ID is `io.github.sqmch.lerience`");
-    expect(status).toContain("downloaded-byte package acceptance are complete");
+    expect(status).toContain("minimal six-upload");
+    expect(status).toContain("downloaded-byte package");
     expect(status).toContain("encrypted offline recovery copy");
     expect(status).toContain("normal learner-path smoke check");
     expect(status).toContain("manual publication");

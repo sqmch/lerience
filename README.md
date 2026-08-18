@@ -18,11 +18,10 @@ unchanged.
 
 ## Download
 
-Windows x64 downloads are published on the [GitHub Releases](https://github.com/sqmch/lerience/releases)
-page:
-
-- [Installer](https://github.com/sqmch/lerience/releases/latest/download/Lerience-Setup-x64.exe)
-- [Portable application](https://github.com/sqmch/lerience/releases/latest/download/Lerience-Portable-x64.exe)
+Windows x64 downloads are published on the
+[GitHub Releases](https://github.com/sqmch/lerience/releases/latest) page. Choose the versioned
+`Lerience-Setup-...exe` installer for normal use. The versioned `Lerience-Portable-...exe` is the
+no-install alternative.
 
 Lerience requires a compatible, separately installed Codex or Claude Code client. Provider
 installation, sign-in, billing, and updates remain with the provider; Lerience never packages or

@@ -83,18 +83,16 @@ Required Windows assets:
 ```text
 <Executable>-Setup-<version>-x64.exe
 <Executable>-Portable-<version>-x64.exe
-<Executable>-Setup-x64.exe
-<Executable>-Portable-x64.exe
 release-manifest.json
 release-manifest.sig
+<Executable>-<version>-corresponding-source.tar.gz
 SHA256SUMS
-release notes
-third-party notices, source ledger, source checksums, and approved corresponding-source archives
 ```
 
-The unversioned names are same-release byte aliases for the landing page's stable
-`releases/latest/download/...` links. The signed manifest always selects the immutable versioned
-names. Both aliases are included in `SHA256SUMS` and must hash identically to their versioned twins.
+The combined corresponding-source archive contains the third-party notices, reviewed source ledger,
+source checksums, and approved corresponding-source files. GitHub displays the tagged release notes
+as the release description and automatically adds its own source snapshots; those are not duplicate
+prepared assets. `SHA256SUMS` covers the other five prepared assets.
 
 ## Promotion
 
@@ -112,9 +110,8 @@ names. Both aliases are included in `SHA256SUMS` and must hash identically to th
 6. Sign the exact manifest bytes with `pnpm release:sign-manifest`; immediately verify the emitted
    signature, selected targets, artifact sizes, and hashes independently.
 7. Run the Windows release-candidate workflow with `create_draft: true`. It creates a **draft** in
-   the canonical public source repository and attaches every required binary, manifest, signature,
-   checksum, notice, and corresponding-source asset. It cannot publish the release. Do not replace
-   accepted bytes in place.
+   the canonical public source repository and attaches exactly the six required uploads above. It
+   cannot publish the release. Do not replace accepted bytes in place.
 8. Perform target acceptance against the draft's downloaded bytes. Compare the downloaded hashes to
    the signed manifest and recorded build evidence.
 9. Publish only when the acceptance record names the tag, commit, manifest digest, and exact artifact
