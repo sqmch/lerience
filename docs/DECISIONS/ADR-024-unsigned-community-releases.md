@@ -6,9 +6,9 @@ Amends ADR-001 and ADR-022.
 
 ## Decision
 
-The initial Lerience releases are unsigned community previews. The source repository may
-remain private; versioned application artifacts, release notes, integrity metadata, and checksums
-are published through a dedicated public GitHub Releases repository.
+The initial Lerience releases are unsigned community previews. Versioned application artifacts,
+release notes, integrity metadata, and checksums are published through GitHub Releases in the
+canonical public source repository.
 
 Windows x64 is the first distribution target. It receives an unsigned per-user NSIS installer
 and may additionally receive a portable archive. The app checks the stable release feed without

@@ -91,6 +91,7 @@ describe("Windows package inputs", () => {
       productName: "Approved Product",
       publish: null,
       win: {
+        icon: "build/icon.ico",
         executableName: "ApprovedProduct",
         target: [
           { target: "nsis", arch: ["x64"] },

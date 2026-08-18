@@ -19,6 +19,7 @@ export default {
   generateUpdatesFilesForAllChannels: false,
   forceCodeSigning: false,
   win: {
+    icon: "build/icon.ico",
     executableName: inputs.executableName,
     compression: "maximum",
     target: [

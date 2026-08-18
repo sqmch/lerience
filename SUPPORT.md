@@ -1,7 +1,8 @@
 # Support
 
-Lerience has no supported public binary release yet. Preview artifacts are evidence builds, not
-end-user downloads.
+Lerience publishes unsigned Windows community previews through
+[GitHub Releases](https://github.com/sqmch/lerience/releases). They are suitable for early use and
+feedback but do not yet carry a trusted Windows publisher signature.
 
 For source questions, documentation gaps, or reproducible application defects:
 
