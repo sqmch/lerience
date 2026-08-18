@@ -199,13 +199,19 @@ describe("repository publication hygiene", () => {
 
   it("keeps release evidence exact and omits private rehearsal records", () => {
     const evidenceRoot = path.join(root, "distribution", "evidence");
-    expect(fs.readdirSync(evidenceRoot).sort()).toEqual(["README.md"]);
+    expect(fs.readdirSync(evidenceRoot).sort()).toEqual(["README.md", "v0.0.1-windows-x64.md"]);
 
     const policy = read("distribution/evidence/README.md");
     expect(policy).toContain("exact release-candidate evidence");
     expect(policy).toContain("source tag, commit, and tree digest");
     expect(policy).toContain("exact draft assets downloaded from GitHub");
     expect(policy).toContain("Do not record credentials");
+
+    const candidate = read("distribution/evidence/v0.0.1-windows-x64.md");
+    expect(candidate).toContain("0cfed00a86be73989e328d700d1640b2d9594c26");
+    expect(candidate).toContain("actions/runs/32174902493");
+    expect(candidate).toContain("package acceptance passed; learner-path acceptance");
+    expect(candidate).toContain("The draft remains unpublished");
   });
 
   it("keeps source rationale independent of private review sessions", () => {
@@ -304,9 +310,12 @@ describe("repository publication hygiene", () => {
 
   it("keeps the public status at explicit release gates", () => {
     const status = read("docs/STATUS.md");
-    expect(status).toContain("No binary is an accepted public release yet");
+    expect(status).toContain("No binary is public yet");
     expect(status).toContain("stable application ID is `io.github.sqmch.lerience`");
-    expect(status).toContain("exact draft artifacts downloaded from GitHub");
+    expect(status).toContain("downloaded-byte package acceptance are complete");
+    expect(status).toContain("encrypted offline recovery copy");
+    expect(status).toContain("normal learner-path smoke check");
+    expect(status).toContain("manual publication");
     expect(status).not.toContain("private development-history");
   });
 

@@ -2,9 +2,10 @@
 
 Last reviewed: 2026-08-18
 
-Lerience is preparing its first unsigned Windows x64 community release candidate. The source, local-first
-desktop experience, deterministic application runtime, provider adapters, package verification,
-and learner-approved update path are implemented. No binary is an accepted public release yet.
+Lerience has a private draft of its first unsigned Windows x64 community release. The exact draft
+packages passed signature, checksum, portable, isolated install, installed-app verification, and
+uninstall checks. No binary is public yet because the final learner-path smoke check, signing-key
+recovery confirmation, and manual publication are still pending.
 
 ## What works
 
@@ -28,14 +29,14 @@ stable application ID is `io.github.sqmch.lerience`. Internal `praxeum:` IPC nam
 `.praxeum.json`, `PRAXEUM_*` build variables, and the `praxeum-desktop` release-manifest product ID
 remain compatibility seams rather than visible branding.
 
-The first release still requires:
+The protected signing environment, reviewed `v0.0.1` tag, repository-owned release workflow, draft
+creation, and downloaded-byte package acceptance are complete. Before publication, the first release
+still requires:
 
-1. a protected release-signing environment with the trusted private key and a verified offline
-   recovery copy;
-2. a reviewed `v0.0.1` tag and the repository-owned Windows release-candidate workflow;
-3. acceptance of the exact draft artifacts downloaded from GitHub, including installer/portable
-   verification, hashes, manifest signature, and clean Windows-machine behavior; and
-4. manual publication of the accepted draft.
+1. confirmation that the signing key has an encrypted offline recovery copy;
+2. one normal learner-path smoke check of the exact package on a clean Windows account or machine,
+   including provider discovery and course creation without developer tooling; and
+3. manual publication of the accepted draft.
 
 The initial packages are intentionally unsigned at the operating-system level, so Windows may show
 an unknown-publisher warning. The application-level manifest signature verifies Lerience update
