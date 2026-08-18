@@ -1,5 +1,7 @@
 # Lerience
 
+<img src="build/icon.svg" alt="Lerience icon" width="96" height="96" />
+
 Lerience is a local-first learning environment for structured, agent-guided courses. It
 turns a supported, learner-installed tutor provider into a focused learn-by-building application:
 course creation, onboarding, seminar dialogue, exercises, checks, progress, and recovery all live
@@ -10,10 +12,21 @@ name are `Lerience`, with the stable application ID `io.github.sqmch.lerience`. 
 `praxeum-*` protocol identifiers are compatibility seams rather than public branding and remain
 unchanged.
 
-> **Status:** pre-release source. Windows preview packaging and a learner-approved update path
-> exist, but no artifact is an accepted public release. Provider policy, release
-> signing custody, third-party notice/source review, and exact-artifact acceptance remain explicit
-> gates.
+> **Status:** first Windows community preview. Releases are unsigned at the operating-system level,
+> so Windows may show an unknown-publisher warning. Lerience separately verifies updates with its
+> own signed manifest.
+
+## Download
+
+Windows x64 downloads are published on the [GitHub Releases](https://github.com/sqmch/lerience/releases)
+page:
+
+- [Installer](https://github.com/sqmch/lerience/releases/latest/download/Lerience-Setup-x64.exe)
+- [Portable application](https://github.com/sqmch/lerience/releases/latest/download/Lerience-Portable-x64.exe)
+
+Lerience requires a compatible, separately installed Codex or Claude Code client. Provider
+installation, sign-in, billing, and updates remain with the provider; Lerience never packages or
+copies provider credentials.
 
 ## Product principles
 

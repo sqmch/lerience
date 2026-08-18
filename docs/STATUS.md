@@ -2,7 +2,7 @@
 
 Last reviewed: 2026-08-18
 
-Lerience is preparing its first unsigned Windows x64 community release. The source, local-first
+Lerience is preparing its first unsigned Windows x64 community release candidate. The source, local-first
 desktop experience, deterministic application runtime, provider adapters, package verification,
 and learner-approved update path are implemented. No binary is an accepted public release yet.
 
@@ -30,13 +30,12 @@ remain compatibility seams rather than visible branding.
 
 The first release still requires:
 
-1. a non-default application icon and final release copy;
-2. a protected release-signing environment with the trusted private key and a verified offline
+1. a protected release-signing environment with the trusted private key and a verified offline
    recovery copy;
-3. a reviewed `v0.0.1` tag and the repository-owned Windows release-candidate workflow;
-4. acceptance of the exact draft artifacts downloaded from GitHub, including installer/portable
+2. a reviewed `v0.0.1` tag and the repository-owned Windows release-candidate workflow;
+3. acceptance of the exact draft artifacts downloaded from GitHub, including installer/portable
    verification, hashes, manifest signature, and clean Windows-machine behavior; and
-5. manual publication of the accepted draft.
+4. manual publication of the accepted draft.
 
 The initial packages are intentionally unsigned at the operating-system level, so Windows may show
 an unknown-publisher warning. The application-level manifest signature verifies Lerience update

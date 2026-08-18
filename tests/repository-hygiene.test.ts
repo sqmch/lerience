@@ -295,6 +295,13 @@ describe("repository publication hygiene", () => {
     );
   });
 
+  it("uses the repository-owned Lerience icon for Windows packages", () => {
+    expect(fs.existsSync(path.join(root, "build", "icon.svg"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "build", "icon.png"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "build", "icon.ico"))).toBe(true);
+    expect(read("electron-builder.config.mjs")).toContain('icon: "build/icon.ico"');
+  });
+
   it("keeps the public status at explicit release gates", () => {
     const status = read("docs/STATUS.md");
     expect(status).toContain("No binary is an accepted public release yet");
