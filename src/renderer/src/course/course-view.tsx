@@ -39,24 +39,34 @@ import { useTutorConnection } from "../tutor/use-tutor-connection";
  * with room to say what the figure is and is not (STATUS ledger #6).
  */
 function SessionStatus({ seminar }: { seminar: SeminarController }): React.JSX.Element {
-  const { phase } = seminar.state;
+  const { phase, recoveryHandoff } = seminar.state;
   const working = phase === "thinking" || phase === "streaming" || phase === "tool-activity";
 
-  const label = seminar.recoveryPending
-    ? "Unfinished session"
-    : phase === "closed"
-      ? "No session open"
-      : phase === "opening"
-        ? "Opening session"
-        : working
-          ? "Tutor working"
-          : "Session open";
+  const label =
+    recoveryHandoff === "finishing-previous"
+      ? "Finishing previous session"
+      : recoveryHandoff === "opening-next"
+        ? "Opening new session"
+        : seminar.recoveryPending
+          ? "Unfinished session"
+          : phase === "closed"
+            ? "No session open"
+            : phase === "opening"
+              ? "Opening session"
+              : working
+                ? "Tutor working"
+                : "Session open";
 
-  const explain = seminar.recoveryPending
-    ? "Your last session ended without a verified close. Your tutor wraps it up — journal entry, quiz seeds, progress, commit — before the next one opens."
-    : phase === "closed"
-      ? "No tutor session is running in this course folder."
-      : "A tutor session is running in this course folder.";
+  const explain =
+    recoveryHandoff === "finishing-previous"
+      ? "Your tutor is finishing the previous session before a new one opens."
+      : recoveryHandoff === "opening-next"
+        ? "The previous session is saved. Your tutor is opening the new session."
+        : seminar.recoveryPending
+          ? "Your last session ended without a verified close. Your tutor updates the journal, quiz seeds, progress, and commit before the next one opens."
+          : phase === "closed"
+            ? "No tutor session is running in this course folder."
+            : "A tutor session is running in this course folder.";
 
   return (
     <span className="flex shrink-0 items-center gap-2" title={explain}>

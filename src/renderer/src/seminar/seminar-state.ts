@@ -13,6 +13,16 @@ export interface TranscriptTurn {
   streaming: boolean;
 }
 
+export type RecoveryHandoff = "none" | "finishing-previous" | "opening-next";
+
+export interface PreviousSessionTranscript {
+  sessionId: string;
+  items: TranscriptTurn[];
+  /** The first turn produced by the recovery close. Earlier turns are the
+   *  conversation the learner returned to. */
+  recoveryStartIndex: number | null;
+}
+
 export interface SeminarApproval {
   requestId: string;
   toolName: string;
@@ -25,7 +35,12 @@ export interface SeminarApproval {
 export interface SeminarState {
   phase: SeminarPhase;
   lifecycle: SeminarLifecycle;
+  sessionId: string | null;
   items: TranscriptTurn[];
+  /** The sealed transcript kept on screen while its fresh successor opens. */
+  previousSession: PreviousSessionTranscript | null;
+  recoveryStartIndex: number | null;
+  recoveryHandoff: RecoveryHandoff;
   toolActivity: string | null;
   approval: SeminarApproval | null;
   totalCostUsd: number;
@@ -62,7 +77,11 @@ export function createSeminarState(): SeminarState {
   return {
     phase: "closed",
     lifecycle: "closed",
+    sessionId: null,
     items: [],
+    previousSession: null,
+    recoveryStartIndex: null,
+    recoveryHandoff: "none",
     toolActivity: null,
     approval: null,
     totalCostUsd: 0,
@@ -178,6 +197,7 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
     return {
       ...state,
       phase: closing ? "thinking" : "idle",
+      recoveryHandoff: state.recoveryHandoff === "opening-next" ? "none" : state.recoveryHandoff,
       items: finalizeStreamingTutor(state.items),
       toolActivity: null,
       approval: null,
@@ -194,6 +214,7 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
       ...state,
       phase: "closed",
       lifecycle: "closed",
+      recoveryHandoff: "none",
       items: finalizeStreamingTutor(state.items),
       toolActivity: null,
       approval: null,
@@ -236,6 +257,33 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
          otherwise look like. */
       streaming: message.partial,
     }));
+    const sessionChanged =
+      state.sessionId !== null &&
+      snapshot.sessionId !== null &&
+      state.sessionId !== snapshot.sessionId;
+    const recoveryChangedSession = sessionChanged && state.recoveryHandoff !== "none";
+    const previousSession =
+      recoveryChangedSession && state.sessionId !== null
+        ? {
+            sessionId: state.sessionId,
+            items: finalizeStreamingTutor(state.items),
+            recoveryStartIndex: state.recoveryStartIndex,
+          }
+        : sessionChanged
+          ? null
+          : state.previousSession;
+    let recoveryHandoff = state.recoveryHandoff;
+    if (snapshot.lifecycle === "close-failed") {
+      recoveryHandoff = "none";
+    } else if (snapshot.lifecycle === "recovering" || snapshot.lifecycle === "wrapping") {
+      recoveryHandoff = "finishing-previous";
+    } else if (recoveryChangedSession) {
+      recoveryHandoff = "opening-next";
+    } else if (snapshot.lifecycle === "closed" && state.recoveryHandoff === "finishing-previous") {
+      // The recovery transcript is sealed before its provider process drains
+      // and the successor is created. Keep one continuous waiting state.
+      recoveryHandoff = "opening-next";
+    }
     // Transcript ids are minted from the store's entry sequence, which skips
     // operator/lifecycle records — so ids run AHEAD of the message count.
     // Seeding from length would re-mint an existing id for the first locally
@@ -254,24 +302,26 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
     return {
       ...state,
       lifecycle: snapshot.lifecycle,
+      sessionId: snapshot.sessionId,
       phase:
         snapshot.lifecycle === "open"
-          ? // The start-time snapshot lands while the invoke is still pending
-            // (phase "opening") and the opener turn is already in flight — a
-            // hydrate must never open the composer mid-turn.
-            state.phase === "opening"
-            ? "thinking"
-            : state.phase === "streaming" ||
-                state.phase === "tool-activity" ||
-                state.phase === "thinking"
+          ? snapshot.turnInProgress ||
+            state.phase === "opening" ||
+            recoveryHandoff === "opening-next"
+            ? !sessionChanged && (state.phase === "streaming" || state.phase === "tool-activity")
               ? state.phase
-              : "idle"
+              : "thinking"
+            : "idle"
           : snapshot.lifecycle === "opening" ||
               snapshot.lifecycle === "recovering" ||
-              snapshot.lifecycle === "wrapping"
+              snapshot.lifecycle === "wrapping" ||
+              recoveryHandoff === "opening-next"
             ? "thinking"
             : "closed",
       items,
+      previousSession,
+      recoveryStartIndex: recoveryChangedSession ? null : state.recoveryStartIndex,
+      recoveryHandoff,
       toolActivity: null,
       approval: null,
       totalCostUsd: snapshot.totalCostUsd,
@@ -281,17 +331,22 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       // only a turn started AFTER this point can be judged silent. Mounting
       // mid-turn (the onboarding surface handing over to the course view) must
       // never accuse a turn whose words simply predate this component.
-      turnProducedContent: items.length > 0 ? true : state.turnProducedContent,
+      turnProducedContent: sessionChanged
+        ? items.length > 0
+        : items.length > 0
+          ? true
+          : state.turnProducedContent,
     };
   }
 
   if (action.type === "open_started") {
+    const recovering = state.lifecycle === "recoverable" || state.lifecycle === "close-failed";
     return {
-      ...(state.lifecycle === "recoverable" || state.lifecycle === "close-failed"
-        ? state
-        : createSeminarState()),
+      ...(recovering ? state : createSeminarState()),
       phase: "opening",
       lifecycle: "opening",
+      recoveryStartIndex: recovering ? state.items.length : null,
+      recoveryHandoff: recovering ? "finishing-previous" : "none",
       failure: null,
       turnProducedContent: false,
     };
@@ -314,6 +369,7 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       ...state,
       phase: "closed",
       lifecycle: "closed",
+      recoveryHandoff: "none",
       failure: { kind: "unavailable", message: action.message },
     };
   }
@@ -323,6 +379,7 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       ...state,
       phase: "thinking",
       lifecycle: "open",
+      recoveryHandoff: "none",
       toolActivity: null,
       approval: null,
       failure: null,

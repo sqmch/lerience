@@ -20,12 +20,12 @@ import { PRIMARY, QUIET } from "../components/controls";
 import {
   ApprovalCard,
   Composer,
+  ConversationTranscript,
   FailureNotice,
   LimitNotice,
-  LearnerTurn,
   ScrollEdgeFade,
   Thinking,
-  TutorTurn,
+  conversationThinkingLabel,
   useFollowBottom,
 } from "./parts";
 import type { SeminarController } from "./use-seminar";
@@ -83,7 +83,7 @@ export function SeminarColumn({
 
       <div ref={viewportRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={onScroll}>
         <div className="flex flex-col gap-5 px-5 pt-5 pb-8">
-          {state.items.length === 0 && !busy ? (
+          {state.items.length === 0 && state.previousSession === null && !busy ? (
             <div className="flex flex-col gap-2 py-6">
               <p className="text-hi font-course text-lg font-semibold text-balance">
                 {onboarding ? "Plan this course with your tutor" : "Your tutor, in this folder"}
@@ -96,19 +96,10 @@ export function SeminarColumn({
             </div>
           ) : null}
 
-          {state.items.map((item) =>
-            item.role === "learner" ? (
-              <LearnerTurn key={item.id} content={item.content} />
-            ) : (
-              <TutorTurn key={item.id} content={item.content} streaming={item.streaming} />
-            ),
-          )}
+          <ConversationTranscript state={state} />
 
           {busy ? (
-            <Thinking
-              label={state.phase === "opening" ? "Opening this session" : "Your tutor is thinking"}
-              detail={state.toolActivity}
-            />
+            <Thinking label={conversationThinkingLabel(state)} detail={state.toolActivity} />
           ) : null}
 
           {state.approval === null ? null : (

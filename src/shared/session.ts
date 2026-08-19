@@ -15,6 +15,9 @@ export interface SeminarSnapshot {
   sessionId: string | null;
   messages: SeminarTranscriptMessage[];
   totalCostUsd: number;
+  /** Main-process truth. A live opener is already a turn even before its first
+   *  visible delta reaches the renderer. */
+  turnInProgress: boolean;
   detail?: string;
 }
 

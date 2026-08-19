@@ -23,12 +23,13 @@ import type { CourseSnapshot } from "../../../shared/ipc";
 import {
   ApprovalCard,
   Composer,
+  ConversationTranscript,
   FailureNotice,
   LimitNotice,
-  LearnerTurn,
   ScrollEdgeFade,
   Thinking,
   TutorTurn,
+  conversationThinkingLabel,
   useFollowBottom,
 } from "../seminar/parts";
 import { useSeminar } from "../seminar/use-seminar";
@@ -255,7 +256,7 @@ function ConnectedOnboardingSurface({
   const [revising, setRevising] = useState(false);
   const [editsGranted, setEditsGranted] = useState(false);
   const [written, setWritten] = useState<string[]>([]);
-  const spoken = state.items.length > 0;
+  const spoken = state.items.length > 0 || state.previousSession !== null;
   /* Module files landing is the fact; the assent click is only the fast signal
      that arrives before the first write does. Deriving from both means a window
      reopened mid-build still reads as building rather than as a spinner parked
@@ -499,13 +500,7 @@ function ConnectedOnboardingSurface({
                     </SysLine>
                   ) : null}
 
-                  {state.items.map((item) =>
-                    item.role === "learner" ? (
-                      <LearnerTurn key={item.id} content={item.content} />
-                    ) : (
-                      <TutorTurn key={item.id} content={item.content} streaming={item.streaming} />
-                    ),
-                  )}
+                  <ConversationTranscript state={state} />
 
                   {hasArc && !arcRevealed ? (
                     <SysLine>
@@ -520,11 +515,13 @@ function ConnectedOnboardingSurface({
                         // Before the tutor's first words there is nothing on screen to
                         // explain the wait, so this line carries it. "Thinking" is only
                         // honest once a conversation visibly exists.
-                        stage === "opening"
-                          ? seminar.recoveryPending
-                            ? "Picking up where you left off"
-                            : "Your tutor is preparing your interview"
-                          : "Your tutor is thinking"
+                        state.recoveryHandoff !== "none"
+                          ? conversationThinkingLabel(state)
+                          : stage === "opening"
+                            ? seminar.recoveryPending
+                              ? "Picking up where you left off"
+                              : "Your tutor is preparing your interview"
+                            : "Your tutor is thinking"
                       }
                       detail={state.toolActivity}
                     />

@@ -182,6 +182,7 @@ function installBridge(stage: Stage, connected: boolean, rejectControlChanges: b
     sessionId: "harness",
     messages: [],
     totalCostUsd: 0,
+    turnInProgress: false,
   };
   const providerCatalog: ProviderCatalog = {
     selectedProviderId: connected ? "codex" : "claude",
