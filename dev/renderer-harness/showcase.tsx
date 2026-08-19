@@ -18,11 +18,20 @@ import "@fontsource-variable/literata";
 import "@fontsource-variable/jetbrains-mono";
 import { createRoot } from "react-dom/client";
 import type { CourseQuizItem } from "../../src/shared/course-data";
-import type { CourseSnapshot, ThemePreference, ThemeState } from "../../src/shared/ipc";
+import type {
+  CourseSnapshot,
+  DashboardCourse,
+  ThemePreference,
+  ThemeState,
+} from "../../src/shared/ipc";
 import type { ProviderCatalog } from "../../src/shared/provider";
 import type { AgentEvent, SessionControlPatch, SessionControls } from "../../src/shared/seminar";
 import type { SeminarSnapshot, SeminarTranscriptMessage } from "../../src/shared/session";
+import { CourseDashboard } from "../../src/renderer/src/components/course-dashboard";
 import { CourseView } from "../../src/renderer/src/course/course-view";
+import { AppShell } from "../../src/renderer/src/shell/app-shell";
+import { TutorControl } from "../../src/renderer/src/tutor/tutor-connection";
+import { useTutorConnection } from "../../src/renderer/src/tutor/use-tutor-connection";
 import { FIXTURE_COURSE } from "./course-fixture";
 import { readShowcaseDoc } from "./showcase-material";
 import "./harness.css";
@@ -92,6 +101,82 @@ const SHOWCASE_COURSE: CourseSnapshot = {
     },
   },
 };
+
+/* ── the dashboard: three courses, three subjects ───────────────────────────
+   The course list a returning learner opens on. The three are deliberately
+   from different worlds, because a course is whatever the learner asked for:
+   the vector course the rest of the showcase walks through, a history course
+   checked by comprehension questions and a short essay at each phase gate,
+   and an interview-preparation course shaped by a job description and graded
+   through mock rounds. All synthetic. */
+
+function daysAgo(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString();
+}
+
+const DASHBOARD_COURSES: DashboardCourse[] = [
+  {
+    courseId: "showcase-vectors",
+    rootPath: "D:\\Courses\\Map vectors",
+    folderName: "Map vectors",
+    lastOpenedAt: daysAgo(0),
+    available: true,
+    title: "Map vectors: direction, distance, and projection",
+    currentModuleId: "02-direction-comparison",
+    completedModules: 2,
+    totalModules: 9,
+    dueCount: 3,
+    onboarding: false,
+  },
+  {
+    courseId: "showcase-pirates",
+    rootPath: "D:\\Courses\\Golden age of piracy",
+    folderName: "Golden age of piracy",
+    lastOpenedAt: daysAgo(2),
+    available: true,
+    title: "The golden age of piracy in American waters, 1650 to 1730",
+    currentModuleId: "04-charleston-blockade",
+    completedModules: 4,
+    totalModules: 7,
+    dueCount: 5,
+    onboarding: false,
+  },
+  {
+    courseId: "showcase-interview",
+    rootPath: "D:\\Courses\\Backend interview prep",
+    folderName: "Backend interview prep",
+    lastOpenedAt: daysAgo(6),
+    available: true,
+    title: "Interview prep: senior backend engineer, payments team",
+    currentModuleId: "05-system-design-round",
+    completedModules: 5,
+    totalModules: 8,
+    dueCount: 1,
+    onboarding: false,
+  },
+];
+
+function DashboardScreen(): React.JSX.Element {
+  const connection = useTutorConnection();
+  return (
+    <AppShell status={<span className="truncate">{"D:\\Courses"}</span>}>
+      <CourseDashboard
+        courses={DASHBOARD_COURSES}
+        defaultParentDirectory={"D:\\Courses"}
+        initialError={null}
+        onOpen={() => Promise.resolve(null)}
+        onLocate={() => Promise.resolve(null)}
+        onForget={() => Promise.resolve(null)}
+        onOpenFolder={() => Promise.resolve(null)}
+        onCreate={() => new Promise(() => undefined)}
+        tutorControl={<TutorControl connection={connection} />}
+        needsTutor={!connection.checking && !connection.ready}
+      />
+    </AppShell>
+  );
+}
 
 /* ── the conversation so far ─────────────────────────────────────────────────
    A session that is already open: the tutor opened with the recall items that
@@ -366,6 +451,13 @@ function holdFocusUntilInteraction(): void {
 holdFocusUntilInteraction();
 installBridge(initialTheme());
 
+/* `?screen=courses` mounts the dashboard instead of the course view. */
+const screen = new URLSearchParams(window.location.search).get("screen");
+
 createRoot(document.getElementById("root") as HTMLElement).render(
-  <CourseView course={SHOWCASE_COURSE} onLeaveCourse={() => undefined} />,
+  screen === "courses" ? (
+    <DashboardScreen />
+  ) : (
+    <CourseView course={SHOWCASE_COURSE} onLeaveCourse={() => undefined} />
+  ),
 );
