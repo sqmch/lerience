@@ -135,8 +135,14 @@ export function LabOverlay({
               />
             ) : StockLab !== undefined ? (
               /* A ported engine component, so it is on our own ground and gets
-                 a gutter — it was drawn for a page, not for a bleed. */
-              <div className="bg-surface size-full overflow-auto p-6">
+                 a gutter — it was drawn for a page, not for a bleed. A flex
+                 COLUMN, because the ports size themselves as flex children of
+                 a fixed-height column (`flex: 1; min-height: 0`): that is how
+                 the side panel scrolls on its own and the drawing stays put.
+                 As a block, the grid grew to the panel's full height and the
+                 picture floated in the middle of a column taller than the
+                 window. */
+              <div className="bg-surface flex size-full flex-col overflow-auto p-6">
                 <StockLab
                   key={`${active.key}:${framingModuleId ?? ""}`}
                   config={

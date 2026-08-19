@@ -23,7 +23,8 @@ import type { ProviderCatalog } from "../../src/shared/provider";
 import type { AgentEvent, SessionControlPatch, SessionControls } from "../../src/shared/seminar";
 import type { SeminarSnapshot, SeminarTranscriptMessage } from "../../src/shared/session";
 import { CourseView } from "../../src/renderer/src/course/course-view";
-import { FIXTURE_COURSE, readFixtureDoc } from "./course-fixture";
+import { FIXTURE_COURSE } from "./course-fixture";
+import { readShowcaseDoc } from "./showcase-material";
 import "./harness.css";
 
 /* ── the course, dated relative to today ─────────────────────────────────────
@@ -59,7 +60,25 @@ const SHOWCASE_COURSE: CourseSnapshot = {
   folderName: FIXTURE_COURSE.folderName,
   data: {
     ...FIXTURE_COURSE.data,
-    modules: FIXTURE_COURSE.data.modules.filter((entry) => entry.id !== "09-long-entry-fixture"),
+    /* Only the current module exists in full, and the two before it are
+       finished: a module not yet reached has no lesson, brief, scaffold, or
+       checks, and the material pane says so. The harness fixture gives every
+       module paths because it is probing the pane; the showcase tells the
+       protocol's truth instead. */
+    modules: FIXTURE_COURSE.data.modules
+      .filter((entry) => entry.id !== "09-long-entry-fixture")
+      .map((entry) =>
+        entry.status === "not-started"
+          ? {
+              ...entry,
+              lessonPath: null,
+              briefPath: null,
+              quizPath: null,
+              hasScaffold: false,
+              hasChecks: false,
+            }
+          : entry,
+      ),
     quiz: FIXTURE_COURSE.data.quiz.map(shiftQuizItem),
     journal: FIXTURE_COURSE.data.journal.map((entry) => ({
       ...entry,
@@ -289,7 +308,7 @@ function installBridge(initialTheme: ThemePreference): void {
     setTitleBarOverlay: () => Promise.resolve(),
     getLayout: () => Promise.resolve({}),
     setLayout: () => Promise.resolve(),
-    readDoc: (path: string) => Promise.resolve(readFixtureDoc(path)),
+    readDoc: (path: string) => Promise.resolve(readShowcaseDoc(path)),
     revealCourse: () => Promise.resolve(),
     closeCourse: () => Promise.resolve(),
     runChecks: () =>
