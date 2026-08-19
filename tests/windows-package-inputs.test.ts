@@ -14,7 +14,7 @@ function runtimeFixture(overrides: Record<string, unknown> = {}): string {
     path.join(root, "manifest.json"),
     JSON.stringify({
       schemaVersion: 4,
-      appVersion: "0.0.1",
+      appVersion: "0.0.2",
       target: { platform: "win32", architecture: "x64" },
       ...overrides,
     }),
