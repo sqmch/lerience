@@ -73,7 +73,12 @@ before creating a release draft.
 ## Version and release layout
 
 - Stable versions use strict `MAJOR.MINOR.PATCH` values in `package.json`.
+- `package.json` is the sole mutable source of the current desktop version. Packaged runtime code
+  reads that value through Electron's `app.getVersion()`; status and specification documents link
+  to `releases/latest` instead of copying the current version.
 - Git tags and GitHub releases use `vMAJOR.MINOR.PATCH`.
+- Release notes, evidence records, tags, manifests, and artifact filenames remain explicitly
+  versioned because they are immutable records of a particular release.
 - `releases/latest/download/release-manifest.json` and `.sig` identify the latest candidate.
 - Signed artifact filenames resolve only beneath `releases/download/vMAJOR.MINOR.PATCH/`.
 - The supported Windows release surface is the per-user installer. Omitting another target means

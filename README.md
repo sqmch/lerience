@@ -11,10 +11,11 @@ how to interview you before it plans anything, what to do at the start and end o
 when to withhold an answer, how to write the next module. The app is the interface around that
 folder. No account, no server, no terminal.
 
-> **Status:** first Windows community preview, v0.0.1. Releases are unsigned at the operating
-> system level, so Windows will likely show an unknown-publisher warning. Lerience verifies its own
-> updates with a signed manifest. Provider support is experimental. Read
-> [honest limits](#honest-limits) before you install.
+> **Status:** Windows x64 community previews are available from the
+> [latest release](https://github.com/sqmch/lerience/releases/latest). Releases are unsigned at the
+> operating system level, so Windows will likely show an unknown-publisher warning. Lerience
+> verifies its own updates with a signed manifest. Provider support is experimental. Read [honest
+> limits](#honest-limits) before you install.
 
 ## Why this exists
 

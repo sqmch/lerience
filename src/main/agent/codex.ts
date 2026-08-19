@@ -14,7 +14,6 @@ import type {
 } from "../../shared/seminar";
 import {
   CodexAppServerFailure,
-  createCodexAppServerClient,
   type CodexAppServerConnection,
   type CodexAppServerFactory,
 } from "../provider/codex-app-server";
@@ -166,7 +165,7 @@ function readCourseProtocol(courseDir: string): string {
 export class CodexTutorAgent implements TutorAgent {
   readonly providerId = "codex" as const;
 
-  constructor(private readonly appServer: CodexAppServerFactory = createCodexAppServerClient) {}
+  constructor(private readonly appServer: CodexAppServerFactory) {}
 
   startSession({ courseDir }: StartSessionOptions): AgentSession {
     return new CodexAgentSession(courseDir, readCourseProtocol(courseDir), this.appServer);

@@ -491,7 +491,11 @@ void app.whenReady().then(async () => {
   const codexAppServer =
     codexExecutable === null
       ? undefined
-      : createCodexAppServerFactory(codexExecutable, runtimeEnvironment);
+      : createCodexAppServerFactory({
+          executable: codexExecutable,
+          clientVersion: app.getVersion(),
+          environment: runtimeEnvironment,
+        });
   providers = new TutorProviderRegistry(
     [
       new ClaudeTutorProvider({

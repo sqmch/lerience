@@ -46,6 +46,12 @@ export interface CodexAppServerConnection {
 
 export type CodexAppServerFactory = () => CodexAppServerConnection;
 
+export interface CodexAppServerFactoryOptions {
+  executable: string;
+  clientVersion: string;
+  environment?: Readonly<Record<string, string>>;
+}
+
 interface PendingRequest {
   resolve(value: unknown): void;
   reject(error: CodexAppServerFailure): void;
@@ -69,7 +75,10 @@ export class CodexAppServerClient implements CodexAppServerConnection {
   private readonly requests = new Set<RequestListener>();
   private readonly exits = new Set<ExitListener>();
 
-  constructor(private readonly transport: CodexAppServerTransport = createStdioTransport()) {
+  constructor(
+    private readonly clientVersion: string,
+    private readonly transport: CodexAppServerTransport = createStdioTransport(),
+  ) {
     transport.onLine((line) => this.receive(line));
     transport.onExit((failure) => this.fail(failure));
   }
@@ -78,7 +87,7 @@ export class CodexAppServerClient implements CodexAppServerConnection {
     const response = await this.request(
       "initialize",
       {
-        clientInfo: { name: PRODUCT_CLIENT_ID, title: PRODUCT_NAME, version: "0.0.1" },
+        clientInfo: { name: PRODUCT_CLIENT_ID, title: PRODUCT_NAME, version: this.clientVersion },
         capabilities: { experimentalApi: false, requestAttestation: false },
       },
       INITIALIZE_TIMEOUT_MS,
@@ -206,15 +215,14 @@ export class CodexAppServerClient implements CodexAppServerConnection {
   }
 }
 
-export function createCodexAppServerClient(): CodexAppServerConnection {
-  return new CodexAppServerClient();
-}
-
 export function createCodexAppServerFactory(
-  executable: string,
-  environment?: Readonly<Record<string, string>>,
+  options: CodexAppServerFactoryOptions,
 ): CodexAppServerFactory {
-  return () => new CodexAppServerClient(createStdioTransport(executable, environment));
+  return () =>
+    new CodexAppServerClient(
+      options.clientVersion,
+      createStdioTransport(options.executable, options.environment),
+    );
 }
 
 /** Spawn with the learner's canonical Codex environment preserved; packaged
