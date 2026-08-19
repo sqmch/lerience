@@ -313,16 +313,17 @@ describe("repository publication hygiene", () => {
 
   it("keeps the public status aligned with the published release", () => {
     const status = read("docs/STATUS.md");
-    expect(status).toContain("Lerience v0.0.1 is public");
-    expect(status).toContain("https://github.com/sqmch/lerience/releases/tag/v0.0.1");
+    expect(status).toContain("Public unsigned Windows x64 community releases are available");
+    expect(status).toContain("https://github.com/sqmch/lerience/releases/latest");
     expect(status).toContain("stable application ID is `io.github.sqmch.lerience`");
     expect(status).toContain("five-upload release");
     expect(status).toContain("downloaded-byte signature");
     expect(status).toContain("Encrypted recovery of the release key has been confirmed");
-    expect(status).toContain("normal learner-path smoke");
+    expect(status).toMatch(/normal learner-path\s+smoke/);
     expect(status).toContain("publication are complete");
     expect(status).not.toContain("No binary is public yet");
     expect(status).not.toContain("private development-history");
+    expect(status).not.toMatch(/Lerience v\d+\.\d+\.\d+ is public/);
   });
 
   it("keeps public-facing local documentation links resolvable", () => {

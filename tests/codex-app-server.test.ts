@@ -38,7 +38,7 @@ class FakeTransport implements CodexAppServerTransport {
 describe("CodexAppServerClient", () => {
   it("negotiates only stable capabilities against the pinned schema", async () => {
     const transport = new FakeTransport();
-    const client = new CodexAppServerClient(transport);
+    const client = new CodexAppServerClient("9.8.7", transport);
     const initializing = client.initialize();
     const request = JSON.parse(transport.writes[0] ?? "null") as Record<string, unknown>;
 
@@ -46,7 +46,7 @@ describe("CodexAppServerClient", () => {
       id: 1,
       method: "initialize",
       params: {
-        clientInfo: { name: "lerience-desktop", title: "Lerience", version: "0.0.1" },
+        clientInfo: { name: "lerience-desktop", title: "Lerience", version: "9.8.7" },
         capabilities: { experimentalApi: false, requestAttestation: false },
       },
     });
@@ -66,7 +66,7 @@ describe("CodexAppServerClient", () => {
 
   it("fails closed on a different protocol version", async () => {
     const transport = new FakeTransport();
-    const client = new CodexAppServerClient(transport);
+    const client = new CodexAppServerClient("9.8.7", transport);
     const initializing = client.initialize();
     transport.receive({ id: 1, result: { userAgent: "codex-cli/9.9.9" } });
 
@@ -75,7 +75,7 @@ describe("CodexAppServerClient", () => {
 
   it("never forwards a raw JSON-RPC error", async () => {
     const transport = new FakeTransport();
-    const client = new CodexAppServerClient(transport);
+    const client = new CodexAppServerClient("9.8.7", transport);
     const request = client.request("account/read", { refreshToken: false });
     transport.receive({
       id: 1,
