@@ -181,10 +181,10 @@ function runtimeCheckPage(): string {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
 <title>${PRODUCT_NAME}</title><style>
 html,body{height:100%;margin:0}body{display:grid;grid-template-rows:auto 1fr;background:Canvas;color:CanvasText;font:.875rem/1.5 Inter,system-ui,sans-serif}
-header{-webkit-app-region:drag;display:flex;align-items:center;gap:.5rem;height:${String(TITLE_BAR_HEIGHT)}px;padding-left:.875rem;border-bottom:.0625rem solid ButtonBorder}
+header{-webkit-app-region:drag;display:flex;align-items:center;gap:.5rem;height:${String(TITLE_BAR_HEIGHT)}px;padding-left:.875rem}
 .chip{width:.625rem;height:.625rem;border:.0625rem solid GrayText;border-radius:.1875rem}
 .wordmark{color:GrayText;font-weight:500;letter-spacing:-.01em}
-main{display:grid;place-items:center;text-align:center}
+main{place-self:center;text-align:center}
 .mark{width:2.125rem;height:2.125rem;margin:0 auto 1.375rem;border:.0625rem solid ButtonBorder;border-radius:.625rem;display:grid;place-items:center;font:600 1rem Georgia,serif}
 h1{margin:0 0 .375rem;font-size:1rem;font-weight:600;letter-spacing:-.01em}p{margin:0;color:GrayText}.spinner{width:1.125rem;height:1.125rem;margin:1.5rem auto 0;border:.125rem solid ButtonFace;border-top-color:CanvasText;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
