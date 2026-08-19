@@ -403,11 +403,26 @@ export function MaterialPane({
           ) : (
             <>
               {/* The module's OWN questions: material, written beside the
-                  lesson, and the thing you should be able to answer. */}
+                  lesson, and the thing you should be able to answer. The
+                  document is a bare list and nothing on it is interactive, so
+                  an app-voice line says what it is FOR — now (check yourself
+                  after the lesson) and later (the tutor schedules it when the
+                  module completes). Before seeding that "later" is the only
+                  sign the tab has a future; after, the schedule below is it,
+                  and the line says so instead of promising it again. */}
               {quizPath === null ? null : quizDoc === null ? (
                 <EmptyNote title="Reading the course" desc="The file is on its way from disk." />
               ) : (
-                <CourseMarkdown className="prose max-w-none" markdown={quizDoc} />
+                <>
+                  <p className="text-ink-dim mb-8 max-w-(--container-start) text-sm leading-normal text-pretty">
+                    This module&rsquo;s retrieval questions. After the lesson, try answering them
+                    from memory — there is nothing to fill in here.{" "}
+                    {moduleQuiz.length === 0
+                      ? "When you finish the module, your tutor adds them to your schedule and asks them in conversation at the start of later sessions."
+                      : "Your tutor has added them to your schedule below and asks them in conversation at the start of sessions."}
+                  </p>
+                  <CourseMarkdown className="prose max-w-none" markdown={quizDoc} />
+                </>
               )}
               {moduleQuiz.length === 0 ? null : (
                 <section className={quizPath === null ? "" : "border-line mt-10 border-t pt-8"}>
