@@ -36,9 +36,25 @@ relevant records in [`docs/DECISIONS/`](docs/DECISIONS/). Read
 - Learner-owned course files and credentials stay on the learner's machine. Renderer code receives
   only the narrow preload API.
 
+## Development workflow
+
+- `main` is always releasable and is never committed to directly. Work on a branch, open a pull
+  request, wait for CI, and squash-merge. Title the PR as the learner-visible change; that title
+  becomes the `main` commit and the raw material for release notes.
+- `pnpm dev` runs the real Electron app with hot reload; use it for anything touching the main
+  process, preload API, IPC, providers, or course creation. `pnpm harness:dev` serves production
+  renderer components against a stubbed preload API at `http://localhost:5199` for browser-
+  inspectable UI work (see `dev/renderer-harness/README.md`).
+- Merging a PR does not produce a release. Releases are deliberate, batched, and manual: a focused
+  version-bump PR that adds `distribution/releases/v<version>.md`, an annotated `v<version>` tag on
+  that merge commit, then the `windows-release-candidate` workflow and downloaded-byte acceptance
+  described in `distribution/RELEASE-OPERATIONS.md`. There is no running changelog; notes are
+  drafted at release time from `git log <previous-tag>..main`.
+
 ## Common commands
 
 - `pnpm dev` starts Electron in development mode.
+- `pnpm harness:dev` serves the browser renderer harness on port 5199.
 - `pnpm check` runs type checks, tests, linting, formatting checks, and the production build.
 - `pnpm package:windows:dir` builds the unpacked Windows x64 application with explicit distribution
   inputs.
