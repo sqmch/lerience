@@ -48,7 +48,7 @@ function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum-stage-release-"));
   roots.push(root);
   const executableName = "ApprovedProduct";
-  const nsis = path.join(root, `${executableName}-Setup-0.0.1-x64.exe`);
+  const nsis = path.join(root, `${executableName}-Setup-0.0.2-x64.exe`);
   const nsisBytes = Buffer.from("installer");
   fs.writeFileSync(nsis, nsisBytes);
   const notes = path.join(root, "notes.md");
@@ -65,7 +65,7 @@ function fixture() {
     schemaVersion: 1,
     productId: "praxeum-desktop",
     channel: "stable",
-    version: "0.0.1",
+    version: "0.0.2",
     publishedAt: "2026-08-18T09:00:00.000Z",
     releaseNotes: "A reviewed release candidate.",
     artifacts: [
@@ -143,27 +143,27 @@ describe("Windows release staging", () => {
     const result = await stageWindowsRelease(value.options);
 
     expect(result.bundle).toMatchObject({
-      version: "0.0.1",
-      tag: "v0.0.1",
+      version: "0.0.2",
+      tag: "v0.0.2",
       sourceCommit: "a".repeat(40),
       artifacts: {
         nsis: {
-          versioned: "ApprovedProduct-Setup-0.0.1-x64.exe",
+          versioned: "ApprovedProduct-Setup-0.0.2-x64.exe",
         },
       },
       correspondingSource: {
-        fileName: "ApprovedProduct-0.0.1-corresponding-source.tar.gz",
+        fileName: "ApprovedProduct-0.0.2-corresponding-source.tar.gz",
       },
     });
     expect(fs.readdirSync(value.options.output).sort()).toEqual([
-      "ApprovedProduct-0.0.1-corresponding-source.tar.gz",
-      "ApprovedProduct-Setup-0.0.1-x64.exe",
+      "ApprovedProduct-0.0.2-corresponding-source.tar.gz",
+      "ApprovedProduct-Setup-0.0.2-x64.exe",
       "SHA256SUMS",
       "release-manifest.json",
       "release-manifest.sig",
     ]);
     const archive = fs.readFileSync(
-      path.join(value.options.output, "ApprovedProduct-0.0.1-corresponding-source.tar.gz"),
+      path.join(value.options.output, "ApprovedProduct-0.0.2-corresponding-source.tar.gz"),
     );
     expect(tarEntryNames(archive)).toEqual([
       "fixture-source.tar.gz",
@@ -173,8 +173,8 @@ describe("Windows release staging", () => {
     ]);
     const sums = fs.readFileSync(path.join(value.options.output, "SHA256SUMS"), "utf8");
     expect(sums.trim().split("\n")).toHaveLength(4);
-    expect(sums).toContain("ApprovedProduct-Setup-0.0.1-x64.exe");
-    expect(sums).toContain("ApprovedProduct-0.0.1-corresponding-source.tar.gz");
+    expect(sums).toContain("ApprovedProduct-Setup-0.0.2-x64.exe");
+    expect(sums).toContain("ApprovedProduct-0.0.2-corresponding-source.tar.gz");
     expect(sums).toContain("release-manifest.sig");
     expect(sums).not.toContain("ApprovedProduct-Setup-x64.exe");
     expect(sums).not.toContain("fixture-source.tar.gz");
