@@ -77,7 +77,9 @@ const SHOWCASE_COURSE: CourseSnapshot = {
               hasScaffold: false,
               hasChecks: false,
             }
-          : entry,
+          : /* A finished module keeps its quiz.md on disk; the harness fixture
+               only gives the current module one. */
+            { ...entry, quizPath: `curriculum/${entry.id}/quiz.md` },
       ),
     quiz: FIXTURE_COURSE.data.quiz.map(shiftQuizItem),
     journal: FIXTURE_COURSE.data.journal.map((entry) => ({
