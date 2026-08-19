@@ -50,6 +50,6 @@ process.stderr.write(
     .map((finding) => `- ${finding}`)
     .join(
       "\n",
-    )}\n\nRewrite the text. Use the environment-variable form of a path (%LOCALAPPDATA%, $HOME) rather than a resolved home directory.\n`,
+    )}\n\nRewrite the text. Name a path by its environment variable (%LOCALAPPDATA%, $HOME), or elide the identity in angle brackets (C:\\Users\\<name>\\...), rather than resolving a home directory. A synthetic identity earns no exemption here: published prose is not a test fixture.\n`,
 );
 process.exitCode = 1;

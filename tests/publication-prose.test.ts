@@ -45,6 +45,14 @@ describe("published prose check", () => {
     expect(result.stdout).toContain("pr_body");
   });
 
+  it("passes a path whose identity is elided, which is the escape for prose about paths", () => {
+    // The shared patterns exclude `<` and `>` from an identity, so a bracketed
+    // placeholder is not a home path. The failure message names this escape,
+    // because a PR that discusses path handling has to be able to show one.
+    const placeholder = ["C:", "Users", "<name>", "Lerience"].join("\\");
+    expect(run({ PROSE_PR_BODY: `Courses live under ${placeholder}.` }).status).toBe(0);
+  });
+
   it("refuses the resolved home path the tracked-tree preflight would have caught in a file", () => {
     const result = run({
       PROSE_PR_BODY: ["## Validation", "", `Opened ${windowsHome} without trouble.`].join("\n"),
