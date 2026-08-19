@@ -15,6 +15,7 @@ export function CourseDashboard({
   onOpenFolder,
   onCreate,
   tutorControl,
+  needsTutor = false,
 }: {
   courses: DashboardCourse[];
   defaultParentDirectory: string;
@@ -25,6 +26,10 @@ export function CourseDashboard({
   onOpenFolder: () => ActionResult;
   onCreate: (name: string, parentDirectory: string) => ActionResult;
   tutorControl: ReactNode;
+  /** No tutor is connected yet. Naming a course still works — nothing here
+   *  waits on a provider (ADR-004) — so this changes nothing about the form and
+   *  only says, before the folder exists, what the conversation will need. */
+  needsTutor?: boolean;
 }): React.JSX.Element {
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -129,6 +134,18 @@ export function CourseDashboard({
               {error}
             </p>
           )}
+
+          {/* One line, and the dot carries it: amber is the app's word for a
+              state the learner has to repair (ADR-015), and it is the same dot
+              the tutor menu directly above is showing. Not an alert and not a
+              disabled button — the folder can be made now and the tutor chosen
+              after, which is exactly what the sentence says. */}
+          {needsTutor ? (
+            <p className="text-ink-dim mt-4 flex items-center justify-center gap-2 text-sm">
+              <span className="bg-warn size-1.5 shrink-0 rounded-pill" aria-hidden="true" />
+              <span>You'll choose a tutor before the first question.</span>
+            </p>
+          ) : null}
 
           {/* The way BACK moved to the top-left corner; this line keeps only
               the way SIDEWAYS, which is genuinely fine print — almost nobody

@@ -14,7 +14,8 @@ import { CourseDashboard } from "../../src/renderer/src/components/course-dashbo
 import { CourseView } from "../../src/renderer/src/course/course-view";
 import { OnboardingSurface } from "../../src/renderer/src/onboarding/onboarding-surface";
 import { AppShell } from "../../src/renderer/src/shell/app-shell";
-import { TutorControl } from "../../src/renderer/src/tutor/tutor-connection";
+import { TutorConnectionGate, TutorControl } from "../../src/renderer/src/tutor/tutor-connection";
+import { useTutorConnection } from "../../src/renderer/src/tutor/use-tutor-connection";
 import { COURSE_ROOT, FIXTURE_COURSE, readFixtureDoc } from "./course-fixture";
 import "./harness.css";
 
@@ -325,15 +326,33 @@ const DASHBOARD_COURSES = [
 const STAGES: Stage[] = ["opening", "interview", "arc", "building", "ready", "silent"];
 
 /** The dashboard's and the course view's surfaces, which are NOT onboarding
- *  stages — added so their geometry can be measured rather than assumed. */
-type Screen = Stage | "first-run" | "courses" | "course" | "control-error" | "connect";
-const SCREENS: Screen[] = ["first-run", "courses", "course", "control-error", "connect", ...STAGES];
+ *  stages — added so their geometry can be measured rather than assumed.
+ *
+ *  `choose-tutor` is the app's OPENING surface on a fresh install with nothing
+ *  connected; `connect` is the same gate reached mid-course, from onboarding.
+ *  Both are here because the two differ only in the way out they draw, and
+ *  that is exactly the sort of difference a screenshot settles. */
+type Screen =
+  Stage | "choose-tutor" | "first-run" | "courses" | "course" | "control-error" | "connect";
+const SCREENS: Screen[] = [
+  "choose-tutor",
+  "first-run",
+  "courses",
+  "course",
+  "control-error",
+  "connect",
+  ...STAGES,
+];
 
 function Harness(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>("course");
   const [bar, setBar] = useState(true);
   const stage = (STAGES as string[]).includes(screen) ? (screen as Stage) : "interview";
-  installBridge(stage, screen !== "connect", screen === "control-error");
+  installBridge(
+    stage,
+    screen !== "connect" && screen !== "choose-tutor",
+    screen === "control-error",
+  );
 
   if (!bar) {
     return (
@@ -347,7 +366,7 @@ function Harness(): React.JSX.Element {
         >
           harness
         </button>
-        <Surface screen={screen} stage={stage} />
+        <Surface key={screen} screen={screen} stage={stage} />
       </div>
     );
   }
@@ -396,12 +415,23 @@ function Harness(): React.JSX.Element {
           hide
         </button>
       </div>
-      <Surface screen={screen} stage={stage} />
+      <Surface key={screen} screen={screen} stage={stage} />
     </div>
   );
 }
 
 function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX.Element {
+  /* One probe for the harness, exactly as App owns one for the window. The
+     surrounding `key` remounts this component when the screen changes, so a
+     fixture that flips the catalog between screens is actually re-read. */
+  const connection = useTutorConnection();
+  /** Mirrors App's own "not now" latch, so the harness carries the whole
+   *  first-run path rather than only its first screen: the gate, and the empty
+   *  dashboard it defers to — which is the only place the create screen's
+   *  "you'll choose a tutor" line can be seen. Reset by the `key` on this
+   *  component whenever the screen changes. */
+  const [deferred, setDeferred] = useState(false);
+
   /* The course view brings its OWN AppShell — it is a surface that owns its
      frame contents (ADR-019), not a child of someone else's. */
   if (screen === "course" || screen === "control-error") {
@@ -417,7 +447,21 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
      live in the window's title bar, exactly like the course view's. Wrapping
      it in a second AppShell here would draw two title bars and two status
      bars, which is a harness artefact rather than anything the app does. */
-  if (screen !== "first-run" && screen !== "courses") {
+  /* First run, before anything is connected: the gate IS the app's opening
+     surface, so it draws no way back — only the quiet way past. */
+  if (screen === "choose-tutor" && !deferred) {
+    return (
+      <AppShell status={<span className="truncate">{ROOT}</span>}>
+        <TutorConnectionGate
+          connection={connection}
+          onDefer={() => {
+            setDeferred(true);
+          }}
+        />
+      </AppShell>
+    );
+  }
+  if (screen !== "first-run" && screen !== "courses" && screen !== "choose-tutor") {
     return (
       <OnboardingSurface
         key={stage}
@@ -439,7 +483,8 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
         onForget={() => Promise.resolve(null)}
         onOpenFolder={() => Promise.resolve(null)}
         onCreate={() => new Promise(() => undefined)}
-        tutorControl={<TutorControl />}
+        tutorControl={<TutorControl connection={connection} />}
+        needsTutor={!connection.checking && !connection.ready}
       />
     </AppShell>
   );
