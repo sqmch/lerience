@@ -315,6 +315,26 @@ const EFFORT_LABELS: Record<SessionEffort, string> = {
   max: "Max effort",
 };
 
+/** The last inch of transcript, dissolving into the ground the composer sits
+ *  on. It replaces the rule that used to run the full width under every
+ *  conversation: the composer is not a footer with its own chrome, so what
+ *  marks the boundary is the reading fading out, not a line announcing that a
+ *  section ended.
+ *
+ *  It belongs INSIDE the scroll viewport, as the child directly after the
+ *  content and before "Jump to latest" — sticky so it rides the bottom edge,
+ *  and pulled back by its own height so it adds none of its own. The
+ *  viewport's bottom padding has to clear it, or the newest line reads dimmed
+ *  while the conversation is at rest. */
+export function ScrollEdgeFade(): React.JSX.Element {
+  return (
+    <div
+      className="from-surface pointer-events-none sticky bottom-0 -mt-8 h-8 bg-linear-to-t to-transparent"
+      aria-hidden="true"
+    />
+  );
+}
+
 /** The prompt box. Grows with its content up to a reading-height cap, stays
  *  typeable while the tutor works (only Send waits), and keeps focus through a
  *  send — losing the caret after every message is the single fastest way to

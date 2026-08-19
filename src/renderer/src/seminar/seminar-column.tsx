@@ -23,6 +23,7 @@ import {
   FailureNotice,
   LimitNotice,
   LearnerTurn,
+  ScrollEdgeFade,
   Thinking,
   TutorTurn,
   useFollowBottom,
@@ -81,7 +82,7 @@ export function SeminarColumn({
       </header>
 
       <div ref={viewportRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={onScroll}>
-        <div className="flex flex-col gap-5 px-5 pt-5 pb-6">
+        <div className="flex flex-col gap-5 px-5 pt-5 pb-8">
           {state.items.length === 0 && !busy ? (
             <div className="flex flex-col gap-2 py-6">
               <p className="text-hi font-course text-lg font-semibold text-balance">
@@ -127,6 +128,7 @@ export function SeminarColumn({
             </p>
           ) : null}
         </div>
+        <ScrollEdgeFade />
 
         {showLatest ? (
           <button
@@ -139,7 +141,10 @@ export function SeminarColumn({
         ) : null}
       </div>
 
-      <div className="border-line-soft shrink-0 border-t px-5 pt-3.5 pb-4">
+      {/* Not a footer: no rule, no second ground. The composer sits on the
+          column's own surface, and the transcript fades out as it passes the
+          bottom edge rather than being cut off by a bar. */}
+      <div className="shrink-0 px-5 pt-3.5 pb-4">
         {state.limitWarning === null ? null : (
           <div className="mb-3">
             <LimitNotice warning={state.limitWarning} />
