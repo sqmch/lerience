@@ -118,7 +118,10 @@ describe("named theme values every utility reaches for are declared", () => {
       for (const [token, file] of tokens) {
         const value = bare(token);
         if (!value.startsWith(`${prefix}-`)) continue;
-        const name = value.slice(prefix.length + 1);
+        let name = value.slice(prefix.length + 1);
+        // `rounded-l-pill`, `rounded-tr-md`: the side is Tailwind's, the
+        // value is still a `--radius-*` lookup.
+        if (prefix === "rounded") name = name.replace(/^(?:[trbl]|[tb][lr]|[se]|[se][se])-/, "");
         // Arbitrary values, custom properties, numbers, fractions and opacity
         // modifiers are not named theme lookups.
         if (name === "" || /^[[(]/.test(name) || /^\d/.test(name)) continue;
