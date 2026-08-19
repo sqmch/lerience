@@ -318,7 +318,7 @@ describe("repository publication hygiene", () => {
     expect(status).toContain("five-upload draft");
     expect(status).toContain("downloaded-byte signature");
     expect(status).toContain("Encrypted recovery of the release key has been confirmed");
-    expect(status).toContain("normal learner-path smoke check are complete");
+    expect(status).toContain("normal learner-path smoke");
     expect(status).toContain("manual publication");
     expect(status).not.toContain("private development-history");
   });

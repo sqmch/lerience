@@ -2,11 +2,10 @@
 
 Last reviewed: 2026-08-19
 
-Lerience is preparing an installer-only replacement for the private draft of its first unsigned
-Windows x64 community release. The earlier six-upload candidate passed downloaded-byte integrity,
-isolated install, installed-app verification, and uninstall checks, but it will not be published
-because its extra Portable application has been removed from the supported release surface.
-No binary is public yet.
+Lerience has accepted the private installer-only draft of its first unsigned Windows x64 community
+release. Its five intentional uploads passed downloaded-byte signature and checksum verification,
+corresponding-source validation, isolated install, installed-app verification, and uninstall.
+No binary is public yet. Manual publication is the only remaining release action.
 
 The exact earlier Setup package also passed a normal visible learner-path run on Windows: provider
 discovery, course creation, tutor operation, and generated course material all worked without
@@ -36,14 +35,11 @@ stable application ID is `io.github.sqmch.lerience`. Internal `praxeum:` IPC nam
 `.praxeum.json`, `PRAXEUM_*` build variables, and the `praxeum-desktop` release-manifest product ID
 remain compatibility seams rather than visible branding.
 
-The protected signing environment, signing-key recovery, repository-owned release workflow, and a
-normal learner-path smoke check are complete. The previous `v0.0.1` draft remains private and will
-be replaced. Before publication, the installer-only release still requires:
-
-1. a reviewed replacement `v0.0.1` tag and five-upload draft;
-2. downloaded-byte signature, checksum, install, installed-app verification, and uninstall
-   acceptance of that exact draft; and
-3. manual publication of the accepted draft.
+The protected signing environment, signing-key recovery, repository-owned release workflow,
+reviewed `v0.0.1` tag, five-upload draft, downloaded-byte acceptance, and normal learner-path smoke
+check are complete. The exact accepted hashes and honest limits are recorded in
+[`distribution/evidence/v0.0.1-windows-x64.md`](../distribution/evidence/v0.0.1-windows-x64.md).
+The only remaining release action is manual publication of that accepted draft.
 
 The prior learner-path run occurred on the maintainer's normal Windows account rather than a clean
 machine. Because the installer-only change does not alter application or provider code, that result
