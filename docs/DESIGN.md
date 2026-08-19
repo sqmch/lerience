@@ -168,6 +168,8 @@ The established workspace is rail, material, and seminar inside the shared shell
 
 - The rail owns course navigation and instruments. The material pane takes the remaining width and
   keeps a readable prose/code measure. The seminar is the live tutor edge.
+- A rail entry clips at a fixed height so the track keeps one rhythm. Titles and runtime strings a
+  tutor writes long are read from the tooltip, which opens only while text is genuinely cut off.
 - Both seams are real accessible separators. Drag and keyboard resizing use the same token-derived
   clamps; widths persist app-wide because they are a window preference, not course content.
 - Course-scoped instruments appear when the course claims their underlying material. Hidden
@@ -218,6 +220,9 @@ See [ADR-004](DECISIONS/ADR-004-agent-seam-claude-first.md) and
 - Native select popups are not used where their operating-system palette would break the app theme;
   use the shared token-styled menu primitive.
 - Do not communicate only through colour, animation, hover, or a tooltip.
+- There is one tooltip, and it is a second door rather than the only one: it recovers text a column
+  deliberately clips, or explains a control whose meaning is already carried elsewhere. Use the
+  shared component, so a second floating layer does not grow a second look.
 - Responsive behavior is earned and tested. Breakpoints and container sizes must compile to literal
   queries; token namespace clearing can otherwise make responsive utilities silently disappear.
 

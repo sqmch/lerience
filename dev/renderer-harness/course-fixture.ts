@@ -145,6 +145,19 @@ const MODULES: CourseModule[] = [
     bossCheck: true,
     estimatedHours: 2.5,
   }),
+  /* Deliberately overlong, in both lines a rail entry clips: a title past two
+     lines and a runtime string past one. A tutor writes these freely, and no
+     rail width holds them — this is the entry that exercises the tooltip. */
+  module(
+    "09-long-entry-fixture",
+    "Reconcile a surveyed traverse against its plotted bearings and close the loop",
+    2,
+    "Use the model honestly",
+    {
+      estimatedHours: 4,
+      runtime: "node 22 LTS + a fixture check adapter; checks run through the packaged runtime",
+    },
+  ),
 ];
 
 const JOURNAL = [
