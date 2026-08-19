@@ -12,6 +12,11 @@ import {
 import { resolvePackagedRuntimeRoot, resolveRuntimeLayout } from "../src/main/runtime-layout";
 
 const temporaryRoots: string[] = [];
+const packageVersion = (
+  JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8")) as {
+    version: string;
+  }
+).version;
 
 function sha256(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -97,7 +102,9 @@ describe("packaged runtime manifest", () => {
       const runtimeRoot = process.env["PRAXEUM_RUNTIME_ROOT"];
       if (runtimeRoot === undefined) throw new Error("PRAXEUM_RUNTIME_ROOT was removed");
       const layout = resolvePackagedRuntimeRoot(runtimeRoot, "win32", "x64");
-      await expect(inspectPackagedRuntime(layout, "0.0.1")).resolves.toMatchObject({ ok: true });
+      await expect(inspectPackagedRuntime(layout, packageVersion)).resolves.toMatchObject({
+        ok: true,
+      });
     },
     60_000,
   );

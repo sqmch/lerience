@@ -8,6 +8,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { stageWindowsRelease } from "../scripts/stage-windows-release.mjs";
 
 const roots: string[] = [];
+const packageVersion = (
+  JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8")) as {
+    version: string;
+  }
+).version;
 
 it("loads as a direct Node CLI on the release workflow runtime", () => {
   const result = spawnSync(process.execPath, ["scripts/stage-windows-release.mjs"], {
@@ -48,7 +53,7 @@ function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum-stage-release-"));
   roots.push(root);
   const executableName = "ApprovedProduct";
-  const nsis = path.join(root, `${executableName}-Setup-0.0.2-x64.exe`);
+  const nsis = path.join(root, `${executableName}-Setup-${packageVersion}-x64.exe`);
   const nsisBytes = Buffer.from("installer");
   fs.writeFileSync(nsis, nsisBytes);
   const notes = path.join(root, "notes.md");
@@ -65,7 +70,7 @@ function fixture() {
     schemaVersion: 1,
     productId: "praxeum-desktop",
     channel: "stable",
-    version: "0.0.2",
+    version: packageVersion,
     publishedAt: "2026-08-18T09:00:00.000Z",
     releaseNotes: "A reviewed release candidate.",
     artifacts: [
@@ -143,27 +148,30 @@ describe("Windows release staging", () => {
     const result = await stageWindowsRelease(value.options);
 
     expect(result.bundle).toMatchObject({
-      version: "0.0.2",
-      tag: "v0.0.2",
+      version: packageVersion,
+      tag: `v${packageVersion}`,
       sourceCommit: "a".repeat(40),
       artifacts: {
         nsis: {
-          versioned: "ApprovedProduct-Setup-0.0.2-x64.exe",
+          versioned: `ApprovedProduct-Setup-${packageVersion}-x64.exe`,
         },
       },
       correspondingSource: {
-        fileName: "ApprovedProduct-0.0.2-corresponding-source.tar.gz",
+        fileName: `ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`,
       },
     });
     expect(fs.readdirSync(value.options.output).sort()).toEqual([
-      "ApprovedProduct-0.0.2-corresponding-source.tar.gz",
-      "ApprovedProduct-Setup-0.0.2-x64.exe",
+      `ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`,
+      `ApprovedProduct-Setup-${packageVersion}-x64.exe`,
       "SHA256SUMS",
       "release-manifest.json",
       "release-manifest.sig",
     ]);
     const archive = fs.readFileSync(
-      path.join(value.options.output, "ApprovedProduct-0.0.2-corresponding-source.tar.gz"),
+      path.join(
+        value.options.output,
+        `ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`,
+      ),
     );
     expect(tarEntryNames(archive)).toEqual([
       "fixture-source.tar.gz",
@@ -173,8 +181,8 @@ describe("Windows release staging", () => {
     ]);
     const sums = fs.readFileSync(path.join(value.options.output, "SHA256SUMS"), "utf8");
     expect(sums.trim().split("\n")).toHaveLength(4);
-    expect(sums).toContain("ApprovedProduct-Setup-0.0.2-x64.exe");
-    expect(sums).toContain("ApprovedProduct-0.0.2-corresponding-source.tar.gz");
+    expect(sums).toContain(`ApprovedProduct-Setup-${packageVersion}-x64.exe`);
+    expect(sums).toContain(`ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`);
     expect(sums).toContain("release-manifest.sig");
     expect(sums).not.toContain("ApprovedProduct-Setup-x64.exe");
     expect(sums).not.toContain("fixture-source.tar.gz");
