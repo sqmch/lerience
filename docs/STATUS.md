@@ -2,10 +2,11 @@
 
 Last reviewed: 2026-08-19
 
-Lerience has accepted the private installer-only draft of its first unsigned Windows x64 community
-release. Its five intentional uploads passed downloaded-byte signature and checksum verification,
-corresponding-source validation, isolated install, installed-app verification, and uninstall.
-No binary is public yet. Manual publication is the only remaining release action.
+Lerience v0.0.1 is public as the first unsigned Windows x64 community release:
+`https://github.com/sqmch/lerience/releases/tag/v0.0.1`. Its five intentional uploads passed
+downloaded-byte signature and checksum verification, corresponding-source validation, isolated
+install, installed-app verification, and uninstall before the accepted draft was published
+unchanged.
 
 The exact earlier Setup package also passed a normal visible learner-path run on Windows: provider
 discovery, course creation, tutor operation, and generated course material all worked without
@@ -36,10 +37,9 @@ stable application ID is `io.github.sqmch.lerience`. Internal `praxeum:` IPC nam
 remain compatibility seams rather than visible branding.
 
 The protected signing environment, signing-key recovery, repository-owned release workflow,
-reviewed `v0.0.1` tag, five-upload draft, downloaded-byte acceptance, and normal learner-path smoke
-check are complete. The exact accepted hashes and honest limits are recorded in
+reviewed `v0.0.1` tag, five-upload release, downloaded-byte acceptance, normal learner-path smoke
+check, and publication are complete. The exact published hashes and honest limits are recorded in
 [`distribution/evidence/v0.0.1-windows-x64.md`](../distribution/evidence/v0.0.1-windows-x64.md).
-The only remaining release action is manual publication of that accepted draft.
 
 The prior learner-path run occurred on the maintainer's normal Windows account rather than a clean
 machine. Because the installer-only change does not alter application or provider code, that result
