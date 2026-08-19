@@ -39,8 +39,9 @@ relevant records in [`docs/DECISIONS/`](docs/DECISIONS/). Read
 ## Development workflow
 
 - `main` is always releasable and is never committed to directly. Work on a branch, open a pull
-  request, wait for CI, and squash-merge. Title the PR as the learner-visible change; that title
-  becomes the `main` commit and the raw material for release notes.
+  request, wait for CI, and merge with a merge commit (no squash). Title the PR as the
+  learner-visible change; `git log --first-parent` then lists PRs and is the raw material for
+  release notes.
 - `pnpm dev` runs the real Electron app with hot reload; use it for anything touching the main
   process, preload API, IPC, providers, or course creation. `pnpm harness:dev` serves production
   renderer components against a stubbed preload API at `http://localhost:5199` for browser-
@@ -49,7 +50,7 @@ relevant records in [`docs/DECISIONS/`](docs/DECISIONS/). Read
   version-bump PR that adds `distribution/releases/v<version>.md`, an annotated `v<version>` tag on
   that merge commit, then the `windows-release-candidate` workflow and downloaded-byte acceptance
   described in `distribution/RELEASE-OPERATIONS.md`. There is no running changelog; notes are
-  drafted at release time from `git log <previous-tag>..main`.
+  drafted at release time from `git log --first-parent <previous-tag>..main`.
 
 ## Common commands
 
