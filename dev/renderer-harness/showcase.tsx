@@ -18,6 +18,7 @@ import "@fontsource-variable/literata";
 import "@fontsource-variable/jetbrains-mono";
 import { createRoot } from "react-dom/client";
 import type { CourseQuizItem } from "../../src/shared/course-data";
+import type { EditorCatalog, EditorId } from "../../src/shared/editor";
 import type {
   CourseSnapshot,
   DashboardCourse,
@@ -353,8 +354,19 @@ function installBridge(initialTheme: ThemePreference): void {
     }
   });
 
-  // @ts-expect-error — the showcase supplies only what the course view touches.
-  window.praxeum = {
+  /* Two editors found, one chosen: the state of a learner who has set the
+     control up. Opening reports success and does nothing, since there is no
+     editor to open from a browser. */
+  let editorCatalog: EditorCatalog = {
+    selectedEditorId: "vscode",
+    chosen: true,
+    editors: [
+      { id: "vscode", label: "Visual Studio Code" },
+      { id: "zed", label: "Zed" },
+    ],
+  };
+
+  const bridge = {
     listTutorProviders: () => Promise.resolve(providerCatalog),
     selectTutorProvider: () => Promise.resolve(providerCatalog),
     loginTutorProvider: () => new Promise(() => undefined),
@@ -399,6 +411,17 @@ function installBridge(initialTheme: ThemePreference): void {
     readDoc: (path: string) => Promise.resolve(readShowcaseDoc(path)),
     revealCourse: () => Promise.resolve(),
     closeCourse: () => Promise.resolve(),
+    /* Up to date, so the shell draws no update banner over the showcase. */
+    getUpdateStatus: () => Promise.resolve({ phase: "current" as const }),
+    onUpdateStatusChanged: () => () => undefined,
+    listEditors: () => Promise.resolve(editorCatalog),
+    selectEditor: (editorId: EditorId) => {
+      editorCatalog = { ...editorCatalog, selectedEditorId: editorId, chosen: true };
+      return Promise.resolve(editorCatalog);
+    },
+    browseForEditor: () =>
+      Promise.resolve({ ok: false, reason: "cancelled", catalog: editorCatalog }),
+    openInEditor: () => Promise.resolve({ ok: true }),
     runChecks: () =>
       new Promise((resolve) => {
         setTimeout(() => {
@@ -418,6 +441,26 @@ function installBridge(initialTheme: ThemePreference): void {
         }, 1400);
       }),
   };
+
+  /* The renderer's API grows and this bridge is hand-written, so it will
+     lag. The renderer guards its optional calls with `typeof ... ===
+     "function"`, which only works if a missing method stays missing, so the
+     net here does not invent answers: it leaves the gap and names it in the
+     console, where the next person to wonder why a control is blank will
+     find it. A call the renderer makes unguarded still needs a real stub
+     above; the lesson of 2026-08-19 was listEditors taking the whole window
+     down before first paint. */
+  const watched = new Proxy(bridge, {
+    get(target, key) {
+      if (key in target || typeof key !== "string") {
+        return target[key as keyof typeof target];
+      }
+      console.warn(`showcase bridge: no stub for praxeum.${key}`);
+      return undefined;
+    },
+  });
+  // @ts-expect-error — the showcase supplies only what its surfaces touch.
+  window.praxeum = watched;
 }
 
 function resolveTheme(preference: ThemePreference): ThemeState {
