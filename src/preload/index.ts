@@ -13,6 +13,10 @@ import {
   COURSE_REVEAL_CHANNEL,
   CHECK_RUN_CHANNEL,
   DASHBOARD_LIST_CHANNEL,
+  EDITORS_LIST_CHANNEL,
+  EDITOR_BROWSE_CHANNEL,
+  EDITOR_OPEN_CHANNEL,
+  EDITOR_SELECT_CHANNEL,
   LAYOUT_GET_CHANNEL,
   LAYOUT_SET_CHANNEL,
   PING_CHANNEL,
@@ -54,6 +58,7 @@ import {
 } from "../shared/ipc";
 import type { AgentEvent, SessionControls } from "../shared/seminar";
 import type { RunChecksReply, SeminarSnapshot } from "../shared/session";
+import type { BrowseEditorReply, EditorCatalog, OpenInEditorReply } from "../shared/editor";
 
 const api: PraxeumApi = {
   ping: () => ipcRenderer.invoke(PING_CHANNEL) as Promise<PingReply>,
@@ -76,6 +81,12 @@ const api: PraxeumApi = {
   readDoc: (relativePath) =>
     ipcRenderer.invoke(COURSE_READ_DOC_CHANNEL, relativePath) as Promise<string | null>,
   revealCourse: () => ipcRenderer.invoke(COURSE_REVEAL_CHANNEL) as Promise<void>,
+  listEditors: () => ipcRenderer.invoke(EDITORS_LIST_CHANNEL) as Promise<EditorCatalog>,
+  selectEditor: (editorId) =>
+    ipcRenderer.invoke(EDITOR_SELECT_CHANNEL, editorId) as Promise<EditorCatalog>,
+  browseForEditor: () => ipcRenderer.invoke(EDITOR_BROWSE_CHANNEL) as Promise<BrowseEditorReply>,
+  openInEditor: (target) =>
+    ipcRenderer.invoke(EDITOR_OPEN_CHANNEL, target) as Promise<OpenInEditorReply>,
   onCourseChanged: (listener) => {
     const wrapped = (_event: unknown, changedPaths: string[]): void => {
       listener(changedPaths);

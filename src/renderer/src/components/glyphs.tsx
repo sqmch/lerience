@@ -151,3 +151,25 @@ export function FolderGlyph({ className }: { className?: string }): React.JSX.El
     </svg>
   );
 }
+
+/** The learner's own editor: angle brackets, the one mark every editor and
+ *  every learner already reads as "code". Drawn in the 24-unit grid with the
+ *  same 2-unit stroke as the folder and stack glyphs it sits beside. */
+export function CodeGlyph({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M8.5 7 L3.5 12 L8.5 17" />
+      <path d="M15.5 7 L20.5 12 L15.5 17" />
+    </svg>
+  );
+}

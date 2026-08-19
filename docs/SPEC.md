@@ -63,7 +63,9 @@ hosted path is not the product: same model, amputated agent, plus unsustainable 
    **lab** — interactive visualizations the course claims from the stock registry or writes for
    itself, embedded in lessons and available full-screen, rendered in a no-network sandbox
    (ADR-012). The learner
-   writes code in **their own editor** ("Open in editor" button) and runs checks from the app's
+   writes code in **their own editor** (an "Open in editor" control that names the editor it will
+   use, opens the module's scaffold, and lets the learner choose among the editors found on the
+   machine — ADR-034) and runs checks from the app's
    check lens (a "Run checks" button per module — red/green results rendered in place, powered by
    the module's own `checks/`). Workspace affordances are presence-based: they render only when
    the current module actually has a `scaffold/` or `checks/`, so a non-buildable course (history,
