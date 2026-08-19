@@ -110,6 +110,25 @@ The first name is a deterministic working folder name. The tutor may later write
 title into `COURSE.md`, and the dashboard should prefer that title when it exists. Course creation
 remains provider-free so a provider outage cannot prevent the local folder from being created.
 
+### Choosing a tutor
+
+A learner with no courses and no connected tutor opens on the tutor gate, not on the first-run
+question. The prerequisite is asked before the work, not discovered after a folder already exists.
+The gate carries one quiet way past it, because a learner who cannot connect anything must still
+reach the dashboard.
+
+This is the only place the app opens on something other than course work, and it is deliberately
+narrow. A learner who already has courses opens on their courses: reading finished material needs
+no provider, so their dashboard is not repurposed as a connection prompt. That dashboard states the
+missing tutor instead — an amber dot on the tutor menu, and one line on the create screen — and
+the same gate still stands where onboarding needs a live tutor.
+
+Provider readiness earns colour under the ADR-015 rule and nothing more. Amber marks a state the
+learner has to repair: no tutor chosen, signed out, not installed, update needed. A card is given
+the app's emphasis only when it is both chosen and connected, so an unusable provider is never the
+loudest thing on the screen. Usage meters are readouts, not actions, and are drawn in ink rather
+than in the action colour.
+
 ### Onboarding
 
 A course with no modules does not have a meaningful rail or reading pane. On create and reopen, any
