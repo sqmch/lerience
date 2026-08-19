@@ -265,9 +265,21 @@
   --rail-w-max: 420px;
   --talk-w: 480px; /* the seminar column, default */
   --talk-w-min: 360px; /* the brief's binding floor: chat usable at 360 */
-  --talk-w-max: 720px;
+  /* 960px, not 720. The old cap was set against a laptop; on a wide display it
+     left the seminar at a quarter of the window while the reading pane sat
+     mostly empty around its 40rem measure — the learner could see room they
+     were not allowed to take. Two full defaults is the ceiling: past it the
+     tutor's lines outrun a comfortable measure, which is the wall the cap
+     should hit rather than one an arbitrary distance short of it. */
+  --talk-w-max: 960px;
   --page-w-min: 420px; /* reading pane floor: 68ch of Literata plus gutters */
   --seam-w: 9px; /* gutter hit area; the painted rule inside it is 1px */
+
+  /* The tooltip surface. A measure, not spacing: the default holds a module
+     title on two comfortable lines, and the wide term is for tips that run to
+     a sentence or two — a module's runtime string, a lab row's explanation. */
+  --tip-w-max: 320px;
+  --tip-w-max-wide: 448px;
 
   /* The record/lab overlays. These are consumed as Tailwind utilities
      (`w-(--overlay-w)`) rather than through a signature class, and that is

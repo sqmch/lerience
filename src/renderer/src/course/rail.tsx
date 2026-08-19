@@ -10,8 +10,11 @@
  * a band that cost every reader its height forever to hold three controls used
  * a few times a session (ADR-019). */
 
+import type { ReactElement } from "react";
+
 import type { CourseLabEntry, CourseModule, ModuleStatus } from "../../../shared/course-data";
 import { DiamondGlyph, FolderGlyph, StackGlyph } from "../components/glyphs";
+import { Tooltip } from "../components/tooltip";
 
 /**
  * The module mark — one of the two things in praxeum that stay hand-drawn.
@@ -63,6 +66,47 @@ function ModuleMark({
           reads as a rendering artefact at this size; a solid dot does not. */}
       {current && !done ? <circle className="fill-accent" cx="10.5" cy="10.5" r="2.6" /> : null}
     </svg>
+  );
+}
+
+/**
+ * The way to read a module entry the column cannot hold.
+ *
+ * Two of the rail's lines clip by design: the title at two lines, the runtime
+ * string at one. Neither should stop clipping — a tutor can write a runtime
+ * line ("jvm (Temurin 25 LTS) + Maven 3.9; checks run through a Node adapter")
+ * that no sane rail width holds, and letting one entry grow to fit it would
+ * cost every OTHER entry the even rhythm that makes the track scannable. The
+ * cap stays; the text gets a second door.
+ *
+ * It opens only when something is actually clipped, so a rail dragged wide
+ * enough to hold its titles stops tipping — the pointer goes quiet exactly
+ * when the reader has already got everything.
+ */
+function ModuleTip({
+  title,
+  runtime,
+  children,
+}: {
+  title: string;
+  runtime: string | null;
+  children: ReactElement;
+}): React.JSX.Element {
+  return (
+    <Tooltip
+      side="right"
+      align="center"
+      wide
+      whenClipped
+      content={
+        <span className="flex flex-col gap-1">
+          <span className="text-hi font-medium">{title}</span>
+          {runtime === null ? null : <span className="text-ink-dim">{runtime}</span>}
+        </span>
+      }
+    >
+      {children}
+    </Tooltip>
   );
 }
 
@@ -199,55 +243,57 @@ export function CourseRail({
                     const selected = entry.id === selectedId;
                     const runtime = entry.runtime === "" ? null : entry.runtime;
                     return (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        aria-current={selected ? "true" : undefined}
-                        onClick={() => {
-                          onSelect(entry.id);
-                        }}
-                        className={
-                          selected
-                            ? "bg-surface-raised border-line focus-visible:outline-focus flex w-full items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2"
-                            : "hover:bg-surface-raised focus-visible:outline-focus flex w-full items-start gap-2.5 rounded-md border border-transparent px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2"
-                        }
-                      >
-                        <ModuleMark
-                          status={entry.status}
-                          bossCheck={entry.bossCheck}
-                          current={current}
-                        />
-                        <span className="flex min-w-0 flex-1 flex-col gap-1">
-                          <span
-                            className={
-                              entry.status === "not-started"
-                                ? "text-ink-dim line-clamp-2 text-sm leading-snug"
-                                : "text-ink line-clamp-2 text-sm leading-snug"
-                            }
-                          >
-                            {entry.title}
-                          </span>
-                          {/* Deliberately few facts: the mark already says "boss
-                            check" and "you are here". */}
-                          <span
-                            className={
-                              current
-                                ? "text-accent flex min-w-0 items-center gap-1.5 text-2xs"
-                                : "text-ink-dim flex min-w-0 items-center gap-1.5 text-2xs"
-                            }
-                          >
-                            <span className="min-w-0 truncate tabular-nums">
-                              {entry.estimatedHours}h{runtime === null ? "" : ` · ${runtime}`}
+                      <ModuleTip key={entry.id} title={entry.title} runtime={runtime}>
+                        <button
+                          type="button"
+                          aria-current={selected ? "true" : undefined}
+                          onClick={() => {
+                            onSelect(entry.id);
+                          }}
+                          className={
+                            selected
+                              ? "bg-surface-raised border-line focus-visible:outline-focus flex w-full items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2"
+                              : "hover:bg-surface-raised focus-visible:outline-focus flex w-full items-start gap-2.5 rounded-md border border-transparent px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2"
+                          }
+                        >
+                          <ModuleMark
+                            status={entry.status}
+                            bossCheck={entry.bossCheck}
+                            current={current}
+                          />
+                          <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <span
+                              data-clip
+                              className={
+                                entry.status === "not-started"
+                                  ? "text-ink-dim line-clamp-2 text-sm leading-snug"
+                                  : "text-ink line-clamp-2 text-sm leading-snug"
+                              }
+                            >
+                              {entry.title}
                             </span>
-                            {entry.hasVisual ? (
-                              <>
-                                <DiamondGlyph className="size-2.5 shrink-0" />
-                                <span className="sr-only">has a visualization</span>
-                              </>
-                            ) : null}
+                            {/* Deliberately few facts: the mark already says "boss
+                              check" and "you are here". */}
+                            <span
+                              className={
+                                current
+                                  ? "text-accent flex min-w-0 items-center gap-1.5 text-2xs"
+                                  : "text-ink-dim flex min-w-0 items-center gap-1.5 text-2xs"
+                              }
+                            >
+                              <span data-clip className="min-w-0 truncate tabular-nums">
+                                {entry.estimatedHours}h{runtime === null ? "" : ` · ${runtime}`}
+                              </span>
+                              {entry.hasVisual ? (
+                                <>
+                                  <DiamondGlyph className="size-2.5 shrink-0" />
+                                  <span className="sr-only">has a visualization</span>
+                                </>
+                              ) : null}
+                            </span>
                           </span>
-                        </span>
-                      </button>
+                        </button>
+                      </ModuleTip>
                     );
                   })}
                 </div>
