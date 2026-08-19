@@ -26,14 +26,16 @@ Then you close the tab. Next week the model has no idea which part tripped you u
 was checked, nothing got scheduled for review, and at no point did it have a reason to refuse to
 hand you the answer. So it handed you the answer, and you learned less than you felt like you did.
 
-Developers found the fix a while ago. Put an agent in a folder, write the rules in a markdown file,
-let it run tests against your work, keep the state in files and Git. It works far better than chat.
-It also assumes you know what an agent is, are comfortable in a terminal, and can read a
-repository. That rules out most of the people it would help.
+Developers already know the shape of the fix, because it is how they work with agents now. Keep
+the state in files and Git so it outlives the session. Write the rules down in an AGENTS.md. Give
+the agent tests to run against your work and skills to reach for. It works far better than chat. It
+is also a rig you assemble yourself, once per subject, out of parts built for shipping code rather
+than learning it, and even assembled it is a terminal, an editor, and a review schedule you keep by
+hand.
 
-Lerience takes the folder and the markdown files and puts an ordinary app around them. The model
-keeps every capability it has. The structure lives in files you are free to read. None of the setup
-is yours to do.
+Lerience is that rig, built once and put behind an ordinary app. The model keeps every capability
+it has. The rules live in files you are free to read. None of the setup is yours to do, whether you
+have done it a hundred times before or would never have tried.
 
 ## How a course is put together
 
