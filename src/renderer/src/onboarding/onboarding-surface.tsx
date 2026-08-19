@@ -26,6 +26,7 @@ import {
   FailureNotice,
   LimitNotice,
   LearnerTurn,
+  ScrollEdgeFade,
   Thinking,
   TutorTurn,
   useFollowBottom,
@@ -581,6 +582,8 @@ function ConnectedOnboardingSurface({
                 </div>
               )}
 
+              <ScrollEdgeFade />
+
               {showLatest ? (
                 <button
                   type="button"
@@ -593,22 +596,23 @@ function ConnectedOnboardingSurface({
             </div>
 
             {composerVisible ? (
-              <div className="border-line-soft shrink-0 border-t">
-                <div className="mx-auto w-full max-w-(--container-converse) px-6 pt-3.5 pb-4">
-                  <Composer
-                    draft={draft}
-                    onDraft={setDraft}
-                    onSend={() => void sendDraft()}
-                    onStop={seminar.interrupt}
-                    busy={busy}
-                    controls={seminar.controls}
-                    onControls={(patch) => void seminar.setControls(patch)}
-                    controlNotice={state.controlNotice}
-                    queued={seminar.queued}
-                    onUnqueue={seminar.unqueue}
-                    placeholder="Reply to your tutor…"
-                  />
-                </div>
+              /* The composer is not a footer. It keeps the conversation's own
+                 column and ground — one element, no rule across the window,
+                 nothing that reads as a separate section under the reading. */
+              <div className="mx-auto w-full max-w-(--container-converse) shrink-0 px-6 pt-3.5 pb-4">
+                <Composer
+                  draft={draft}
+                  onDraft={setDraft}
+                  onSend={() => void sendDraft()}
+                  onStop={seminar.interrupt}
+                  busy={busy}
+                  controls={seminar.controls}
+                  onControls={(patch) => void seminar.setControls(patch)}
+                  controlNotice={state.controlNotice}
+                  queued={seminar.queued}
+                  onUnqueue={seminar.unqueue}
+                  placeholder="Reply to your tutor…"
+                />
               </div>
             ) : null}
           </div>
@@ -837,69 +841,70 @@ function ArcReview({
             </div>
           </div>
         </div>
+        <ScrollEdgeFade />
       </div>
 
-      {/* Always on screen: the decision cannot be scrolled past. */}
-      <div className="border-line-soft bg-surface shrink-0 border-t">
-        <div className="mx-auto w-full max-w-(--container-converse) px-6 py-4">
-          {revising ? (
-            <div className="flex flex-col gap-2.5">
-              <Composer
-                draft={draft}
-                onDraft={onDraft}
-                onSend={onSend}
-                busy={busy}
-                placeholder="What should change about the plan?"
-              />
+      {/* Always on screen: the decision cannot be scrolled past — but it is
+          the same ground and the same column as the plan above it, with the
+          document fading out under it rather than a rule fencing it off. */}
+      <div className="mx-auto w-full max-w-(--container-converse) shrink-0 px-6 py-4">
+        {revising ? (
+          <div className="flex flex-col gap-2.5">
+            <Composer
+              draft={draft}
+              onDraft={onDraft}
+              onSend={onSend}
+              busy={busy}
+              placeholder="What should change about the plan?"
+            />
+            <button
+              type="button"
+              className="text-ink-faint hover:text-hi self-start text-xs underline underline-offset-4"
+              onClick={onAccept}
+            >
+              Actually, the plan is right — build module 00
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                className="text-ink-faint hover:text-hi self-start text-xs underline underline-offset-4"
+                className={`${PRIMARY} text-md`}
+                disabled={busy}
                 onClick={onAccept}
               >
-                Actually, the plan is right — build module 00
+                Build module 00
               </button>
+              <button
+                type="button"
+                className={`${QUIET} text-md`}
+                disabled={busy}
+                onClick={onRevise}
+              >
+                Request changes
+              </button>
+              <p className="text-ink-faint ml-auto text-xs">
+                {busy
+                  ? "Your tutor is revising the plan…"
+                  : "Your answer goes to your tutor as a message."}
+              </p>
             </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className={`${PRIMARY} text-md`}
-                  disabled={busy}
-                  onClick={onAccept}
-                >
-                  Build module 00
-                </button>
-                <button
-                  type="button"
-                  className={`${QUIET} text-md`}
-                  disabled={busy}
-                  onClick={onRevise}
-                >
-                  Request changes
-                </button>
-                <p className="text-ink-faint ml-auto text-xs">
-                  {busy
-                    ? "Your tutor is revising the plan…"
-                    : "Your answer goes to your tutor as a message."}
-                </p>
-              </div>
-              {/* Stated where the consequence is, not buried in settings. */}
-              <label className="text-ink-dim hover:text-ink flex w-fit cursor-pointer items-center gap-2 text-xs transition-colors">
-                <input
-                  type="checkbox"
-                  className="accent-accent size-3.5 cursor-pointer"
-                  checked={uninterrupted}
-                  onChange={(event) => {
-                    onUninterrupted(event.target.checked);
-                  }}
-                />
-                Let it work without asking permission — it writes many files and runs commands
-                inside this course folder
-              </label>
-            </div>
-          )}
-        </div>
+            {/* Stated where the consequence is, not buried in settings. */}
+            <label className="text-ink-dim hover:text-ink flex w-fit cursor-pointer items-center gap-2 text-xs transition-colors">
+              <input
+                type="checkbox"
+                className="accent-accent size-3.5 cursor-pointer"
+                checked={uninterrupted}
+                onChange={(event) => {
+                  onUninterrupted(event.target.checked);
+                }}
+              />
+              Let it work without asking permission — it writes many files and runs commands inside
+              this course folder
+            </label>
+          </div>
+        )}
       </div>
     </section>
   );
