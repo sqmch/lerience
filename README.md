@@ -2,171 +2,184 @@
 
 <img src="build/icon.svg" alt="Lerience icon" width="96" height="96" />
 
-Lerience is an open-source desktop app for learning a skill with a frontier model as your tutor —
-not in a chat window, but in a structured course that is generated for you, module by module, and
-that keeps adjusting to how you are actually doing.
+Lerience is a desktop app for taking a real course from a frontier model. Install it, point it at
+the Claude Code or Codex client you already pay for, and it builds you a course one module at a
+time, shaping each module around how the last one actually went.
 
-The whole course is an ordinary folder on your computer. Your own installed Claude Code or Codex
-client does the teaching. A small set of markdown guidance files turns that general-purpose agent
-into a tutor with a protocol: it interviews you, drafts a curriculum you review, writes each lesson
-and exercise when you reach it, checks your work, keeps a journal of where you struggled, and
-builds the next module with that in mind. Lerience is the interface and the deterministic machinery
-around that folder. There is no Lerience account, no hosted backend, and nothing to run in a
-terminal.
+The course is a folder on your disk. Markdown files in that folder tell the model how to teach:
+how to interview you before it plans anything, what to do at the start and end of every session,
+when to withhold an answer, how to write the next module. The app is the interface around that
+folder. No account, no server, no terminal.
 
-> **Status:** first Windows community preview (v0.0.1). Releases are unsigned at the
-> operating-system level, so Windows may show an unknown-publisher warning. Lerience separately
-> verifies its own updates with a signed manifest. Provider support is experimental; see
-> [Honest limits](#honest-limits).
+> **Status:** first Windows community preview, v0.0.1. Releases are unsigned at the operating
+> system level, so Windows will likely show an unknown-publisher warning. Lerience verifies its own
+> updates with a signed manifest. Provider support is experimental. Read
+> [honest limits](#honest-limits) before you install.
 
 ## Why this exists
 
-Frontier models are genuinely good to learn from. Anyone who has spent an afternoon asking one to
-explain something, probe their understanding, and review their attempts has felt it. But the
-ordinary way of getting at that — a chat window — loses almost all of it between sessions. There is
-no curriculum, no memory of what you found hard last week, no exercises that are checked, no reason
-for the model to hold back the answer, and nothing that accumulates into a course.
+Learning from a frontier model works. Ask one to explain something, argue with it, have it read
+your attempt and tell you exactly which line is wrong, and you get something close to a patient
+expert with all evening free.
 
-People who are comfortable with developer tooling have found the other way: put an agent in a
-folder, give it instructions in a markdown file, let it write and run things, and keep the state in
-files and Git. That works remarkably well. It is also only accessible if you already understand
-agents, terminals, repositories, and the vocabulary around them — which rules out most of the
-people who would benefit.
+Then you close the tab. Next week the model has no idea which part tripped you up, nothing you did
+was checked, nothing got scheduled for review, and at no point did it have a reason to refuse to
+hand you the answer. So it handed you the answer, and you learned less than you felt like you did.
 
-Lerience is the middle path. It takes the folder-plus-guidance-files way of working, which is
-where the real value is, and wraps it in a desktop app that an ordinary learner can install and use.
-The model stays at the centre and keeps its full capability. The structure comes from the files.
-The app makes it usable without any of the setup.
+Developers found the fix a while ago. Put an agent in a folder, write the rules in a markdown file,
+let it run tests against your work, keep the state in files and Git. It works far better than chat.
+It also assumes you know what an agent is, are comfortable in a terminal, and can read a
+repository. That rules out most of the people it would help.
 
-## How it works
+Lerience takes the folder and the markdown files and puts an ordinary app around them. The model
+keeps every capability it has. The structure lives in files you are free to read. None of the setup
+is yours to do.
 
-A Lerience course is a folder. Inside it:
+## How a course is put together
 
-- **`CLAUDE.md` — the tutor protocol.** Plain markdown telling the model how to behave as a tutor:
-  how to run the onboarding interview, how to open and close a session, how to generate a module,
-  how to grade, when to reveal hints, what never to do. Every rule in it came from a real course
-  with a real learner. `AGENTS.md` points agent-agnostic clients at the same file.
-- **`COURSE.md` — the spine.** Your learner profile, the phases, the module arc, pacing, and where
-  the gates between phases fall. The tutor drafts it from the interview; you review it and push
-  back before anything is built. The spine is stable once agreed.
-- **`curriculum/NN-name/` — one directory per module**, created only when you reach it. Each has a
-  `LESSON.md` (the actual teaching, written like a textbook chapter), a `BRIEF.md` (the task), a
-  runnable `scaffold/` with the load-bearing parts left as gaps, `checks/` you run yourself, three
-  sealed hints of increasing specificity, retrieval questions, and optionally a visual.
-- **`tutor/` — the durable learning record.** `progress.json` (module status, hint usage, check
-  attempts, gate results), `quiz-bank.json` (spaced-retrieval items with real intervals), and
-  `journal.md`, where the tutor writes after every session what was covered and, specifically,
-  where you struggled or shone. The repo remembers so the model doesn't have to.
-- **Deterministic scripts** (`doctor`, `validate`, `qa`, `quiz`) that the tutor runs for the parts
-  that should not depend on the model's judgement: checking state is consistent, validating
-  module formats, doing the spaced-repetition arithmetic, and proving a module's checks pass
-  against a reference solution and fail against the bare scaffold before you ever see it.
+A course is a folder. This is what goes in it.
 
-The app supplies what the folder can't: a designed chat with the tutor, a reading pane for the
-lesson and brief, a view of your progress and record, one-click course creation, session recovery
-when a conversation is interrupted, and a sandboxed stage for interactive visuals. It also
-discovers your installed provider client and supplies its own Git and Node runtime so you never
-install any of that.
+**`CLAUDE.md`** carries the tutor protocol, about 200 lines of plain markdown you can read in
+ten minutes. It covers the onboarding interview, the open and close of every session, module
+generation, hint policy, and the rule the tutor may never break. `AGENTS.md` points other agent
+clients at the same file.
 
-## What makes this kind of learning different
+**`COURSE.md`** is the spine: your profile, the phases, the arc of modules, a pacing estimate, and
+where the phase gates fall. The tutor drafts it after interviewing you. You then read it and push
+back before a single module exists. The protocol treats that review as a hard gate, because a spine
+gets expensive to change once modules hang off it.
 
-**It adapts to you, continuously — not once at the start.** The spine is fixed when you agree to
-it, but the content is not. Only the current module exists in full at any moment; the next one is
-written when you get there, calibrated to how the previous one actually went. If you passed the
-checks first try with no hints, the scaffold gaps get wider. If you needed the last hint, an
-intermediate stepping-stone task appears. The journal carries forward what confused you, what
-connected to your background, which tangents you raised. Every session opens with a short recall
-quiz of the items that are actually due for you. Hints are revealed one level at a time, and only
-when you ask or are clearly stuck. This is the part that a chat window cannot do and a fixed
-course cannot do, and that otherwise only a personal mentor does. It is, in our experience, the
-single most valuable property of learning this way.
+**`curriculum/NN-name/`** holds one module, written when you get there. Each module has a lesson
+written like a textbook chapter, a short brief for the build task, a runnable scaffold with the
+load-bearing parts cut out, checks you run yourself, three sealed hints, and retrieval questions.
+Some modules also carry a visual.
 
-**The model teaches; it doesn't do the work for you.** The prime directive in the protocol is
-*never write solution code*. The learning happens in the gap between the scaffold and the passing
-checks. The tutor explains, asks, points at the line, and reveals the next hint — it does not fill
-the gap, even when asked. Lessons are delivered as proper chapters you read, then discussed, rather
-than compressed into chat. Phase gates require you to genuinely pass before advancing. Assessment
-is honest: "that passes, but why is this approach a problem at scale?" is the tone, not praise.
+**`tutor/`** is the durable record. `progress.json` tracks module status, hint use, check attempts
+and gate results. `quiz-bank.json` holds retrieval items with real spacing intervals. `journal.md`
+is where the tutor writes, after every session, what you covered and where you struggled, in
+specifics. "Confused X with Y", not "did the topic". The folder remembers so the model does not
+have to.
 
-**It builds visuals when a picture actually teaches.** Frontier agents are good at building
-custom things, and Lerience uses that instead of fencing it off. When a module's core concept is
-spatial or dynamic, the tutor can claim one of the polished interactive labs shipped with the app,
-or write a self-contained interactive visualization of its own — derived from the lesson it just
-wrote, using the same examples and vocabulary — and embed it in the chapter. Mid-session, when a
-specific misconception surfaces, it can retarget that visual at it. The app renders these as
-first-class surfaces in a sandbox with no network and no file access. The design intent
-([ADR-012](docs/DECISIONS/ADR-012-the-app-is-a-stage.md)) is to be a stage for what the model can
-build rather than a fixed set of widgets, so the product grows as the models do.
+Four scripts, `doctor`, `validate`, `qa` and `quiz`, own the parts that should never rest on a
+model's judgment. They check that your recorded state is consistent, validate module formats, do
+the spacing arithmetic, and prove that a module's checks pass against a sealed reference solution
+and fail against the stripped scaffold before you ever see the module.
 
-**Your course is yours.** It is files and Git history on your disk. You can read every rule the
-tutor follows, see exactly what it recorded about you, and open the folder directly in Claude Code
-or Codex without Lerience at all. App updates never silently rewrite course content or your record.
+The app supplies the rest: a chat with the tutor, a pane for reading the lesson and brief, a view
+of your progress and record, course creation in one click, recovery when a session is interrupted,
+discovery of your installed provider client, a bundled Git and Node runtime, and a sandboxed stage
+for interactive visuals.
+
+## What a chat window and a fixed course cannot do
+
+### It re-plans around you after every module
+
+The spine holds once you agree to it. The content does not. Only the current module exists in full
+at any moment, and the tutor writes the next one when you arrive, calibrated to how the last one
+went. Pass the checks first try with no hints and the scaffold gaps widen. Need the third hint and
+an intermediate stepping-stone task appears before the next real one. The journal carries forward
+what confused you, what connected to work you had already done, which tangent you got interested
+in. Every session opens with two or three retrieval questions that are actually due, most overdue
+first. When the backlog is bigger than that, the tutor says so out loud rather than dropping the
+rest.
+
+This is the piece that matters most, and the hardest one to get anywhere else. A fixed course
+cannot do it, because it was written before you arrived. A chat window cannot do it, because it
+forgets. A good human mentor does exactly this, and that is the bar worth aiming at.
+
+### The tutor will not do the work for you
+
+The first rule in the protocol is that it never writes solution code. Learning happens in the gap
+between the scaffold and the passing checks, so the tutor explains, asks what you think is
+happening, points at the line, and releases one hint level at a time. It will not fill the gap,
+including when you ask it to directly. Hints are sealed until you request one or you have clearly
+been stuck for a while. The middle hint may not contain anything you can paste. Phase gates open
+only when you pass them, and every attempt lands in the record, pass or fail. The protocol asks for
+honest assessment over encouragement. "That passes, but why is this approach a problem at scale" is
+the tone it wants.
+
+### It builds a picture when prose is not enough
+
+Frontier models are good at building things, and there is no reason to fence that off. When a
+module turns on something spatial or dynamic, the tutor can claim one of the interactive labs
+shipped with the app or write a self-contained visualization of its own, derived from the lesson it
+has just written so the examples and vocabulary match, then embed it in the chapter where the
+picture belongs. If a specific misconception shows up mid-session, it can retarget that visual at
+the misconception on the spot. Lerience renders these in a sandbox with no network and no file
+access.
+
+The design intent, recorded in
+[ADR-012](docs/DECISIONS/ADR-012-the-app-is-a-stage.md), is that the app is a stage for what the
+model can build rather than a fixed set of widgets. Handcuffing the model into a few approved
+components would throw away the thing it is getting better at fastest.
+
+### Your course is a folder you own
+
+It is files and Git history on your disk. You can read every rule the tutor follows and everything
+it has recorded about you. You can open the folder directly in Claude Code or Codex and run the
+whole course without Lerience. App updates never rewrite course content or your record.
 
 ## Principles
 
-- **Ordinary learner experience.** No Node, Git, `PATH`, terminal, localhost service, or hosted
-  control plane. Install, connect your provider, start a course.
-- **The model at full capability.** The tutor is a real agent in a real folder. It writes
-  scaffolds, runs checks, and executes the QA ritual. A typed-tools-only tutor could not run the
-  protocol, which is why there is no hosted, API-metered version.
-- **Structure from files, not from the app.** The course format, tutor protocol, and scripts live
-  in the course folder as the [Course Engine](course-engine/). The app is a lens on those files, a
-  conductor for the agent and scripts, and a stage for course-authored visuals — it owns none of
-  the content.
-- **Learner-owned work and local authority.** Course files, transcripts, and tool execution stay
-  on your machine. There is no Lerience account or backend.
-- **Provider-owned clients.** Lerience discovers your installed Claude Code or Codex client. It
-  does not bundle, download, update, or copy their executables, credentials, or configuration.
-  Sign-in, billing, and terms stay with the provider.
-- **Fail-closed distribution.** App-owned runtime files are completely hashed. Updates require an
-  application-owned Ed25519 signature plus exact artifact size and SHA-256 verification, and you
-  still approve download and installation.
+- **An ordinary learner experience.** No Node, no Git, no `PATH`, no terminal, no localhost
+  service, no hosted control plane. Install, connect your provider, start a course.
+- **The model at full capability.** The tutor is a real agent working in a real folder. It writes
+  scaffolds, runs checks and performs the QA ritual. A tutor limited to typed tools could not run
+  the protocol, which is why there is no hosted, API-metered version of this.
+- **Structure in files, not in the app.** The course format, tutor protocol and scripts live in the
+  course folder as the [Course Engine](course-engine/). The app renders those files, supervises the
+  agent and the scripts, and hosts the visuals. It owns none of the content.
+- **Local authority.** Course files, transcripts and tool execution stay on your machine. There is
+  no Lerience account and no backend.
+- **Provider-owned clients.** Lerience finds your installed Claude Code or Codex client. It does
+  not bundle, download, update or copy provider executables, credentials or configuration. Sign-in,
+  billing and terms stay between you and the provider.
+- **Fail-closed distribution.** Lerience hashes every app-owned runtime file. An update needs an
+  Ed25519 signature from the project plus an exact artifact size and SHA-256 match, and you still
+  approve the download and the install.
 
 ## Honest limits
 
-- **It is for learn-by-building domains where progress is machine-checkable.** Programming and
-  adjacent technical skills fit naturally. If a topic can't produce runnable checks, the tutor is
-  instructed to say so plainly rather than quietly degrade — and you should expect less from it.
-- **You need your own frontier-model subscription** and a compatible, separately installed Claude
-  Code or Codex client. Lerience is free and open source, but the tutor is not.
-- **Quality is the model's quality.** The guidance files raise the floor considerably and the
-  deterministic scripts catch a class of mistakes, but a generated module can still be wrong, and
-  the tutor can still misjudge. The QA ritual exists because that happened.
-- **Provider support is experimental** and subject to each provider's current product and
-  authentication terms. Lerience claims no ownership of, or authorization beyond, those products.
-- **Windows x64 only, unsigned, early.** This is a first community preview.
+- **It suits domains where progress can be checked by running something.** Programming and its
+  neighbors fit well. The protocol tells the tutor to say so plainly when a topic cannot produce
+  runnable checks rather than quietly degrading, and you should expect less from it there.
+- **You bring the subscription.** Lerience is free and MIT licensed. The tutor is your own Claude
+  Code or Codex client, and it has to be installed and signed in already.
+- **The ceiling is the model's ceiling.** The protocol raises the floor and the scripts catch a
+  class of mistakes, but a generated module can still be wrong and the tutor can still misjudge
+  you. The QA ritual exists because both happened.
+- **Provider support is experimental** and subject to whatever each provider's current product and
+  authentication terms say. Lerience claims no ownership of those products and no authorization
+  beyond them.
+- **Windows x64 only, unsigned, early.** This is a first community preview and it will show.
 
 ## Download
 
-Windows x64 downloads are published on the
-[GitHub Releases](https://github.com/sqmch/lerience/releases/latest) page. Choose the versioned
-`Lerience-Setup-...exe` installer. You will also need Claude Code or Codex installed and signed in;
-the app points you to the official installer if it finds neither.
+Windows x64 builds are on the
+[releases page](https://github.com/sqmch/lerience/releases/latest). Take the versioned
+`Lerience-Setup-...exe` installer. You also need Claude Code or Codex installed and signed in. If
+Lerience finds neither, it points you at the official installer.
 
 ## Architecture
 
-Lerience is an Electron and TypeScript application with three deliberate trust boundaries:
+Lerience is an Electron and TypeScript application with three deliberate trust boundaries.
 
-1. The sandboxed renderer displays local application and sanitized course content through a narrow,
-   typed preload API.
-2. The main process owns course access, session lifecycle, provider discovery, updates, and the
+1. The sandboxed renderer displays local application content and sanitized course content through a
+   narrow, typed preload API.
+2. The main process owns course access, session lifecycle, provider discovery, updates and the
    deterministic application runtime.
-3. Provider processes remain separately installed, provider-authenticated tools. Lerience supplies
-   app-owned Git and course tooling without replacing the learner's provider home or account.
+3. Provider processes stay separately installed and provider-authenticated. Lerience supplies its
+   own Git and course tooling without replacing your provider home or account.
 
-The internal [`course-engine/`](course-engine/) module is the canonical course format, tutor
-protocol, schemas, and script implementation. The public source and release repository is
-`sqmch/lerience`; the Windows product and executable name are `Lerience`, with the stable
-application ID `io.github.sqmch.lerience`. Internal `praxeum-*` protocol identifiers are
-compatibility seams rather than public branding and remain unchanged.
+[`course-engine/`](course-engine/) is the canonical course format, tutor protocol, schemas and
+scripts. The public source and release repository is `sqmch/lerience`. The Windows product and
+executable name is `Lerience` and the stable application ID is `io.github.sqmch.lerience`. Internal
+`praxeum-*` identifiers are compatibility seams rather than branding, and they stay as they are.
 
 ## Development
 
-Requirements:
-
-- Node.js 24
-- pnpm 11.9.0
-- Windows for the current packaging target; source validation is otherwise cross-platform by design
+You need Node.js 24 and pnpm 11.9.0. Packaging currently targets Windows. Source validation is
+cross-platform by design.
 
 ```powershell
 pnpm install --frozen-lockfile
@@ -175,11 +188,10 @@ pnpm dev
 ```
 
 `pnpm check` runs both TypeScript configurations, the application and Course Engine tests, ESLint,
-Prettier, the production build, and the synthetic
-[renderer harness](dev/renderer-harness/README.md) typecheck/build. `pnpm audit:production` checks
-the production dependency graph. Windows packaging additionally requires an explicit preview or
-final application identity and an assembled target runtime; see
-[the distribution guide](distribution/README.md).
+Prettier, the production build, and the typecheck and build of the synthetic
+[renderer harness](dev/renderer-harness/README.md). `pnpm audit:production` checks the production
+dependency graph. Windows packaging also needs an explicit preview or final application identity
+and an assembled target runtime, described in [the distribution guide](distribution/README.md).
 
 ## Documentation
 
@@ -193,10 +205,9 @@ final application identity and an assembled target runtime; see
 
 ## Project policy and license
 
-Development and review expectations are in [CONTRIBUTING.md](CONTRIBUTING.md). Security reports
-belong in the private reporting process described by [SECURITY.md](SECURITY.md), never in a public
-issue.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers development and review expectations. Security reports go
+through the private process in [SECURITY.md](SECURITY.md), never a public issue.
 
-The desktop source is licensed under the [MIT License](LICENSE). The independently licensed Course
-Engine template retains its existing [MIT license](course-engine/template/LICENSE), and bundled
-dependencies retain their own terms.
+The desktop source is under the [MIT License](LICENSE). The separately licensed Course Engine
+template keeps its own [MIT license](course-engine/template/LICENSE), and bundled dependencies keep
+their terms.
