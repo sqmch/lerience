@@ -10,6 +10,7 @@ import type { AgentEvent, SessionControlPatch, SessionControls } from "../../src
 import type { SeminarSnapshot } from "../../src/shared/session";
 import type { CourseSnapshot } from "../../src/shared/ipc";
 import type { ProviderCatalog } from "../../src/shared/provider";
+import type { EditorCatalog, EditorId } from "../../src/shared/editor";
 import { CourseDashboard } from "../../src/renderer/src/components/course-dashboard";
 import { CourseView } from "../../src/renderer/src/course/course-view";
 import { OnboardingSurface } from "../../src/renderer/src/onboarding/onboarding-surface";
@@ -166,6 +167,14 @@ function scriptFor(stage: Stage): { events: AgentEvent[]; busy: boolean } {
 function installBridge(stage: Stage, connected: boolean, rejectControlChanges: boolean): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
+  let editorCatalog: EditorCatalog = {
+    selectedEditorId: "vscode",
+    chosen: false,
+    editors: [
+      { id: "vscode", label: "Visual Studio Code" },
+      { id: "zed", label: "Zed" },
+    ],
+  };
   const script = scriptFor(stage);
 
   const snapshot: SeminarSnapshot = {
@@ -282,6 +291,21 @@ function installBridge(stage: Stage, connected: boolean, rejectControlChanges: b
     setLayout: () => Promise.resolve(),
     readDoc: (path: string) => Promise.resolve(readFixtureDoc(path)),
     revealCourse: () => Promise.resolve(),
+    /* Two editors found, none chosen yet — the state a learner with VS Code
+       and Zed installed sees first, which is the one the control exists for. */
+    listEditors: () => Promise.resolve(editorCatalog),
+    selectEditor: (editorId: EditorId) => {
+      editorCatalog = { ...editorCatalog, selectedEditorId: editorId, chosen: true };
+      return Promise.resolve(editorCatalog);
+    },
+    browseForEditor: () =>
+      Promise.resolve({ ok: false, reason: "cancelled", catalog: editorCatalog }),
+    openInEditor: (target: { kind: string }) =>
+      Promise.resolve(
+        target.kind === "course"
+          ? { ok: false, reason: "launch-failed", detail: "Zed could not be started. (harness)" }
+          : { ok: true },
+      ),
     closeCourse: () => Promise.resolve(),
     runChecks: () =>
       Promise.resolve({

@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { app } from "electron";
 import type { TutorProviderId } from "../shared/provider";
+import { parseEditorPreference, type EditorPreference } from "./editor/service";
 
 export type ThemePreference = "system" | "light" | "dark";
 
@@ -25,6 +26,8 @@ export interface AppSettings {
   layout?: WorkspaceLayout;
   /** App-wide preference used only when a fresh tutor runtime starts. */
   tutorProvider?: TutorProviderId;
+  /** The editor "Open in editor" uses. Absent means "the first one found". */
+  editor?: EditorPreference;
 }
 
 function settingsPath(): string {
@@ -70,6 +73,8 @@ export function parseSettings(parsed: unknown): AppSettings {
   if (isTutorProviderId(record["tutorProvider"])) {
     settings.tutorProvider = record["tutorProvider"];
   }
+  const editor = parseEditorPreference(record["editor"]);
+  if (editor !== undefined) settings.editor = editor;
   return settings;
 }
 
