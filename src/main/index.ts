@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { PRODUCT_NAME } from "../shared/product";
+import { PRODUCT_NAME, PRODUCT_WORDMARK } from "../shared/product";
 import {
   CHECK_RUN_CHANNEL,
   COURSE_CHANGED_CHANNEL,
@@ -91,6 +91,7 @@ import { inspectPackagedRuntime } from "./runtime-manifest";
 import type { ProviderCatalog, ProviderLoginReply, TutorProviderId } from "../shared/provider";
 import type { UpdateAction, UpdateStatus } from "../shared/update";
 import { compiledReleaseConfig } from "./update/release-config";
+import { compiledFrameColors, TITLE_BAR_HEIGHT } from "./window-frame";
 import { UpdateService } from "./update/service";
 import type { ReleaseTarget } from "./update/release-manifest";
 
@@ -117,10 +118,10 @@ if (debugPort !== undefined && !app.isPackaged) {
 
 registerVisualScheme();
 
-/** The bar's height must match the renderer's own title bar exactly, or the
- *  OS-drawn caption buttons sit off the row we drew. It is the one measure the
- *  two processes have to agree on. */
-const TITLE_BAR_HEIGHT = 38;
+function openingTitleBarOverlay(): { color?: string; symbolColor?: string; height: number } {
+  const colors = compiledFrameColors(nativeTheme.shouldUseDarkColors);
+  return colors === null ? { height: TITLE_BAR_HEIGHT } : { ...colors, height: TITLE_BAR_HEIGHT };
+}
 
 function createWindow(content: "app" | "runtime-check" = "app"): BrowserWindow {
   const window = new BrowserWindow({
@@ -132,10 +133,13 @@ function createWindow(content: "app" | "runtime-check" = "app"): BrowserWindow {
     autoHideMenuBar: true,
     /* ADR-016: the app draws the bar, the OS keeps drawing the caption buttons,
        so Snap Layouts, maximise semantics and accessible controls come free.
-       The overlay's colours are painted on first render by the renderer, which
-       is the only side that knows what the theme resolves to. */
+       The renderer repaints the overlay on first render and on every theme
+       change, because it is the only side that knows what the theme resolves
+       to; the compiled colours here are what the window opens with, so the
+       caption buttons are not the OS default light on a dark window for as
+       long as it takes a renderer to exist. */
     titleBarStyle: "hidden",
-    titleBarOverlay: { height: TITLE_BAR_HEIGHT },
+    titleBarOverlay: openingTitleBarOverlay(),
     webPreferences: {
       preload: path.join(import.meta.dirname, "../preload/index.cjs"),
       contextIsolation: true,
@@ -164,16 +168,27 @@ function loadWindowContent(window: BrowserWindow): void {
   }
 }
 
+/** The page shown while a packaged launch verifies its own runtime. It is
+ *  plain inline HTML rather than the renderer because the check gates the app
+ *  starting at all, and it draws its own title bar for the same reason the app
+ *  does: with `titleBarStyle: "hidden"` there is no native bar, so a page
+ *  without a drag region is a window the learner cannot move (ADR-016). The
+ *  bar is the same height and sits in the same place as the app's, so the swap
+ *  to real content moves nothing. */
 function runtimeCheckPage(): string {
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
 <title>${PRODUCT_NAME}</title><style>
-html,body{height:100%;margin:0}body{display:grid;place-items:center;background:Canvas;color:CanvasText;font:.875rem/1.5 Inter,system-ui,sans-serif}
-main{text-align:center}.mark{width:2.125rem;height:2.125rem;margin:0 auto 1.375rem;border:.0625rem solid ButtonBorder;border-radius:.625rem;display:grid;place-items:center;font:600 1rem Georgia,serif}
+html,body{height:100%;margin:0}body{display:grid;grid-template-rows:auto 1fr;background:Canvas;color:CanvasText;font:.875rem/1.5 Inter,system-ui,sans-serif}
+header{-webkit-app-region:drag;display:flex;align-items:center;gap:.5rem;height:${String(TITLE_BAR_HEIGHT)}px;padding-left:.875rem;border-bottom:.0625rem solid ButtonBorder}
+.chip{width:.625rem;height:.625rem;border:.0625rem solid GrayText;border-radius:.1875rem}
+.wordmark{color:GrayText;font-weight:500;letter-spacing:-.01em}
+main{display:grid;place-items:center;text-align:center}
+.mark{width:2.125rem;height:2.125rem;margin:0 auto 1.375rem;border:.0625rem solid ButtonBorder;border-radius:.625rem;display:grid;place-items:center;font:600 1rem Georgia,serif}
 h1{margin:0 0 .375rem;font-size:1rem;font-weight:600;letter-spacing:-.01em}p{margin:0;color:GrayText}.spinner{width:1.125rem;height:1.125rem;margin:1.5rem auto 0;border:.125rem solid ButtonFace;border-top-color:CanvasText;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-</style></head><body><main aria-live="polite"><div class="mark">${PRODUCT_NAME[0]}</div><h1>Checking installation</h1><p>Verifying the app's private runtime before it starts.</p><div class="spinner" aria-hidden="true"></div></main></body></html>`;
+</style></head><body><header><span class="chip" aria-hidden="true"></span><span class="wordmark">${PRODUCT_WORDMARK}</span></header><main aria-live="polite"><div class="mark">${PRODUCT_NAME[0]}</div><h1>Checking installation</h1><p>Confirming the tools this app installed for itself are complete and unchanged.</p><div class="spinner" aria-hidden="true"></div></main></body></html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
