@@ -42,6 +42,7 @@
     "release:sign-manifest": "node scripts/sign-release-manifest.mjs",
     "release:stage-windows": "node scripts/stage-windows-release.mjs",
     "publication:preflight": "node scripts/publication-preflight.mjs",
+    "publication:prose": "node scripts/publication-prose.mjs",
     "check": "pnpm publication:preflight && pnpm typecheck && pnpm harness:check && pnpm test && pnpm lint && pnpm build",
     "audit:all": "pnpm audit --audit-level high",
     "audit:production": "pnpm audit --prod --audit-level high",

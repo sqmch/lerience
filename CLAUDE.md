@@ -42,6 +42,10 @@ relevant records in [`docs/DECISIONS/`](docs/DECISIONS/). Read
   request, wait for CI, and merge with a merge commit (no squash). Title the PR as the
   learner-visible change; `git log --first-parent` then lists PRs and is the raw material for
   release notes.
+- The PR body lands in that merge commit, so write it for a stranger reading the log rather than
+  for whoever is in the conversation. Give validation as evidence they can weigh: platform,
+  versions, and what was not exercised. Keep the session out of it ("on this machine", "not done"),
+  and write paths as environment variables; CI refuses a resolved home path in a PR title or body.
 - `pnpm dev` runs the real Electron app with hot reload; use it for anything touching the main
   process, preload API, IPC, providers, or course creation. `pnpm harness:dev` serves production
   renderer components against a stubbed preload API at `http://localhost:5199` for browser-

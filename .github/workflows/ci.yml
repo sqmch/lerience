@@ -44,5 +44,16 @@ jobs:
       - name: Validate source
         run: pnpm check
 
+      # A pull request body is published: GitHub writes it into the merge
+      # commit, so it reaches `git log` where the tracked-tree preflight can
+      # never see it. Title and body arrive through the environment so text
+      # containing shell metacharacters cannot reach a command line.
+      - name: Check published prose
+        if: github.event_name == 'pull_request'
+        env:
+          PROSE_PR_TITLE: ${{ github.event.pull_request.title }}
+          PROSE_PR_BODY: ${{ github.event.pull_request.body }}
+        run: pnpm publication:prose
+
       - name: Audit all dependencies
         run: pnpm audit:all
