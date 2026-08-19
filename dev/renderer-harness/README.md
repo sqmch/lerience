@@ -44,3 +44,17 @@ status bar. The theme control changes the same root data attribute used by the p
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is
 an optional preview adapter only: it does not contain the harness, ship in the app, configure the
 Claude provider, or replace root `CLAUDE.md` repository guidance.
+
+## Showcase page
+
+`showcase.html` mounts the production course view mid-course with a scripted tutor. It exists for
+the public landing site, which serves the built page from a subfolder and embeds it in an iframe so
+a visitor can use the real interface before installing anything. The tutor there is a short script:
+it replies in the order the protocol would, cannot read what the visitor typed, and says so in its
+last reply. The page reads `?theme=light|dark` at load and accepts a
+`{ type: "lerience:theme", theme }` window message afterwards, so the page around it can keep the
+window's theme in step with its own.
+
+`harness:build` writes both pages, with a relative asset base, to `dist/renderer-harness/`. The
+landing site copies `showcase.html` and `assets/` from there; nothing in this folder ships in an
+installer.
