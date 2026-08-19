@@ -6,6 +6,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const roots: string[] = [];
 const script = path.resolve("scripts/windows-package-inputs.mjs");
+const packageVersion = (
+  JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8")) as {
+    version: string;
+  }
+).version;
 
 function runtimeFixture(overrides: Record<string, unknown> = {}): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum-package-inputs-"));
@@ -14,7 +19,7 @@ function runtimeFixture(overrides: Record<string, unknown> = {}): string {
     path.join(root, "manifest.json"),
     JSON.stringify({
       schemaVersion: 4,
-      appVersion: "0.0.2",
+      appVersion: packageVersion,
       target: { platform: "win32", architecture: "x64" },
       ...overrides,
     }),

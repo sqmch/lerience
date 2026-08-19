@@ -8,6 +8,11 @@ import { verifyAndSelectRelease } from "../src/main/update/release-manifest";
 
 const roots: string[] = [];
 const script = path.resolve("scripts/sign-release-manifest.mjs");
+const packageVersion = (
+  JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8")) as {
+    version: string;
+  }
+).version;
 
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum-release-sign-"));
@@ -15,7 +20,7 @@ function fixture() {
   const keys = generateKeyPairSync("ed25519");
   const privateKey = path.join(root, "release-private.pem");
   const notes = path.join(root, "notes.txt");
-  const nsis = path.join(root, "ApprovedProduct-Setup-0.0.2-x64.exe");
+  const nsis = path.join(root, `ApprovedProduct-Setup-${packageVersion}-x64.exe`);
   const output = path.join(root, "release", "signed");
   fs.writeFileSync(privateKey, keys.privateKey.export({ type: "pkcs8", format: "pem" }));
   fs.writeFileSync(notes, "A bounded release test.");
@@ -60,10 +65,10 @@ describe("release manifest signer", () => {
       verifyAndSelectRelease(bytes, signature, publicKey, {
         currentVersion: "0.0.0",
         target: { platform: "win32", architecture: "x64", installation: "nsis" },
-        artifactBaseUrl: "https://example.test/releases/v0.0.2/",
+        artifactBaseUrl: `https://example.test/releases/v${packageVersion}/`,
       }),
     ).toMatchObject({
-      version: "0.0.2",
+      version: packageVersion,
       artifact: { fileName: path.basename(value.nsis), size: 9 },
     });
     const sums = fs.readFileSync(path.join(value.output, "SHA256SUMS"), "utf8");
