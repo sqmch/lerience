@@ -4,7 +4,8 @@ import { CourseDashboard } from "./components/course-dashboard";
 import { CourseView } from "./course/course-view";
 import { OnboardingSurface } from "./onboarding/onboarding-surface";
 import { AppShell } from "./shell/app-shell";
-import { TutorControl } from "./tutor/tutor-connection";
+import { TutorConnectionGate, TutorControl } from "./tutor/tutor-connection";
+import { useTutorConnection } from "./tutor/use-tutor-connection";
 
 /* The app's router, and nothing else. Each of the three surfaces owns its own
    frame contents, its own state, and its own reads — App only decides which
@@ -34,6 +35,15 @@ type Boot =
 
 export function App(): React.JSX.Element {
   const [boot, setBoot] = useState<Boot>({ phase: "booting" });
+  /* One probe for the window, rather than one per surface that happens to show
+     a tutor control. The dashboard's menu reads it, and so does the first-run
+     decision below — which has to be made from the same facts the menu shows,
+     or the app can route past a question it is simultaneously asking. */
+  const connection = useTutorConnection();
+  /** The learner chose "Set this up later" on the first-run gate. Held for the
+   *  window's lifetime only: it is a "not now", not a preference, and the next
+   *  launch of a still-unconnected app should ask again. */
+  const [tutorDeferred, setTutorDeferred] = useState(false);
   /** Coalesces change-driven refreshes so a burst of tutor writes is one re-read. */
   const refreshing = useRef(false);
   const refreshQueued = useRef(false);
@@ -130,6 +140,41 @@ export function App(): React.JSX.Element {
         ? null
         : (reply.detail ?? "That course could not be opened.");
     };
+
+    const version =
+      boot.ping === null ? null : <span className="truncate">v{boot.ping.appVersion}</span>;
+
+    /* FIRST RUN. Nothing on disk, nothing connected: the app has no courses to
+       show and no tutor to run one, so the first question it asks is the one it
+       actually needs answered. It used to open on "What do you want to learn?"
+       and let the learner name a course, watch a folder be created, and only
+       then discover — at the gate onboarding raises — that no tutor was ever
+       chosen. The prerequisite is asked BEFORE the work, not after it.
+
+       Deliberately narrow. A learner who already has courses opens straight
+       onto them: reading finished material needs no provider, and hijacking
+       their dashboard to sell a connection would be the app deciding what they
+       came here to do. They get the honest signals instead — an amber dot on
+       the tutor menu, and a line on the create screen — and the just-in-time
+       gate still stands where onboarding needs a live tutor.
+
+       `ready` is false while the probe is still running, which is why the gate
+       and not the dashboard owns that wait: it renders its own "Checking your
+       tutors…", then either the cards or (if a connection was already there)
+       hands over to the dashboard without ever having flashed one. */
+    if (boot.courses.length === 0 && !connection.ready && !tutorDeferred) {
+      return (
+        <AppShell status={version}>
+          <TutorConnectionGate
+            connection={connection}
+            onDefer={() => {
+              setTutorDeferred(true);
+            }}
+          />
+        </AppShell>
+      );
+    }
+
     return (
       <AppShell
         status={
@@ -141,7 +186,7 @@ export function App(): React.JSX.Element {
              (ADR-004) — and that is a sentence with caveats, which is not a
              thing a 26px status bar can carry honestly. It belongs wherever the
              privacy story is told properly (SPEC §9, positioning). */
-          boot.ping === null ? null : <span className="truncate">v{boot.ping.appVersion}</span>
+          version
         }
       >
         <CourseDashboard
@@ -165,7 +210,11 @@ export function App(): React.JSX.Element {
               .createCourse(name, parentDirectory)
               .then((reply) => acceptReply(reply, true))
           }
-          tutorControl={<TutorControl />}
+          tutorControl={<TutorControl connection={connection} />}
+          /* Not an error and not a blocker — course creation deliberately works
+             with no provider at all (ADR-004). It is the answer to "would it
+             even stop me?", said before the folder exists rather than after. */
+          needsTutor={!connection.checking && !connection.ready}
         />
       </AppShell>
     );
