@@ -178,6 +178,13 @@ interface RuntimeTreeEntry {
   sha256: string;
 }
 
+/** An entry whose digest is not settled yet. A link's digest is of its target
+ * string and is known during the walk; a file's is taken afterwards, so the
+ * reads can overlap. */
+interface ScannedEntry extends RuntimeTreeEntry {
+  pendingFile: string | null;
+}
+
 type RuntimeComponentId = (typeof COMPONENT_IDS)[number];
 
 interface RuntimeInventoryDescription {
@@ -190,6 +197,30 @@ const COMPONENT_PREFIXES: Record<RuntimeComponentId, string> = {
   git: "tools/git/",
   npm: "tools/npm/",
 };
+
+/** Reading and hashing the runtime is what a packaged launch waits on, and
+ * nearly all of that wait is the disk rather than SHA-256. A small pool keeps
+ * several reads in flight, which is worth roughly a threefold cut on the
+ * 2 300-file Windows payload. It changes no result: the digest depends on the
+ * sorted entry order, which summarizeTree establishes after every entry is
+ * settled. */
+const HASH_CONCURRENCY = 8;
+
+async function settleScannedFiles(entries: ScannedEntry[]): Promise<void> {
+  const pending = entries.filter((entry) => entry.pendingFile !== null);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(HASH_CONCURRENCY, pending.length) }, async () => {
+      for (;;) {
+        const entry = pending[next];
+        next += 1;
+        if (entry === undefined) return;
+        const filePath = entry.pendingFile;
+        if (filePath !== null) entry.sha256 = await sha256File(filePath);
+      }
+    }),
+  );
+}
 
 /** Canonical tree algorithm shared by startup inspection and test fixtures.
  * It intentionally matches scripts/assemble-runtime.mjs byte for byte. */
@@ -211,8 +242,9 @@ async function describeTree(
   if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) {
     throw new Error("Runtime component root is not an ordinary directory.");
   }
-  const entries: RuntimeTreeEntry[] = [];
-  await collectRuntimeTree(root, root, entries, excludedRelativePaths);
+  const entries: ScannedEntry[] = [];
+  await scanRuntimeTree(root, root, entries, excludedRelativePaths);
+  await settleScannedFiles(entries);
   return summarizeTree(entries);
 }
 
@@ -221,13 +253,23 @@ async function describeRuntimeInventory(root: string): Promise<RuntimeInventoryD
   if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) {
     throw new Error("Runtime payload root is not an ordinary directory.");
   }
-  const payload: RuntimeTreeEntry[] = [];
+  const payload: ScannedEntry[] = [];
+  await scanRuntimeInventory(root, root, payload);
+  await settleScannedFiles(payload);
+
+  /* The components are the same bytes at a different relative root, so they
+     are cut from the settled payload rather than walked or hashed again. */
   const components: Record<RuntimeComponentId, RuntimeTreeEntry[]> = {
     "course-engine": [],
     git: [],
     npm: [],
   };
-  await collectRuntimeInventory(root, root, payload, components);
+  for (const entry of payload) {
+    const component = runtimeComponentEntry(entry.path);
+    if (component !== null) {
+      components[component.id].push({ ...entry, path: component.relativePath });
+    }
+  }
   return {
     payload: summarizeTree(payload),
     components: {
@@ -249,11 +291,10 @@ function summarizeTree(entries: RuntimeTreeEntry[]): RuntimeTreeDescription {
   return { fileCount: entries.length, treeSha256: aggregate.digest("hex") };
 }
 
-async function collectRuntimeInventory(
+async function scanRuntimeInventory(
   root: string,
   current: string,
-  payload: RuntimeTreeEntry[],
-  components: Record<RuntimeComponentId, RuntimeTreeEntry[]>,
+  payload: ScannedEntry[],
 ): Promise<void> {
   const names = await readdir(current);
   names.sort(lexicalCompare);
@@ -261,44 +302,25 @@ async function collectRuntimeInventory(
     const absolutePath = path.join(current, name);
     const relativePath = toManifestPath(root, absolutePath);
     if (relativePath === "manifest.json") continue;
-    const component = runtimeComponentEntry(relativePath);
     const info = await lstat(absolutePath);
     if (info.isDirectory() && !info.isSymbolicLink()) {
-      await collectRuntimeInventory(root, absolutePath, payload, components);
+      await scanRuntimeInventory(root, absolutePath, payload);
       continue;
     }
 
-    let entry: RuntimeTreeEntry;
     if (info.isSymbolicLink()) {
-      const target = await readlink(absolutePath);
-      const resolvedTarget = path.resolve(path.dirname(absolutePath), target);
+      /* A link inside a component may not leave that component, and a link
+         outside every component may not leave the payload. */
+      const component = runtimeComponentEntry(relativePath);
       const boundary =
         component === null
           ? root
           : path.join(root, ...COMPONENT_PREFIXES[component.id].slice(0, -1).split("/"));
-      if (!isWithin(boundary, resolvedTarget)) {
-        throw new Error("Runtime link escapes its component.");
-      }
-      entry = {
-        type: "link",
-        path: relativePath,
-        size: Buffer.byteLength(target),
-        sha256: createHash("sha256").update(target).digest("hex"),
-      };
+      payload.push(await scanLink(absolutePath, relativePath, boundary));
     } else if (info.isFile()) {
-      entry = {
-        type: "file",
-        path: relativePath,
-        mode: info.mode & 0o777,
-        size: info.size,
-        sha256: await sha256File(absolutePath),
-      };
+      payload.push(scanFile(absolutePath, relativePath, info.mode, info.size));
     } else {
       throw new Error("Runtime payload contains an unsupported entry.");
-    }
-    payload.push(entry);
-    if (component !== null) {
-      components[component.id].push({ ...entry, path: component.relativePath });
     }
   }
 }
@@ -315,10 +337,10 @@ function runtimeComponentEntry(
   return null;
 }
 
-async function collectRuntimeTree(
+async function scanRuntimeTree(
   root: string,
   current: string,
-  entries: RuntimeTreeEntry[],
+  entries: ScannedEntry[],
   excludedRelativePaths: ReadonlySet<string>,
 ): Promise<void> {
   const names = await readdir(current);
@@ -329,29 +351,48 @@ async function collectRuntimeTree(
     if (excludedRelativePaths.has(relativePath)) continue;
     const info = await lstat(absolutePath);
     if (info.isDirectory() && !info.isSymbolicLink()) {
-      await collectRuntimeTree(root, absolutePath, entries, excludedRelativePaths);
+      await scanRuntimeTree(root, absolutePath, entries, excludedRelativePaths);
     } else if (info.isSymbolicLink()) {
-      const target = await readlink(absolutePath);
-      const resolvedTarget = path.resolve(path.dirname(absolutePath), target);
-      if (!isWithin(root, resolvedTarget)) throw new Error("Runtime link escapes its component.");
-      entries.push({
-        type: "link",
-        path: relativePath,
-        size: Buffer.byteLength(target),
-        sha256: createHash("sha256").update(target).digest("hex"),
-      });
+      entries.push(await scanLink(absolutePath, relativePath, root));
     } else if (info.isFile()) {
-      entries.push({
-        type: "file",
-        path: relativePath,
-        mode: info.mode & 0o777,
-        size: info.size,
-        sha256: await sha256File(absolutePath),
-      });
+      entries.push(scanFile(absolutePath, relativePath, info.mode, info.size));
     } else {
       throw new Error("Runtime component contains an unsupported entry.");
     }
   }
+}
+
+async function scanLink(
+  absolutePath: string,
+  relativePath: string,
+  boundary: string,
+): Promise<ScannedEntry> {
+  const target = await readlink(absolutePath);
+  const resolvedTarget = path.resolve(path.dirname(absolutePath), target);
+  if (!isWithin(boundary, resolvedTarget)) throw new Error("Runtime link escapes its component.");
+  return {
+    type: "link",
+    path: relativePath,
+    size: Buffer.byteLength(target),
+    sha256: createHash("sha256").update(target).digest("hex"),
+    pendingFile: null,
+  };
+}
+
+function scanFile(
+  absolutePath: string,
+  relativePath: string,
+  mode: number,
+  size: number,
+): ScannedEntry {
+  return {
+    type: "file",
+    path: relativePath,
+    mode: mode & 0o777,
+    size,
+    sha256: "",
+    pendingFile: absolutePath,
+  };
 }
 
 function criticalRuntimePaths(layout: RuntimeLayout): string[] {

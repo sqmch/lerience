@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import type { Plugin } from "vite";
+import { readFrameColors } from "./build/frame-colors";
 import { readReleaseBuildInputs } from "./build/release-build-inputs";
 
 /* The renderer never loads remote content (SPEC §4). The CSP is injected here
@@ -42,6 +43,7 @@ export default defineConfig({
   main: {
     define: {
       __PRAXEUM_RELEASE_CONFIG__: JSON.stringify(readReleaseBuildInputs()),
+      __PRAXEUM_FRAME_COLORS__: JSON.stringify(readFrameColors()),
     },
   },
   preload: {

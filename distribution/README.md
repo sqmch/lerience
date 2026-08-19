@@ -47,6 +47,30 @@ Release promotion, rollback, emergency feed disablement, and key rotation are de
 separate gates even though this repository owns both surfaces. The [`evidence/`](evidence/) policy
 defines what enters a public release-acceptance record.
 
+## What a packaged launch verifies
+
+A packaged launch checks its own runtime before the app starts, behind the "Checking installation"
+window. `inspectPackagedRuntime` reads the installed `runtime/manifest.json` and confirms that it
+belongs to this app version and this platform/architecture, that every critical path is declared,
+that each of the three components (Course Engine, Git, npm) hashes to its recorded complete-tree
+digest, that the critical files are ordinary non-symlinked files of the recorded size, mode and
+SHA-256, and that the payload as a whole matches its recorded file count and tree hash. Anything
+short of that shows a repair dialog and quits; the app never starts on a half-installed runtime.
+
+This is a completeness and corruption gate, not an anti-tamper boundary. It catches a truncated or
+interrupted install, an antivirus quarantine that removed a file, a partly-applied update, and a
+manifest from a different build. It cannot defend against someone who can already write to the
+installation directory: a per-user NSIS install and the app's own data live in the same trust
+domain, so an attacker with that access can replace the executable itself. OS-level code signing is
+the control for that, and ADR-024 defers it.
+
+The work is real: the Windows x64 payload is 2 355 files and about 125 MiB, all of it read and
+hashed on every launch. Reads run in a small pool (`HASH_CONCURRENCY`) because the wait is disk
+rather than SHA-256; a warm end-to-end inspection of the assembled runtime measures about 0.9 s on
+a developer NVMe machine, and a cold first launch is several times that. The same check runs
+headless as the release-acceptance contract: `Lerience.exe --verify-installation` opens no window,
+starts no provider, touches no app data, and reports package-owned facts through its exit code.
+
 ## Windows package scaffold
 
 M5.2's non-publishing scaffold is pinned in `electron-builder.config.mjs`. It requires repository-
