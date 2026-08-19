@@ -370,7 +370,9 @@ export class SessionConductor {
     try {
       await transcript.append({ kind: "operator", text: opener });
       session.send(opener);
-      this.options.emitSnapshot(await this.snapshotFor(transcript));
+      // send() accepted the hidden opener synchronously. Report that turn as
+      // busy even when a test double or provider has not updated its getter.
+      this.options.emitSnapshot(await this.snapshotFor(transcript, true));
     } catch (error) {
       // A half-started runtime must not stay registered with a live provider
       // process behind it (the caller marks the transcript's lifecycle).
@@ -551,7 +553,10 @@ export class SessionConductor {
     active.idleWaiters.clear();
   }
 
-  private async snapshotFor(transcript: FileTranscriptStore): Promise<SeminarSnapshot> {
+  private async snapshotFor(
+    transcript: FileTranscriptStore,
+    knownTurnInProgress?: boolean,
+  ): Promise<SeminarSnapshot> {
     const snapshot = await transcript.snapshot();
     const runtime =
       this.active?.transcript.sessionId === snapshot.header.sessionId ? this.active : null;
@@ -576,6 +581,7 @@ export class SessionConductor {
       sessionId: snapshot.header.sessionId,
       messages: snapshot.messages,
       totalCostUsd: latestUsage(snapshot),
+      turnInProgress: knownTurnInProgress ?? runtime?.session.busy ?? false,
       ...(latestLifecycle?.kind === "lifecycle" && latestLifecycle.detail !== undefined
         ? { detail: latestLifecycle.detail }
         : {}),
@@ -703,7 +709,13 @@ function latestUsage(snapshot: TranscriptSnapshot): number {
 }
 
 function closedSnapshot(): SeminarSnapshot {
-  return { lifecycle: "closed", sessionId: null, messages: [], totalCostUsd: 0 };
+  return {
+    lifecycle: "closed",
+    sessionId: null,
+    messages: [],
+    totalCostUsd: 0,
+    turnInProgress: false,
+  };
 }
 
 function toCheckReply(result: RunChecksResult): RunChecksReply {

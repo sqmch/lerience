@@ -876,7 +876,13 @@ void app.whenReady().then(async () => {
   ipcMain.handle(SEMINAR_CURRENT_CHANNEL, async (): Promise<SeminarSnapshot> => {
     const root = currentCourseRoot();
     return root === null
-      ? { lifecycle: "closed", sessionId: null, messages: [], totalCostUsd: 0 }
+      ? {
+          lifecycle: "closed",
+          sessionId: null,
+          messages: [],
+          totalCostUsd: 0,
+          turnInProgress: false,
+        }
       : sessionConductor().current(root);
   });
 

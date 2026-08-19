@@ -53,6 +53,138 @@ export function LearnerTurn({ content }: { content: string }): React.JSX.Element
   );
 }
 
+function TranscriptMarker({
+  label,
+  action,
+}: {
+  label: string;
+  action?: { label: string; expanded: boolean; onClick: () => void };
+}): React.JSX.Element {
+  return (
+    <div className="animate-settle flex items-center gap-3 py-1 text-xs">
+      <span className="bg-line-soft h-(--stroke-hair) min-w-4 flex-1" aria-hidden="true" />
+      <span className="text-ink-faint shrink-0">{label}</span>
+      {action === undefined ? null : (
+        <button
+          type="button"
+          className="text-ink-dim hover:text-hi focus-visible:outline-focus shrink-0 rounded-pill px-1 underline underline-offset-4 transition-colors focus-visible:outline-2"
+          aria-expanded={action.expanded}
+          onClick={action.onClick}
+        >
+          {action.label}
+        </button>
+      )}
+      <span className="bg-line-soft h-(--stroke-hair) min-w-4 flex-1" aria-hidden="true" />
+    </div>
+  );
+}
+
+function transcriptTurns(
+  items: readonly SeminarState["items"][number][],
+  keyPrefix: string,
+): React.JSX.Element[] {
+  return items.map((item, index) =>
+    item.role === "learner" ? (
+      <LearnerTurn key={`${keyPrefix}:${item.id}:${String(index)}`} content={item.content} />
+    ) : (
+      <TutorTurn
+        key={`${keyPrefix}:${item.id}:${String(index)}`}
+        content={item.content}
+        streaming={item.streaming}
+      />
+    ),
+  );
+}
+
+/** One visible conversation can span the recovery handoff without pretending
+ *  the two durable transcripts are one. The learner decides when the sealed
+ *  previous session leaves the page. */
+export function ConversationTranscript({ state }: { state: SeminarState }): React.JSX.Element {
+  const previous = state.previousSession;
+  const [collapsedSessionId, setCollapsedSessionId] = useState<string | null>(null);
+  const previousCollapsed = previous !== null && collapsedSessionId === previous.sessionId;
+  if (previous !== null) {
+    const split =
+      previous.recoveryStartIndex === null
+        ? null
+        : Math.min(Math.max(previous.recoveryStartIndex, 0), previous.items.length);
+    return (
+      <>
+        {previousCollapsed ? (
+          <TranscriptMarker
+            label="Previous session"
+            action={{
+              label: "Show previous",
+              expanded: false,
+              onClick: () => {
+                setCollapsedSessionId(null);
+              },
+            }}
+          />
+        ) : (
+          <>
+            {split === null
+              ? transcriptTurns(previous.items, `previous:${previous.sessionId}`)
+              : transcriptTurns(
+                  previous.items.slice(0, split),
+                  `previous:${previous.sessionId}:conversation`,
+                )}
+            {split === null ? null : <TranscriptMarker label="Finishing previous session" />}
+            {split === null
+              ? null
+              : transcriptTurns(
+                  previous.items.slice(split),
+                  `previous:${previous.sessionId}:recovery`,
+                )}
+            <TranscriptMarker
+              label="New session"
+              action={{
+                label: "Hide previous",
+                expanded: true,
+                onClick: () => {
+                  setCollapsedSessionId(previous.sessionId);
+                },
+              }}
+            />
+          </>
+        )}
+        {transcriptTurns(state.items, `current:${state.sessionId ?? "pending"}`)}
+      </>
+    );
+  }
+
+  const split =
+    state.recoveryStartIndex === null
+      ? null
+      : Math.min(Math.max(state.recoveryStartIndex, 0), state.items.length);
+  return (
+    <>
+      {split === null
+        ? transcriptTurns(state.items, `current:${state.sessionId ?? "pending"}`)
+        : transcriptTurns(
+            state.items.slice(0, split),
+            `current:${state.sessionId ?? "pending"}:conversation`,
+          )}
+      {split === null ? null : <TranscriptMarker label="Finishing previous session" />}
+      {split === null
+        ? null
+        : transcriptTurns(
+            state.items.slice(split),
+            `current:${state.sessionId ?? "pending"}:recovery`,
+          )}
+    </>
+  );
+}
+
+export function conversationThinkingLabel(state: SeminarState): string {
+  if (state.recoveryHandoff === "finishing-previous") {
+    return "Finishing your previous session";
+  }
+  if (state.recoveryHandoff === "opening-next") return "Opening your new session";
+  if (state.phase === "opening") return "Opening this session";
+  return "Your tutor is thinking";
+}
+
 /** Waiting, said quietly, with the current tool work as an aligned second line
  *  when there is any. The dots breathe on the token duration; base.css
  *  neutralizes the whole thing under prefers-reduced-motion. */

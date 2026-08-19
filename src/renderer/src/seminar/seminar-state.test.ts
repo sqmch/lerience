@@ -190,6 +190,7 @@ describe("seminarReducer", () => {
         lifecycle: "recoverable",
         sessionId: "session-1",
         totalCostUsd: 0.4,
+        turnInProgress: false,
         messages: [
           {
             id: "learner-2",
@@ -252,7 +253,13 @@ describe("seminarReducer", () => {
     const opening = reduce(createSeminarState(), [{ type: "open_started" }]);
     const stale = seminarReducer(opening, {
       type: "hydrate",
-      snapshot: { lifecycle: "closed", sessionId: null, totalCostUsd: 0, messages: [] },
+      snapshot: {
+        lifecycle: "closed",
+        sessionId: null,
+        totalCostUsd: 0,
+        turnInProgress: false,
+        messages: [],
+      },
     });
 
     expect(stale.phase).toBe("opening");
@@ -265,6 +272,7 @@ describe("seminarReducer", () => {
         lifecycle: "recovering",
         sessionId: "session-1",
         totalCostUsd: 0,
+        turnInProgress: true,
         messages: [],
       },
     });
@@ -274,5 +282,96 @@ describe("seminarReducer", () => {
     });
 
     expect(afterTurn.phase).toBe("thinking");
+  });
+
+  it("keeps the recovered transcript visible while the fresh opener starts", () => {
+    const recovered = seminarReducer(createSeminarState(), {
+      type: "hydrate",
+      snapshot: {
+        lifecycle: "recoverable",
+        sessionId: "session-old",
+        totalCostUsd: 0.4,
+        turnInProgress: false,
+        messages: [
+          {
+            id: "learner-2",
+            role: "learner",
+            content: "I stopped midway",
+            partial: false,
+          },
+          { id: "tutor-3", role: "tutor", content: "Let's continue", partial: false },
+        ],
+      },
+    });
+    const recovering = reduce(recovered, [
+      { type: "open_started" },
+      {
+        type: "hydrate",
+        snapshot: {
+          lifecycle: "recovering",
+          sessionId: "session-old",
+          totalCostUsd: 0.4,
+          turnInProgress: true,
+          messages: [
+            {
+              id: "learner-2",
+              role: "learner",
+              content: "I stopped midway",
+              partial: false,
+            },
+            { id: "tutor-3", role: "tutor", content: "Let's continue", partial: false },
+          ],
+        },
+      },
+      { type: "event", event: { type: "message_delta", delta: "Previous session finished." } },
+      { type: "event", event: { type: "turn_complete" } },
+      {
+        type: "hydrate",
+        snapshot: {
+          lifecycle: "closed",
+          sessionId: "session-old",
+          totalCostUsd: 0.4,
+          turnInProgress: false,
+          messages: [
+            {
+              id: "learner-2",
+              role: "learner",
+              content: "I stopped midway",
+              partial: false,
+            },
+            { id: "tutor-3", role: "tutor", content: "Let's continue", partial: false },
+            {
+              id: "tutor-7",
+              role: "tutor",
+              content: "Previous session finished.",
+              partial: false,
+            },
+          ],
+        },
+      },
+    ]);
+    const freshOpening = seminarReducer(recovering, {
+      type: "hydrate",
+      snapshot: {
+        lifecycle: "open",
+        sessionId: "session-new",
+        totalCostUsd: 0,
+        turnInProgress: true,
+        messages: [],
+      },
+    });
+
+    expect(recovering.phase).toBe("thinking");
+    expect(recovering.items.at(-1)?.content).toBe("Previous session finished.");
+    expect(recovering.recoveryHandoff).toBe("opening-next");
+    expect(freshOpening.phase).toBe("thinking");
+    expect(freshOpening.items).toEqual([]);
+    expect(freshOpening.previousSession?.items.map((item) => item.content)).toEqual([
+      "I stopped midway",
+      "Let's continue",
+      "Previous session finished.",
+    ]);
+    expect(freshOpening.previousSession?.recoveryStartIndex).toBe(2);
+    expect(freshOpening.recoveryHandoff).toBe("opening-next");
   });
 });

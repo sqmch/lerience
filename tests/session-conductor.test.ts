@@ -423,6 +423,11 @@ describe("SessionConductor", () => {
     agent.sessions[1]?.emit({ type: "turn_complete" });
     await settleUntil(() => agent.sessions[2]?.sent.length === 1);
     expect(agent.sessions[2]?.sent[0]).toMatch(/start session$/);
+    expect(second.snapshots.at(-1)).toMatchObject({
+      lifecycle: "open",
+      messages: [],
+      turnInProgress: true,
+    });
     expect((await second.conductor.current(courseDir)).lifecycle).toBe("open");
   });
 });

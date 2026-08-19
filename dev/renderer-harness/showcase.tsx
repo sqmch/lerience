@@ -246,6 +246,7 @@ function installBridge(initialTheme: ThemePreference): void {
     sessionId: "showcase",
     messages: TRANSCRIPT,
     totalCostUsd: 0,
+    turnInProgress: false,
   };
 
   const providerCatalog: ProviderCatalog = {

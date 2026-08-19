@@ -194,6 +194,9 @@ their behavior.
 - The composer grows with its content and remains usable while the tutor is working. A submitted
   mid-turn reply is visibly queued, cancellable, and sent through the normal path when the turn
   settles.
+- Recovery keeps the previous conversation and its closing reply readable while the fresh session
+  opens below a labeled boundary. The learner may collapse the previous session; the app never
+  hides it automatically during the handoff.
 - Silent or failed provider turns get honest retryable states. Do not leave permanent thinking
   indicators after a turn completed without visible content.
 - Permission prompts are trust moments. State the actual action and scope; never hide a command or
