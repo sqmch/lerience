@@ -103,10 +103,9 @@ the tone it wants.
 ### It builds a picture when prose is not enough
 
 Frontier models are good at building things, and there is no reason to fence that off. When a
-module turns on something spatial or dynamic, the tutor can claim one of the interactive labs
-shipped with the app or write a self-contained visualization of its own, derived from the lesson it
-has just written so the examples and vocabulary match, then embed it in the chapter where the
-picture belongs. If a specific misconception shows up mid-session, it can retarget that visual at
+module turns on something spatial or dynamic, the tutor writes a self-contained visualization for
+it, derived from the lesson it has just written so the examples and vocabulary match, then embeds
+it in the chapter where the picture belongs. If a specific misconception shows up mid-session, it can retarget that visual at
 the misconception on the spot. Lerience renders these in a sandbox with no network and no file
 access.
 
