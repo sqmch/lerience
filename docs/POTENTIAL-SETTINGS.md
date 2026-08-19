@@ -15,6 +15,7 @@ are likely to revisit and that cannot be edited more naturally where their effec
 | Theme: system / light / dark | App-shell theme control | Persisted app-wide; a Settings page would only duplicate it today. |
 | Course-workspace pane widths | Directly draggable separators | Persisted app-wide; direct manipulation is the better control. |
 | Preferred tutor provider | M4.5 tutor connection surface | Persist the learner's explicit choice; switch only between sessions. |
+| Default editor | The "Open in editor" control's menu, beside Run checks (ADR-034) | Persisted app-wide; chosen where its effect is visible — the button is relabelled with the editor's name. |
 
 ## Candidates
 

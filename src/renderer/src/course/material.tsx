@@ -31,6 +31,7 @@ import type { CheckRunSummary } from "../../../shared/session";
 import { CHIP, QUIET } from "../components/controls";
 import { DiamondGlyph, PlayGlyph, SpinnerGlyph } from "../components/glyphs";
 import { CourseMarkdown, DocMarkdown } from "../components/markdown-view";
+import { EditorControl } from "./editor-control";
 import { RecallMark } from "./recall-mark";
 
 export type MaterialTab = "lesson" | "brief" | "quiz" | "visual";
@@ -180,22 +181,45 @@ function CheckResult({ run, onDismiss }: { run: CheckRun; onDismiss: () => void 
           )}
         </div>
         {run.phase === "running" ? null : (
-          <button
-            type="button"
-            className="text-ink-faint hover:text-hi focus-visible:outline-focus -mt-1 -mr-1 shrink-0 rounded-pill p-1 text-xs transition-colors focus-visible:outline-2"
-            onClick={onDismiss}
-          >
-            <span className="sr-only">Dismiss the check result</span>
-            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-              <path
-                d="M1.5 1.5 L8.5 8.5 M8.5 1.5 L1.5 8.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+          <Dismiss label="Dismiss the check result" onDismiss={onDismiss} />
         )}
+      </div>
+    </div>
+  );
+}
+
+function Dismiss({ label, onDismiss }: { label: string; onDismiss: () => void }) {
+  return (
+    <button
+      type="button"
+      className="text-ink-faint hover:text-hi focus-visible:outline-focus -mt-1 -mr-1 shrink-0 rounded-pill p-1 text-xs transition-colors focus-visible:outline-2"
+      onClick={onDismiss}
+    >
+      <span className="sr-only">{label}</span>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+        <path
+          d="M1.5 1.5 L8.5 8.5 M8.5 1.5 L1.5 8.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
+/** Something the head row's controls need to say and have no room for — an
+ *  editor that would not start, chiefly. Same card as a failed check run, so
+ *  the pane has one voice for "that did not work". */
+function PaneNotice({ detail, onDismiss }: { detail: string; onDismiss: () => void }) {
+  return (
+    <div
+      className="border-line border-l-bad bg-surface-panel mb-8 rounded-lg border border-l-2 p-4"
+      role="status"
+    >
+      <div className="flex items-start gap-3">
+        <p className="text-ink min-w-0 flex-1 text-sm leading-normal text-pretty">{detail}</p>
+        <Dismiss label="Dismiss this notice" onDismiss={onDismiss} />
       </div>
     </div>
   );
@@ -267,12 +291,14 @@ export function MaterialPane({
   // hide behind a branch.
   const body = useRef<HTMLDivElement>(null);
   const [checkRun, setCheckRun] = useState<CheckRun | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const documentKey = `${activeModule?.id ?? ""}:${tab}`;
   useEffect(() => {
     if (body.current !== null) body.current.scrollTop = 0;
   }, [documentKey]);
   useEffect(() => {
     setCheckRun(null);
+    setNotice(null);
   }, [activeModule?.id]);
 
   if (activeModule === null) return <UnwrittenCourse courseDoc={courseDoc} />;
@@ -351,26 +377,46 @@ export function MaterialPane({
                 <Tab key={entry.id} value={entry.id} label={entry.label} />
               ))}
             </Tabs.List>
-            {/* Presence-based (ADR-013): renders because THIS module's scaffold
-                exposes a runnable check script. */}
-            {activeModule.hasChecks ? (
-              <button
-                type="button"
-                className={`${QUIET} ml-auto shrink-0 px-3 py-1.5 text-xs`}
-                disabled={checkRun?.phase === "running"}
-                onClick={runChecks}
-              >
-                {checkRun?.phase === "running" ? (
-                  <SpinnerGlyph className="animate-spin size-3.5" />
-                ) : (
-                  <PlayGlyph className="size-3.5" />
-                )}
-                <span>{checkRun?.phase === "running" ? "Running…" : "Run checks"}</span>
-              </button>
+            {/* Presence-based (ADR-013): each renders because THIS module's
+                files say so — a scaffold/ for the editor handoff, a runnable
+                check script for the checks. The pair is the build loop in two
+                controls: write in your editor, run the checks here. */}
+            {activeModule.hasScaffold || activeModule.hasChecks ? (
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {activeModule.hasScaffold ? (
+                  <EditorControl
+                    target={{ kind: "module", moduleId: activeModule.id }}
+                    onNotice={setNotice}
+                  />
+                ) : null}
+                {activeModule.hasChecks ? (
+                  <button
+                    type="button"
+                    className={`${QUIET} px-3 py-1.5 text-xs`}
+                    disabled={checkRun?.phase === "running"}
+                    onClick={runChecks}
+                  >
+                    {checkRun?.phase === "running" ? (
+                      <SpinnerGlyph className="animate-spin size-3.5" />
+                    ) : (
+                      <PlayGlyph className="size-3.5" />
+                    )}
+                    <span>{checkRun?.phase === "running" ? "Running…" : "Run checks"}</span>
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </>
         }
       >
+        {notice === null ? null : (
+          <PaneNotice
+            detail={notice}
+            onDismiss={() => {
+              setNotice(null);
+            }}
+          />
+        )}
         {checkRun === null || checkRun.moduleId !== activeModule.id ? null : (
           <CheckResult
             run={checkRun}

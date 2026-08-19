@@ -18,6 +18,10 @@ import {
   COURSE_READ_DOC_CHANNEL,
   COURSE_REVEAL_CHANNEL,
   DASHBOARD_LIST_CHANNEL,
+  EDITORS_LIST_CHANNEL,
+  EDITOR_BROWSE_CHANNEL,
+  EDITOR_OPEN_CHANNEL,
+  EDITOR_SELECT_CHANNEL,
   PING_CHANNEL,
   PROVIDERS_LIST_CHANNEL,
   PROVIDER_LOGIN_CHANNEL,
@@ -73,6 +77,10 @@ import {
   watchCourse,
 } from "./course-session";
 import { guardCourseDoc } from "./guards";
+import { discoverEditors } from "./editor/discovery";
+import { EditorService } from "./editor/service";
+import { guardModuleDirectory } from "./scripts/parsers";
+import type { BrowseEditorReply, EditorCatalog, OpenInEditorReply } from "../shared/editor";
 import { buildPingReply } from "./ping";
 import { createEngineScriptService } from "./scripts/engine-script-service";
 import { readSettings, updateSettings } from "./settings";
@@ -253,6 +261,46 @@ let registry: FileCourseRegistry | null = null;
 let creator: CourseCreator | null = null;
 let providers: TutorProviderRegistry | null = null;
 let updates: UpdateService | null = null;
+let editors: EditorService | null = null;
+
+function editorService(): EditorService {
+  editors ??= new EditorService({
+    discover: () => discoverEditors(),
+    readPreference: () => readSettings().editor,
+    writePreference: (editor) => {
+      updateSettings({ editor });
+    },
+    isRunnable: (executablePath) => {
+      try {
+        const stat = fs.statSync(executablePath);
+        // A macOS app is a directory; everywhere else a program is a file.
+        return stat.isFile() || (process.platform === "darwin" && stat.isDirectory());
+      } catch {
+        return false;
+      }
+    },
+  });
+  return editors;
+}
+
+/** The directory "Open in editor" opens: a module's scaffold — the project
+ *  the learner builds, where package.json lives and the checks run — or the
+ *  course folder. A module id is guarded the same way the check runner
+ *  guards it, and a scaffold that does not exist is "no target", never a
+ *  freshly created directory. */
+function editorTargetDirectory(root: string, target: unknown): string | null {
+  if (typeof target !== "object" || target === null) return null;
+  const record = target as Record<string, unknown>;
+  if (record["kind"] === "course") return root;
+  if (record["kind"] !== "module" || typeof record["moduleId"] !== "string") return null;
+  const guarded = guardModuleDirectory(root, record["moduleId"]);
+  if (!guarded.ok) return null;
+  try {
+    return fs.statSync(guarded.scaffoldDir).isDirectory() ? guarded.scaffoldDir : null;
+  } catch {
+    return null;
+  }
+}
 
 function sessionConductor(): SessionConductor {
   if (seminar === null) throw new Error("The session conductor is not ready.");
@@ -764,6 +812,50 @@ void app.whenReady().then(async () => {
     const root = currentCourseRoot();
     if (root !== null) await shell.openPath(root);
   });
+
+  ipcMain.handle(EDITORS_LIST_CHANNEL, (): EditorCatalog => editorService().catalog());
+
+  ipcMain.handle(EDITOR_SELECT_CHANNEL, (_event, editorId: unknown): EditorCatalog =>
+    editorService().select(editorId),
+  );
+
+  ipcMain.handle(EDITOR_BROWSE_CHANNEL, async (): Promise<BrowseEditorReply> => {
+    const picked = await dialog.showOpenDialog({
+      title: "Choose an editor",
+      properties: ["openFile", "dontAddToRecent"],
+      ...(process.platform === "win32"
+        ? { filters: [{ name: "Programs", extensions: ["exe"] }] }
+        : process.platform === "darwin"
+          ? { filters: [{ name: "Applications", extensions: ["app"] }] }
+          : {}),
+    });
+    const executablePath = picked.filePaths[0];
+    if (picked.canceled || executablePath === undefined) {
+      return { ok: false, reason: "cancelled", catalog: editorService().catalog() };
+    }
+    const catalog = editorService().chooseCustom(executablePath);
+    if (catalog === null) {
+      return { ok: false, reason: "not-runnable", catalog: editorService().catalog() };
+    }
+    return { ok: true, catalog };
+  });
+
+  ipcMain.handle(
+    EDITOR_OPEN_CHANNEL,
+    async (_event, target: unknown): Promise<OpenInEditorReply> => {
+      const root = currentCourseRoot();
+      if (root === null) return { ok: false, reason: "no-course", detail: "Open a course first." };
+      const directory = editorTargetDirectory(root, target);
+      if (directory === null) {
+        return {
+          ok: false,
+          reason: "no-target",
+          detail: "This module has no project folder to open yet.",
+        };
+      }
+      return editorService().open(directory);
+    },
+  );
 
   ipcMain.handle(
     SEMINAR_START_CHANNEL,

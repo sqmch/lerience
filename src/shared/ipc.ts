@@ -8,6 +8,13 @@ import type { AgentEvent, SessionControlPatch, SessionControls } from "./seminar
 import type { RunChecksReply, SeminarSnapshot } from "./session";
 import type { ProviderCatalog, ProviderLoginReply, TutorProviderId } from "./provider";
 import type { UpdateStatus } from "./update";
+import type {
+  BrowseEditorReply,
+  EditorCatalog,
+  EditorId,
+  EditorTarget,
+  OpenInEditorReply,
+} from "./editor";
 
 export const PING_CHANNEL = "praxeum:ping";
 export const COURSE_OPEN_CHANNEL = "praxeum:course-open";
@@ -17,6 +24,10 @@ export const COURSE_READ_DOC_CHANNEL = "praxeum:course-read-doc";
 export const COURSE_CHANGED_CHANNEL = "praxeum:course-changed";
 export const COURSE_REVEAL_CHANNEL = "praxeum:course-reveal";
 export const COURSE_CLOSE_CHANNEL = "praxeum:course-close";
+export const EDITORS_LIST_CHANNEL = "praxeum:editors-list";
+export const EDITOR_SELECT_CHANNEL = "praxeum:editor-select";
+export const EDITOR_BROWSE_CHANNEL = "praxeum:editor-browse";
+export const EDITOR_OPEN_CHANNEL = "praxeum:editor-open";
 export const DASHBOARD_LIST_CHANNEL = "praxeum:dashboard-list";
 export const COURSE_OPEN_KNOWN_CHANNEL = "praxeum:course-open-known";
 export const COURSE_LOCATE_CHANNEL = "praxeum:course-locate";
@@ -169,6 +180,14 @@ export interface PraxeumApi {
   /** Show the course folder in the system file manager (the learner's own
    *  editor opens it from there — the app embeds none, ADR-006). */
   revealCourse(): Promise<void>;
+  /** The editors found on this computer and which one opens by default (ADR-034). */
+  listEditors(): Promise<EditorCatalog>;
+  /** Make an installed editor the default. Persisted app-wide. */
+  selectEditor(editorId: EditorId): Promise<EditorCatalog>;
+  /** Let the learner point at an editor the app did not find; it becomes the default. */
+  browseForEditor(): Promise<BrowseEditorReply>;
+  /** Open a module's scaffold or the whole course folder in the default editor. */
+  openInEditor(target: EditorTarget): Promise<OpenInEditorReply>;
   /** Subscribe to file-change pushes; returns unsubscribe. */
   onCourseChanged(listener: (changedPaths: string[]) => void): () => void;
   /** The learner's theme preference and what it resolves to right now. */
