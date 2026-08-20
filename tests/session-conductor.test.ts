@@ -16,6 +16,7 @@ import type {
 import type { SeminarSnapshot } from "../src/shared/session";
 
 const roots: string[] = [];
+const conductors: SessionConductor[] = [];
 const COURSE_ID = "123e4567-e89b-42d3-a456-426614174000";
 let sessionIdCounter = 1;
 
@@ -25,7 +26,17 @@ function temporaryRoot(): string {
   return root;
 }
 
-afterEach(() => {
+afterEach(async () => {
+  // Stop the conductors BEFORE the directories they write into go away. A
+  // test that ends mid-stream leaves a pump still draining queued events into
+  // the transcript; delete the tree under it and the append fails with ENOENT
+  // inside `pump`'s own catch, where nothing awaits it — an unhandled
+  // rejection attributed to whichever test happened to be running when it
+  // landed. `abandon` releases the provider and awaits the pump, so teardown
+  // is ordered instead of racing.
+  for (const conductor of conductors.splice(0)) {
+    await conductor.abandon().catch(() => undefined);
+  }
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
@@ -134,15 +145,27 @@ function harness(options: {
     emitAgentEvent: (event) => events.push(event),
     emitSnapshot: (snapshot) => snapshots.push(snapshot),
   });
+  conductors.push(conductor);
   return { conductor, courseDir, userData, agent, snapshots, events };
 }
 
+/** Wait for the conductor to reach a state, bounded by TIME rather than by a
+ *  count of turns through the event loop.
+ *
+ *  It used to spin 100 times on a zero-delay timer. Node clamps those to a
+ *  millisecond, so the whole budget was about 100ms — and what is being waited
+ *  on is not scheduling, it is the pump persisting entries, each one an open,
+ *  a write and an fsync. Two fsyncs on a loaded CI disk outlast 100ms easily,
+ *  which made every one of these waits a bet on how fast the machine was. A
+ *  deadline is the same wait everywhere; the budget is generous because it is
+ *  only ever paid in full when something is genuinely broken. */
 async function settleUntil(predicate: () => boolean | Promise<boolean>): Promise<void> {
-  for (let count = 0; count < 100; count += 1) {
+  const deadline = Date.now() + 4_000;
+  for (;;) {
     if (await predicate()) return;
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    if (Date.now() >= deadline) throw new Error("Timed out waiting for conductor state");
+    await new Promise<void>((resolve) => setTimeout(resolve, 1));
   }
-  throw new Error("Timed out waiting for conductor state");
 }
 
 describe("SessionConductor", () => {
