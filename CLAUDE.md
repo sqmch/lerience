@@ -52,7 +52,7 @@ relevant records in [`docs/DECISIONS/`](docs/DECISIONS/). Read
   inspectable UI work (see `dev/renderer-harness/README.md`).
 - Merging a PR does not produce a release. Releases are deliberate, batched, and manual: a focused
   version-bump PR that adds `distribution/releases/v<version>.md`, an annotated `v<version>` tag on
-  that merge commit, then the `windows-release-candidate` workflow and downloaded-byte acceptance
+  that merge commit, then the `desktop-release-candidate` workflow and downloaded-byte acceptance
   described in `distribution/RELEASE-OPERATIONS.md`. There is no running changelog; notes are
   drafted at release time from `git log --first-parent <previous-tag>..main`.
 

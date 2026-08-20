@@ -26,6 +26,7 @@ const platformConfiguration =
           icon: "build/icon.png",
           category: "public.app-category.education",
           executableName: inputs.executableName,
+          extendInfo: { LSFileQuarantineEnabled: true },
           identity: null,
           hardenedRuntime: false,
           notarize: false,

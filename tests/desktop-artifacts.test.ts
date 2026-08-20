@@ -158,6 +158,7 @@ describe("desktop artifact targets", () => {
         icon: "build/icon.png",
         category: "public.app-category.education",
         executableName: "ApprovedProduct",
+        extendInfo: { LSFileQuarantineEnabled: true },
         identity: null,
         hardenedRuntime: false,
         notarize: false,

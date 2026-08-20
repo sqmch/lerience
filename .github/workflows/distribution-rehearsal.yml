@@ -149,9 +149,9 @@ jobs:
         run: pnpm package:macos:arm64
 
       - name: Verify exact unpacked arm64 application
-        run: >-
-          "dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/MacOS/LeriencePreview"
-          --verify-installation
+        run: |
+          plutil -extract LSFileQuarantineEnabled raw -o - "dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/Info.plist" | grep -qx true
+          "dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/MacOS/LeriencePreview" --verify-installation
 
       - name: Record arm64 artifact hashes
         run: shasum -a 256 dist/package/macos-arm64/*.dmg
@@ -212,9 +212,9 @@ jobs:
         run: pnpm package:macos:x64
 
       - name: Verify exact unpacked x64 application
-        run: >-
-          "dist/package/macos-x64/mac/LeriencePreview.app/Contents/MacOS/LeriencePreview"
-          --verify-installation
+        run: |
+          plutil -extract LSFileQuarantineEnabled raw -o - "dist/package/macos-x64/mac/LeriencePreview.app/Contents/Info.plist" | grep -qx true
+          "dist/package/macos-x64/mac/LeriencePreview.app/Contents/MacOS/LeriencePreview" --verify-installation
 
       - name: Record x64 artifact hashes
         run: shasum -a 256 dist/package/macos-x64/*.dmg

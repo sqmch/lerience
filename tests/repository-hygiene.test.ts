@@ -73,6 +73,7 @@ describe("repository publication hygiene", () => {
     expect(workflow).toContain(
       '"dist/package/macos-x64/mac/LeriencePreview.app/Contents/MacOS/LeriencePreview"',
     );
+    expect(workflow.match(/plutil -extract LSFileQuarantineEnabled/gmu)).toHaveLength(2);
   });
 
   it("records complete artifact hash and filename pairs", () => {
@@ -112,6 +113,7 @@ describe("repository publication hygiene", () => {
     expect(workflow).toContain("exactly the seven approved uploads");
     expect(workflow).toContain("runs-on: macos-latest");
     expect(workflow).toContain("runs-on: macos-15-intel");
+    expect(workflow.match(/plutil -extract LSFileQuarantineEnabled/gmu)).toHaveLength(2);
     expect(workflow).toContain("--artifacts dist/release-artifacts");
     const staging = read("scripts/stage-desktop-release.mjs");
     expect(staging).toContain("-corresponding-source.tar.gz");

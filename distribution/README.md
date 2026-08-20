@@ -83,7 +83,8 @@ the per-user NSIS target. The desktop builder creates separate unsigned DMGs for
 build host, runs the same focused runtime preflight, and applies the same 600 MiB post-pack inventory
 to physical files and ASAR contents. Preflight repeats CourseCreator and ADR-027 Course Engine
 update acceptance with the exact assembled Git/runtime; a developer-machine Git success is not
-package proof.
+package proof. The Mac package enables `LSFileQuarantineEnabled`, so DMGs downloaded by the app are
+handed back to macOS Gatekeeper; both native jobs assert the key in the packaged `Info.plist`.
 
 The runtime ledger pins the accepted npm input, while the lockfile policy applies the three-day
 dependency quarantine and CI repeats the frozen-install checks.
