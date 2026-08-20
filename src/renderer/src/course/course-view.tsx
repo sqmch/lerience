@@ -17,6 +17,7 @@ import { SeminarColumn } from "../seminar/seminar-column";
 import { useSeminar, type SeminarController } from "../seminar/use-seminar";
 import { AppShell } from "../shell/app-shell";
 import { BackToCourses, TitleRule } from "../shell/surface-head";
+import { EditorControl } from "./editor-control";
 import { LabOverlay } from "./lab-overlay";
 import { MaterialPane, type MaterialTab } from "./material";
 import { CourseRail } from "./rail";
@@ -99,6 +100,10 @@ export function CourseView({
   const [overlay, setOverlay] = useState<"record" | "lab" | null>(null);
   const [recordTab, setRecordTab] = useState<RecordTab>("quiz");
   const [labKey, setLabKey] = useState<string | null>(null);
+  /* The editor handoff lives in the seminar's head and its failures are shown
+     there, so the state that joins them belongs to the surface that owns both
+     columns rather than to either one. */
+  const [editorNotice, setEditorNotice] = useState<string | null>(null);
   const [connectionRequested, setConnectionRequested] = useState(false);
   const connection = useTutorConnection();
   /** Paths whose read is in flight or done. A read that returns nothing must
@@ -156,6 +161,12 @@ export function CourseView({
     setSelectedId(id);
     setTab("lesson");
   }, []);
+
+  /* A failed launch is about the module it was launched for. Move to another
+     and the message is no longer true of anything on screen. */
+  useEffect(() => {
+    setEditorNotice(null);
+  }, [active?.id]);
 
   const done = data.modules.filter((entry) => entry.status === "completed").length;
   const due = dueItems(data.quiz).length;
@@ -249,6 +260,21 @@ export function CourseView({
             onStart={() => {
               if (connection.ready) void startSeminar();
               else setConnectionRequested(true);
+            }}
+            /* Presence-based (ADR-013): a scaffold on the SELECTED module is
+               what there is to open, so the control follows the page beside
+               it rather than the session. */
+            head={
+              active?.hasScaffold === true ? (
+                <EditorControl
+                  target={{ kind: "module", moduleId: active.id }}
+                  onNotice={setEditorNotice}
+                />
+              ) : null
+            }
+            notice={editorNotice}
+            onDismissNotice={() => {
+              setEditorNotice(null);
             }}
           />
         }

@@ -11,7 +11,14 @@
  * for when the learner wants their journal or COURSE.md beside the code.
  *
  * Presence-based (ADR-013): the caller renders this only for a module with a
- * scaffold. The control itself knows nothing about course types. */
+ * scaffold. The control itself knows nothing about course types.
+ *
+ * It sits in the seminar column's head. It used to sit in the material pane's
+ * tab row, and an editor with a long name ("Visual Studio Code") plus the tabs
+ * plus Run checks was more row than a squeezed pane had: the control painted
+ * over the seam and into the column beside it. The seminar's head carries a
+ * label and one link, so there is room — and the older Praxeum builds put the
+ * handoff there for the same reason. */
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useCallback, useEffect, useState } from "react";
@@ -21,18 +28,26 @@ import { MENU_PANEL, MENU_ROW, MENU_TICK } from "../components/menu";
 
 /* The two halves of one pill. Between them: one hairline, drawn once (the
    right half's left border is dropped) so the seam reads as a division of one
-   control rather than two controls touching. Both halves share QUIET's
-   vocabulary — the border, the wash on hover, the ring on focus — restated
-   here because QUIET is fully round and these ends are not. */
+   control rather than two controls touching.
+
+   The vocabulary is the rail's INSTRUMENT, restated here because INSTRUMENT
+   is fully round and these ends are not: transparent border at rest, a border
+   and a ground on hover. An outlined pill was the loudest thing in a head row
+   whose other occupants are a heading and a text link, and it read as the
+   column's main action, which it is not. Quiet at rest, a control under the
+   pointer, the same as Record / Lab / Folder.
+
+   `group-hover` on the border and `hover` on the ground: the outline belongs
+   to the whole control, so both halves take it together, while the wash
+   marks the half you are actually about to press. */
 const HALF =
-  "border-line-strong text-ink inline-flex items-center gap-2 self-stretch border py-2 text-xs " +
-  "font-medium whitespace-nowrap transition-colors hover:bg-accent-wash hover:border-ink-faint " +
-  "disabled:opacity-50 focus-visible:outline-2 focus-visible:-outline-offset-2 " +
-  "focus-visible:outline-focus data-[state=open]:bg-accent-wash";
-/* Padding matches the Run-checks button beside it (QUIET's px-4 py-2), so the
-   two read as one row of controls at one height. */
-const LEFT = `${HALF} rounded-l-pill pl-4 pr-3`;
-const RIGHT = `${HALF} rounded-r-pill border-l-0 px-2`;
+  "border-transparent text-ink-dim group-hover:border-line group-hover:text-hi " +
+  "inline-flex items-center gap-2 self-stretch border py-1.5 text-xs font-medium " +
+  "whitespace-nowrap transition-colors hover:bg-surface-raised disabled:opacity-50 " +
+  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus " +
+  "data-[state=open]:border-line data-[state=open]:bg-surface-raised data-[state=open]:text-hi";
+const LEFT = `${HALF} rounded-l-pill pl-2.5 pr-2`;
+const RIGHT = `${HALF} rounded-r-pill border-l-0 px-1.5`;
 
 const ROW = `${MENU_ROW} flex cursor-pointer items-center gap-2 px-2.5 py-2 text-sm`;
 
@@ -100,13 +115,18 @@ export function EditorControl({
         setOpen(next);
       }}
     >
-      <div className="flex shrink-0 items-center">
+      {/* Shrinkable, unlike every other pill: this one carries a name the
+          app does not choose ("Visual Studio Code", or whatever executable the
+          learner browsed to), in a column the learner can drag narrow. The
+          label truncates; the chevron and the glyph never do, so the control
+          stays a control at any width. */}
+      <div className="group flex min-w-0 items-center">
         {/* With nothing to launch, the button's only useful act is to show the
             menu — so it opens it rather than sitting dead. (The chevron stays
             the menu's one anchor; Radix positions against a single trigger.) */}
         <button
           type="button"
-          className={LEFT}
+          className={`${LEFT} min-w-0`}
           disabled={busy || catalog === null}
           aria-haspopup={none ? "menu" : undefined}
           aria-expanded={none ? open : undefined}
@@ -121,14 +141,14 @@ export function EditorControl({
           }}
         >
           {busy ? (
-            <SpinnerGlyph className="animate-spin size-3.5" />
+            <SpinnerGlyph className="animate-spin size-3.5 shrink-0" />
           ) : (
-            <CodeGlyph className="size-3.5" />
+            <CodeGlyph className="size-3.5 shrink-0" />
           )}
-          <span>{label}</span>
+          <span className="truncate">{label}</span>
         </button>
         <DropdownMenu.Trigger
-          className={RIGHT}
+          className={`${RIGHT} shrink-0`}
           aria-label="Choose an editor"
           disabled={catalog === null}
         >

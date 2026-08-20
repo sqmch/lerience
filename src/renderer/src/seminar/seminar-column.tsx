@@ -15,8 +15,9 @@
  * the tutor speaks the reading face on the ground, the learner speaks sans in a
  * raised card. Screen readers still get both, via aria-label on the turns. */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PRIMARY, QUIET } from "../components/controls";
+import { Notice } from "../components/notice";
 import {
   ApprovalCard,
   Composer,
@@ -34,6 +35,9 @@ export function SeminarColumn({
   seminar,
   onboarding,
   onStart,
+  head,
+  notice,
+  onDismissNotice,
 }: {
   /** Created by the course view, not here: the status bar reads the same
    *  session, and two `useSeminar` calls would be two reducers over one real
@@ -41,6 +45,14 @@ export function SeminarColumn({
   seminar: SeminarController;
   onboarding: boolean;
   onStart: () => void;
+  /** A control the head has room for and the material pane's tab row does
+   *  not. The column stays ignorant of what it is. */
+  head?: ReactNode;
+  /** What `head`'s control could not fit — a failed editor launch, chiefly.
+   *  Under the head rather than in the transcript: the transcript scrolls, and
+   *  a message about a button should not scroll away from it. */
+  notice?: string | null;
+  onDismissNotice?: () => void;
 }): React.JSX.Element {
   const { state, busy, recoveryPending } = seminar;
   const [draft, setDraft] = useState("");
@@ -63,23 +75,36 @@ export function SeminarColumn({
       aria-label="Course conversation"
     >
       {/* Head height matches the material pane's tab row so the two line up
-          across the workspace. It names the column and holds the one action
-          that must not sit next to Send. */}
-      <header className="border-line-soft flex h-12 shrink-0 items-center gap-3 border-b px-5">
-        <h2 className="text-ink-dim text-xs font-medium">Seminar</h2>
-        {state.phase === "idle" ? (
-          <button
-            type="button"
-            className="text-ink-faint hover:text-hi focus-visible:outline-focus ml-auto rounded-pill px-1 text-xs underline underline-offset-4 transition-colors focus-visible:outline-2"
-            title="Wrap this session up: journal entry, quiz seeds, progress, commit"
-            onClick={() => {
-              void seminar.end();
-            }}
-          >
-            End session
-          </button>
-        ) : null}
+          across the workspace. It names the column, and its right end is where
+          the workspace's chrome controls go: the one session action that must
+          not sit next to Send, and whatever the caller hands it. The tab row
+          beside it is full at any width; this row is a heading and a link. */}
+      <header className="border-line-soft flex h-12 shrink-0 items-center gap-3 overflow-hidden border-b px-5">
+        <h2 className="text-ink-dim shrink-0 text-xs font-medium">Seminar</h2>
+        {/* `min-w-0` down the chain so a long editor name yields to the column
+            instead of pushing "End session" out of it. */}
+        <div className="ml-auto flex min-w-0 items-center gap-3">
+          {head}
+          {state.phase === "idle" ? (
+            <button
+              type="button"
+              className="text-ink-faint hover:text-hi focus-visible:outline-focus shrink-0 rounded-pill px-1 text-xs underline underline-offset-4 transition-colors focus-visible:outline-2"
+              title="Wrap this session up: journal entry, quiz seeds, progress, commit"
+              onClick={() => {
+                void seminar.end();
+              }}
+            >
+              End session
+            </button>
+          ) : null}
+        </div>
       </header>
+
+      {notice === null || notice === undefined || onDismissNotice === undefined ? null : (
+        <div className="shrink-0 px-5 pt-3.5">
+          <Notice detail={notice} dismissLabel="Dismiss this notice" onDismiss={onDismissNotice} />
+        </div>
+      )}
 
       <div ref={viewportRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={onScroll}>
         <div className="flex flex-col gap-5 px-5 pt-5 pb-8">
