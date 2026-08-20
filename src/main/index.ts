@@ -92,7 +92,7 @@ import { CodexTutorProvider } from "./provider/codex-provider";
 import { ClaudeTutorAgent } from "./agent/claude";
 import { createCodexAppServerFactory } from "./provider/codex-app-server";
 import { discoverInstalledProviderRuntime } from "./provider/installed-runtime";
-import { TutorProviderRegistry } from "./provider/registry";
+import { createRefreshingTutorProvider, TutorProviderRegistry } from "./provider/registry";
 import { createProviderRuntimeProbe } from "./provider/compatibility";
 import { createRuntimeEnvironment, resolveRuntimeLayout } from "./runtime-layout";
 import { inspectPackagedRuntime } from "./runtime-manifest";
@@ -476,38 +476,47 @@ void app.whenReady().then(async () => {
           process.platform,
           process.execPath,
         );
-  const claudeRuntime = discoverInstalledProviderRuntime("claude");
-  const codexRuntime = discoverInstalledProviderRuntime("codex");
-  const claudeExecutable = claudeRuntime.executablePath;
-  const codexExecutable = codexRuntime.executablePath;
-  const claudeAgent =
-    claudeExecutable === null
-      ? null
-      : new ClaudeTutorAgent(undefined, undefined, claudeExecutable, runtimeEnvironment);
-  const claudeCommand =
-    claudeExecutable === null
-      ? null
-      : createClaudeCommandRunner(claudeExecutable, runtimeEnvironment);
-  const codexAppServer =
-    codexExecutable === null
-      ? undefined
-      : createCodexAppServerFactory({
-          executable: codexExecutable,
-          clientVersion: app.getVersion(),
-          environment: runtimeEnvironment,
-        });
   providers = new TutorProviderRegistry(
     [
-      new ClaudeTutorProvider({
-        runtimeProbe: createProviderRuntimeProbe(claudeRuntime, runtimeEnvironment),
-        command: claudeCommand,
-        agent: claudeAgent,
-        openExternal: (url) => shell.openExternal(url),
+      createRefreshingTutorProvider({
+        id: "claude",
+        label: "Claude Code",
+        load: () => {
+          const runtime = discoverInstalledProviderRuntime("claude");
+          const executable = runtime.executablePath;
+          return new ClaudeTutorProvider({
+            runtimeProbe: createProviderRuntimeProbe(runtime, runtimeEnvironment),
+            command:
+              executable === null
+                ? null
+                : createClaudeCommandRunner(executable, runtimeEnvironment),
+            agent:
+              executable === null
+                ? null
+                : new ClaudeTutorAgent(undefined, undefined, executable, runtimeEnvironment),
+            openExternal: (url) => shell.openExternal(url),
+          });
+        },
       }),
-      new CodexTutorProvider({
-        runtimeProbe: createProviderRuntimeProbe(codexRuntime, runtimeEnvironment),
-        openExternal: (url) => shell.openExternal(url),
-        appServer: codexAppServer ?? null,
+      createRefreshingTutorProvider({
+        id: "codex",
+        label: "Codex",
+        load: () => {
+          const runtime = discoverInstalledProviderRuntime("codex");
+          const executable = runtime.executablePath;
+          return new CodexTutorProvider({
+            runtimeProbe: createProviderRuntimeProbe(runtime, runtimeEnvironment),
+            openExternal: (url) => shell.openExternal(url),
+            appServer:
+              executable === null
+                ? null
+                : createCodexAppServerFactory({
+                    executable,
+                    clientVersion: app.getVersion(),
+                    environment: runtimeEnvironment,
+                  }),
+          });
+        },
       }),
     ],
     {

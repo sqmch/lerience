@@ -4,7 +4,13 @@ import type { ProviderReadiness, TutorProviderId } from "../../../shared/provide
 import { GHOST, PRIMARY, QUIET } from "../components/controls";
 import { CheckGlyph, ChevronDownGlyph, ChevronLeftGlyph, SpinnerGlyph } from "../components/glyphs";
 import { MENU_PANEL, MENU_ROW, MENU_TICK } from "../components/menu";
-import { isReady, needsRepair, providerPrimaryAction, statusLabel } from "./provider-presentation";
+import {
+  isReady,
+  needsRepair,
+  providerPrimaryAction,
+  providerSecondaryAction,
+  statusLabel,
+} from "./provider-presentation";
 import type { TutorConnectionController } from "./use-tutor-connection";
 
 /* `block` is load-bearing, not tidiness: a bare <span> is inline, and width and
@@ -272,6 +278,7 @@ function ProviderCard({
 }): React.JSX.Element {
   const connected = provider.connection === "connected";
   const action = providerPrimaryAction(provider);
+  const secondaryAction = providerSecondaryAction(provider);
   /* The white border says "this is the one that teaches your next session",
      so it may only appear on a card where that is TRUE. Keyed on `selected`
      alone it appeared on whichever provider the preference happened to name —
@@ -318,7 +325,7 @@ function ProviderCard({
           whose usage block runs the full height put "Use Codex" flush against
           "Resets Sat 10:00 AM". An auto margin cannot also be a minimum, so
           the padding has to sit on a box that is not the one being pushed. */}
-      <div className="mt-auto pt-5">
+      <div className="mt-auto flex items-center gap-2 pt-5">
         <button
           type="button"
           className={`${connected ? PRIMARY : QUIET} text-sm`}
@@ -331,6 +338,15 @@ function ProviderCard({
         >
           {action.kind === "select" && selected ? "Selected" : action.label}
         </button>
+        {secondaryAction === null ? null : (
+          <button
+            type="button"
+            className={`${GHOST} text-sm`}
+            onClick={() => onRefresh(provider.id)}
+          >
+            {secondaryAction.label}
+          </button>
+        )}
       </div>
     </article>
   );

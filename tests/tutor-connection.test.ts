@@ -4,6 +4,7 @@ import {
   isReady,
   needsRepair,
   providerPrimaryAction,
+  providerSecondaryAction,
   statusLabel,
 } from "../src/renderer/src/tutor/provider-presentation";
 import type { ProviderCatalog, ProviderReadiness } from "../src/shared/provider";
@@ -68,8 +69,10 @@ describe("provider readiness actions", () => {
       kind: "guide",
       label: "Install Claude Code",
     });
+    expect(providerSecondaryAction(missing)).toEqual({ kind: "refresh", label: "Check again" });
     expect(statusLabel(missing)).toBe("Not installed");
     expect(providerPrimaryAction(newer)).toEqual({ kind: "refresh", label: "Check again" });
+    expect(providerSecondaryAction(newer)).toBeNull();
     expect(statusLabel(newer)).toBe("App update needed");
   });
 });

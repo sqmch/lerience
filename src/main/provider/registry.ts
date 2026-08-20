@@ -12,6 +12,48 @@ export interface ProviderSelectionStore {
   write(providerId: TutorProviderId): void;
 }
 
+export interface RefreshingTutorProviderOptions {
+  id: TutorProviderId;
+  label: string;
+  load(): TutorProvider;
+}
+
+/** Keep provider-owned installation state live without replacing a provider
+ * while its login ceremony is in progress. Readiness checks and fresh tutor
+ * sessions each load against the filesystem again. */
+export function createRefreshingTutorProvider(
+  options: RefreshingTutorProviderOptions,
+): TutorProvider {
+  let activeLogin: TutorProvider | null = null;
+
+  const load = (): TutorProvider => {
+    const provider = options.load();
+    if (provider.id !== options.id) {
+      throw new Error("A tutor provider loader returned the wrong provider.");
+    }
+    return provider;
+  };
+
+  return {
+    id: options.id,
+    label: options.label,
+    describeReadiness: async () => await load().describeReadiness(),
+    beginLogin: async () => {
+      const ownsLogin = activeLogin === null;
+      const provider = activeLogin ?? load();
+      if (ownsLogin) activeLogin = provider;
+      try {
+        return await provider.beginLogin();
+      } finally {
+        if (ownsLogin && activeLogin === provider) activeLogin = null;
+      }
+    },
+    cancelLogin: () => activeLogin?.cancelLogin(),
+    openSetupGuide: async () => await load().openSetupGuide(),
+    createAgent: () => load().createAgent(),
+  };
+}
+
 /** The single provider branching point. Everything downstream receives the
  * ordinary TutorAgent seam (ADR-004/021). */
 export class TutorProviderRegistry {

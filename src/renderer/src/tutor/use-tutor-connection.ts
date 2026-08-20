@@ -68,6 +68,22 @@ export function useTutorConnection(): TutorConnectionController {
     };
   }, []);
 
+  useEffect(() => {
+    const current = selectedReadiness(catalog);
+    if (
+      current !== null &&
+      current.runtime.state === "ready" &&
+      current.connection === "connected"
+    ) {
+      return;
+    }
+    const refreshWhenFocused = (): void => {
+      void refresh();
+    };
+    window.addEventListener("focus", refreshWhenFocused);
+    return () => window.removeEventListener("focus", refreshWhenFocused);
+  }, [catalog, refresh]);
+
   const select = useCallback(async (providerId: TutorProviderId): Promise<void> => {
     setError(null);
     try {

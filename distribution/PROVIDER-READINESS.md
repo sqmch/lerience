@@ -87,8 +87,10 @@ A provider is enabled in a public artifact only when all of these are true:
 ## Implemented compatibility contract
 
 The main-process seam discovers an absolute provider-owned executable without a shell, including
-well-known Windows locations and inherited `PATH` entries containing spaces. It runs a bounded
-`--version` probe before auth or session work and exposes only a parsed semantic version.
+well-known Windows locations, the standard macOS Codex and ChatGPT app bundles, and inherited
+`PATH` entries containing spaces. It runs a bounded `--version` probe before auth or session work
+and exposes only a parsed semantic version. Each readiness check and fresh tutor session repeats
+discovery so installing a provider does not require restarting Lerience.
 
 | Provider    | Accepted by this build              | Older              | Newer/changed   |
 | ----------- | ----------------------------------- | ------------------ | --------------- |
@@ -97,9 +99,11 @@ well-known Windows locations and inherited `PATH` entries containing spaces. It 
 
 The learner-facing states are `ready`, `not installed`, `provider update required`, `Lerience update
 required`, and `temporarily unavailable`. Missing/old providers link only to the official Claude
-installation page or official Codex CLI page. The learner's selected provider is retained while
-opening guidance or checking again. No state exposes process stderr, executable paths, raw protocol
-frames, credentials, or a provider-specific settings surface.
+installation page or official Codex CLI page. Returning focus to Lerience rechecks a selected tutor
+that is not ready, and the provider card keeps an explicit `Check again` action. The learner's
+selected provider is retained while opening guidance or checking again. No state exposes process
+stderr, executable paths, raw protocol frames, credentials, or a provider-specific settings
+surface.
 
 On the 2026-08-15 source machine, provider-owned Claude Code `2.1.223` and Codex `0.144.6` matched
 the supported version contract. This version check is not a substitute for the exact packaged

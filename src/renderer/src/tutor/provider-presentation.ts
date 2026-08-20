@@ -49,3 +49,12 @@ export function providerPrimaryAction(provider: ProviderReadiness): {
   }
   return { kind: "select", label: `Use ${provider.label}` };
 }
+
+export function providerSecondaryAction(provider: ProviderReadiness): {
+  kind: "refresh";
+  label: string;
+} | null {
+  return providerPrimaryAction(provider).kind === "guide"
+    ? { kind: "refresh", label: "Check again" }
+    : null;
+}
