@@ -19,6 +19,12 @@
   },
   "components": {
     "notices": {
+      "git": {
+        "version": "2.53.0",
+        "license": "GPL-2.0-only",
+        "url": "https://raw.githubusercontent.com/git/git/67ad42147a7acc2af6074753ebd03d904476118f/COPYING",
+        "sha256": "5b2198d1645f767585e8a88ac0499b04472164c0d2da22e75ecf97ef443ab32e"
+      },
       "gitLfs": {
         "version": "3.7.1",
         "license": "MIT and BSD-3-Clause",

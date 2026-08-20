@@ -119,6 +119,7 @@ async function resolveInstalledSources(targetKey, ledger) {
   const npmPackage = path.dirname(require.resolve("npm/package.json"));
   const npmManifest = await readJson(path.join(npmPackage, "package.json"));
   assertVersion("npm", npmManifest.version, ledger.components.npm.version);
+  const gitLicense = await downloadVerifiedSource(ledger.components.notices.git);
   const gitLfsLicense = await downloadVerifiedSource(ledger.components.notices.gitLfs);
 
   return {
@@ -127,11 +128,10 @@ async function resolveInstalledSources(targetKey, ledger) {
     npmRoot: npmPackage,
     licenseSources: {
       dugite: path.join(dugitePackage, "LICENSE"),
-      git: path.join(dugitePackage, "git", "LICENSE.txt"),
       npm: path.join(npmPackage, "LICENSE"),
       notices: path.join(repositoryRoot, "distribution", "THIRD-PARTY-NOTICES.md"),
     },
-    remoteLicenses: { "git-lfs.md": gitLfsLicense },
+    remoteLicenses: { "git.txt": gitLicense, "git-lfs.md": gitLfsLicense },
   };
 }
 
