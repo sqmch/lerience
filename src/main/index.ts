@@ -97,8 +97,9 @@ import { createProviderRuntimeProbe } from "./provider/compatibility";
 import { createRuntimeEnvironment, resolveRuntimeLayout } from "./runtime-layout";
 import { inspectPackagedRuntime } from "./runtime-manifest";
 import type { ProviderCatalog, ProviderLoginReply, TutorProviderId } from "../shared/provider";
-import type { UpdateAction, UpdateStatus } from "../shared/update";
+import type { UpdateStatus } from "../shared/update";
 import { registerUpdateActivationCheck } from "./update/activation";
+import { createUpdatePlatform } from "./update/platform";
 import { compiledReleaseConfig } from "./update/release-config";
 import {
   compiledFrameColors,
@@ -107,7 +108,6 @@ import {
   windowTitleBarOptions,
 } from "./window-frame";
 import { UpdateService } from "./update/service";
-import type { ReleaseTarget } from "./update/release-manifest";
 
 const devServerUrl = process.env["ELECTRON_RENDERER_URL"];
 const require = createRequire(import.meta.url);
@@ -328,31 +328,6 @@ function updateService(): UpdateService {
   return updates;
 }
 
-function releaseTarget(): ReleaseTarget {
-  const architecture = process.arch === "arm64" ? "arm64" : "x64";
-  if (process.platform === "darwin") {
-    return { platform: "darwin", architecture, installation: "app-bundle" };
-  }
-  return {
-    platform: "win32",
-    architecture,
-    installation: process.env["PORTABLE_EXECUTABLE_FILE"] ? "portable" : "nsis",
-  };
-}
-
-async function launchUpdateArtifact(filePath: string, action: UpdateAction): Promise<void> {
-  if (process.platform === "darwin") {
-    const error = await shell.openPath(filePath);
-    if (error !== "") throw new Error(error);
-    return;
-  }
-  if (action !== "install-restart" && action !== "open-package") {
-    throw new Error("That update action is unavailable.");
-  }
-  const child = spawn(filePath, [], { detached: true, stdio: "ignore" });
-  child.unref();
-}
-
 function isTutorProviderId(value: unknown): value is TutorProviderId {
   return value === "claude" || value === "codex";
 }
@@ -539,14 +514,24 @@ void app.whenReady().then(async () => {
     emitAgentEvent: broadcastSeminarEvent,
     emitSnapshot: broadcastSeminarSnapshot,
   });
+  const updatePlatform = createUpdatePlatform({
+    platform: process.platform,
+    architecture: process.arch,
+    portableExecutable: Boolean(process.env["PORTABLE_EXECUTABLE_FILE"]),
+    openPath: (filePath) => shell.openPath(filePath),
+    launchDetached: (filePath, args) => {
+      const child = spawn(filePath, [...args], { detached: true, stdio: "ignore" });
+      child.unref();
+    },
+  });
   updates = new UpdateService({
     config: compiledReleaseConfig,
     currentVersion: app.getVersion(),
-    target: releaseTarget(),
+    target: updatePlatform.target,
     downloadRoot: path.join(app.getPath("userData"), "updates"),
     emitStatus: broadcastUpdateStatus,
     prepareForHandoff: () => sessionConductor().prepareForUpdate(),
-    launchArtifact: launchUpdateArtifact,
+    launchArtifact: updatePlatform.launchArtifact,
     quit: () => app.quit(),
   });
 

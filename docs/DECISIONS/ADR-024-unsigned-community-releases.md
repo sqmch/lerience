@@ -17,12 +17,13 @@ user intervention, but downloading and installing are learner-approved actions:
 1. A non-blocking in-app banner announces an available version and shows its release notes.
 2. The learner chooses **Download update**; progress and recoverable failure stay in the app.
 3. Lerience verifies the release manifest and downloaded artifact.
-4. The learner chooses **Install and restart**. Lerience waits for the current tutor turn to
+4. The learner chooses **Restart to update**. Lerience waits for the current tutor turn to
    settle, releases the provider, and persists trailing transcript events before stopping the
    process tree. It leaves the logical session recoverable under ADR-009; it does not force the
    course close ritual as a condition of updating.
-5. The app launches the installer, exits, and reopens after installation. Windows may still show
-   its unsigned-publisher warning.
+5. The app launches the verified NSIS package with electron-builder's standard silent-update and
+   force-run flags, exits, and reopens after installation. The learner does not step through the
+   installer wizard. Windows may still show its unsigned-publisher warning.
 
 The NSIS-installed Windows build can complete that flow in-app. A Windows portable build uses the
 same verified notification and download experience, then offers **Open downloaded package**; a
@@ -44,7 +45,8 @@ seamless self-replacing macOS update until Developer ID signing and notarization
 
 Application updates replace application-owned files only. They never modify courses, provider
 credentials/configuration, or app-data migration state outside a versioned, tested migration.
-Automatic background installation is out of scope; automatic update checks are not.
+Automatic background installation is out of scope; the silent NSIS handoff happens only after the
+learner explicitly approves it. Automatic update checks are not out of scope.
 
 ## Why
 
@@ -62,7 +64,7 @@ product copy must say so honestly.
 ## Rejected
 
 - Treating signing credentials as a prerequisite for any distributable M5 artifact.
-- Silent background download or installation.
+- Silent background download or installation without an explicit learner action.
 - Sending every update through a browser and requiring the learner to find the correct asset.
 - Depending on `electron-updater` skipping Windows signature verification when `publisherName`
   is absent; that behavior is fail-open and explicitly deprecated upstream.
