@@ -98,6 +98,7 @@ import { createRuntimeEnvironment, resolveRuntimeLayout } from "./runtime-layout
 import { inspectPackagedRuntime } from "./runtime-manifest";
 import type { ProviderCatalog, ProviderLoginReply, TutorProviderId } from "../shared/provider";
 import type { UpdateAction, UpdateStatus } from "../shared/update";
+import { registerUpdateActivationCheck } from "./update/activation";
 import { compiledReleaseConfig } from "./update/release-config";
 import {
   compiledFrameColors,
@@ -971,6 +972,7 @@ void app.whenReady().then(async () => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+  registerUpdateActivationCheck(app, updateService());
 });
 
 app.on("window-all-closed", () => {

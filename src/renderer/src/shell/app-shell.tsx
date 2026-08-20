@@ -84,8 +84,7 @@ function UpdateBanner(): React.JSX.Element | null {
     status === null ||
     status.phase === "unavailable" ||
     status.phase === "checking" ||
-    status.phase === "current" ||
-    (status.phase === "error" && status.operation === "check")
+    status.phase === "current"
   ) {
     return null;
   }
@@ -93,7 +92,7 @@ function UpdateBanner(): React.JSX.Element | null {
   const invoke = (): void => {
     const api = window.praxeum;
     let operation: Promise<UpdateStatus>;
-    let failureOperation: "download" | "handoff";
+    let failureOperation: "check" | "download" | "handoff";
     if (status.phase === "available") {
       operation = api.downloadUpdate();
       failureOperation = "download";
@@ -106,6 +105,9 @@ function UpdateBanner(): React.JSX.Element | null {
     } else if (status.phase === "error" && status.operation === "handoff") {
       operation = api.handoffUpdate();
       failureOperation = "handoff";
+    } else if (status.phase === "error" && status.operation === "check") {
+      operation = api.checkForUpdate();
+      failureOperation = "check";
     } else return;
     void operation.then(setStatus).catch(() => {
       setStatus({
