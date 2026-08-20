@@ -15,6 +15,20 @@
         "fileCount": 1944,
         "treeSha256": "0b3617564dee1eaca2faadbf668bb99e5b8378bbafbd423dc37abe910dc1daa3"
       }
+    },
+    "darwin-arm64": {
+      "course-engine": {
+        "fileCount": 22,
+        "treeSha256": "3408646b7e7445a0bb668e0515bb49ea06147fa3b79a27f7c959297efcf52863"
+      },
+      "git": {
+        "fileCount": 460,
+        "treeSha256": "49f2d5265d5417a81e4f090bc2a14ca6f586a7a0b425fb1c97b29b1e0003ee07"
+      },
+      "npm": {
+        "fileCount": 1944,
+        "treeSha256": "983dd82e3792ccc9baf933bca0ead38d0001800764267ed30bdfc6be16c8fb23"
+      }
     }
   },
   "components": {

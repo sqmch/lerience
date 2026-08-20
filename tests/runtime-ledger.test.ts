@@ -83,13 +83,15 @@ describe("runtime supply ledger", () => {
     expect(ledger.components.notices.git.sha256).toMatch(/^[a-f0-9]{64}$/u);
   });
 
-  it("binds the accepted Windows assembly to reviewed complete component trees", () => {
-    expect(Object.keys(ledger.acceptedComponentTrees)).toEqual(["win32-x64"]);
-    const windowsTrees = ledger.acceptedComponentTrees["win32-x64"];
-    expect(Object.keys(windowsTrees ?? {}).sort()).toEqual(["course-engine", "git", "npm"]);
-    for (const tree of Object.values(windowsTrees ?? {})) {
-      expect(tree.fileCount).toBeGreaterThan(0);
-      expect(tree.treeSha256).toMatch(/^[a-f0-9]{64}$/u);
+  it("binds accepted native assemblies to reviewed complete component trees", () => {
+    expect(Object.keys(ledger.acceptedComponentTrees)).toEqual(["win32-x64", "darwin-arm64"]);
+    for (const target of ["win32-x64", "darwin-arm64"]) {
+      const trees = ledger.acceptedComponentTrees[target];
+      expect(Object.keys(trees ?? {}).sort()).toEqual(["course-engine", "git", "npm"]);
+      for (const tree of Object.values(trees ?? {})) {
+        expect(tree.fileCount).toBeGreaterThan(0);
+        expect(tree.treeSha256).toMatch(/^[a-f0-9]{64}$/u);
+      }
     }
   });
 });

@@ -133,6 +133,11 @@ jobs:
       - name: Assemble reviewed macOS runtime
         run: pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-rehearsal
 
+      - name: Reproduce exact macOS runtime manifest
+        run: |
+          pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-reproduction
+          cmp dist/runtime/darwin-arm64-rehearsal/manifest.json dist/runtime/darwin-arm64-reproduction/manifest.json
+
       - name: Build unsigned rehearsal DMG
         env:
           PRAXEUM_RUNTIME_ROOT: dist/runtime/darwin-arm64-rehearsal
