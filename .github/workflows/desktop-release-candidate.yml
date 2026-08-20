@@ -187,8 +187,8 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.18.0
-          cache: pnpm
 
+      # Dugite's macOS archive contains symlinks that pnpm's restored side-effects cache expands.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -252,8 +252,8 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.18.0
-          cache: pnpm
 
+      # Dugite's macOS archive contains symlinks that pnpm's restored side-effects cache expands.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

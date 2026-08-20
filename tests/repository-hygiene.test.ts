@@ -16,6 +16,14 @@ function filesUnder(relativeRoot: string): string[] {
   });
 }
 
+function workflowJob(source: string, jobName: string): string {
+  const start = source.indexOf(`  ${jobName}:`);
+  if (start === -1) throw new Error(`Missing workflow job: ${jobName}`);
+  const remaining = source.slice(start + 1);
+  const nextJob = remaining.search(/\r?\n {2}[a-z0-9_]+:\r?\n/u);
+  return source.slice(start, nextJob === -1 ? undefined : start + 1 + nextJob);
+}
+
 describe("repository publication hygiene", () => {
   it("pins every third-party workflow action to a full commit SHA", () => {
     const workflowRoot = path.join(root, ".github", "workflows");
@@ -82,6 +90,18 @@ describe("repository publication hygiene", () => {
     expect(workflow).toContain("ForEach-Object");
     expect(workflow).toContain("$([IO.Path]::GetFileName($_.Path))");
     expect(workflow).not.toContain("Format-Table");
+  });
+
+  it("does not restore pnpm's link-expanding cache in native macOS package jobs", () => {
+    for (const workflowPath of [
+      ".github/workflows/distribution-rehearsal.yml",
+      ".github/workflows/desktop-release-candidate.yml",
+    ]) {
+      const workflow = read(workflowPath);
+      for (const jobName of ["macos_arm64", "macos_x64"]) {
+        expect(workflowJob(workflow, jobName)).not.toContain("cache: pnpm");
+      }
+    }
   });
 
   it("keeps production release automation draft-only in the canonical source repository", () => {

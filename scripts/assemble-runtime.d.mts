@@ -8,5 +8,3 @@ export function assembleRuntime(options: {
 }): Promise<void>;
 
 export function copyNpmTree(source: string, destination: string): Promise<void>;
-
-export function normalizeRuntimeFileMode(mode: number, platform?: NodeJS.Platform): number;
