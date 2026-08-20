@@ -240,7 +240,7 @@ This is maintenance/power use, not a second study UI. The app embeds no terminal
 | M3 | Session lifecycle: context assembly, transcript persistence, abandonment + wrap-up, check lens | the product loop end to end | Complete |
 | M4 | Course creation: engine materialization + onboarding interview + arc review gate | new-learner journey | Complete; design accepted 2026-08-14 |
 | M4.5 | Tutor connection: provider choice, vendor-owned sign-in, readiness, Codex adapter, and honest usage limits | the non-terminal connection journey | Complete |
-| M5 | Packaging: lean app-owned artifacts, installed-provider compatibility, update trust, user-approved updates, uninstall | shippable | Complete; Windows x64 community releases are public |
+| M5 | Packaging: lean app-owned artifacts, installed-provider compatibility, update trust, user-approved updates, uninstall | shippable | Windows x64 releases are public; native Apple Silicon and Intel Mac release lanes are complete, with physical Mac acceptance pending |
 | M6 | Codex adapter behind the seam | provider independence | Absorbed into M4.5 |
 
 Each milestone lands with typecheck, tests, and lint green and is reviewed against this spec before

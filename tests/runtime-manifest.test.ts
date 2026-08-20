@@ -9,7 +9,8 @@ import {
   inspectPackagedRuntime,
   type RuntimeManifest,
 } from "../src/main/runtime-manifest";
-import { resolvePackagedRuntimeRoot, resolveRuntimeLayout } from "../src/main/runtime-layout";
+import { resolveRuntimeLayout } from "../src/main/runtime-layout";
+import { loadAssembledRuntime } from "./helpers/assembled-runtime";
 
 const temporaryRoots: string[] = [];
 const packageVersion = (
@@ -97,11 +98,9 @@ describe("packaged runtime manifest", () => {
   });
 
   it.runIf(process.env["PRAXEUM_RUNTIME_ROOT"] !== undefined)(
-    "accepts the exact assembled Windows runtime",
+    "accepts the exact assembled native runtime",
     async () => {
-      const runtimeRoot = process.env["PRAXEUM_RUNTIME_ROOT"];
-      if (runtimeRoot === undefined) throw new Error("PRAXEUM_RUNTIME_ROOT was removed");
-      const layout = resolvePackagedRuntimeRoot(runtimeRoot, "win32", "x64");
+      const { layout } = loadAssembledRuntime();
       await expect(inspectPackagedRuntime(layout, packageVersion)).resolves.toMatchObject({
         ok: true,
       });

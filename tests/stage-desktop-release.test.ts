@@ -56,11 +56,14 @@ function fixture() {
   const artifactsDir = path.join(root, "artifacts");
   fs.mkdirSync(artifactsDir);
   const nsis = path.join(artifactsDir, `${executableName}-Setup-${packageVersion}-x64.exe`);
-  const dmg = path.join(artifactsDir, `${executableName}-${packageVersion}-arm64.dmg`);
+  const armDmg = path.join(artifactsDir, `${executableName}-${packageVersion}-arm64.dmg`);
+  const intelDmg = path.join(artifactsDir, `${executableName}-${packageVersion}-x64.dmg`);
   const nsisBytes = Buffer.from("installer");
-  const dmgBytes = Buffer.from("mac package");
+  const armDmgBytes = Buffer.from("arm mac package");
+  const intelDmgBytes = Buffer.from("intel mac package");
   fs.writeFileSync(nsis, nsisBytes);
-  fs.writeFileSync(dmg, dmgBytes);
+  fs.writeFileSync(armDmg, armDmgBytes);
+  fs.writeFileSync(intelDmg, intelDmgBytes);
   const notes = path.join(root, "notes.md");
   const notices = path.join(root, "notices.md");
   fs.writeFileSync(notes, "A reviewed release candidate.\n");
@@ -91,9 +94,17 @@ function fixture() {
         platform: "darwin",
         architecture: "arm64",
         packageType: "dmg",
-        fileName: path.basename(dmg),
-        size: dmgBytes.length,
-        sha256: sha256(dmgBytes),
+        fileName: path.basename(armDmg),
+        size: armDmgBytes.length,
+        sha256: sha256(armDmgBytes),
+      },
+      {
+        platform: "darwin",
+        architecture: "x64",
+        packageType: "dmg",
+        fileName: path.basename(intelDmg),
+        size: intelDmgBytes.length,
+        sha256: sha256(intelDmgBytes),
       },
     ],
   };
@@ -156,7 +167,7 @@ afterEach(() => {
 });
 
 describe("desktop release staging", () => {
-  it("verifies trust inputs and emits exactly six intentional release uploads", async () => {
+  it("verifies trust inputs and emits exactly seven intentional release uploads", async () => {
     const value = fixture();
     const result = await stageDesktopRelease(value.options);
 
@@ -177,6 +188,12 @@ describe("desktop release staging", () => {
           packageType: "dmg",
           versioned: `ApprovedProduct-${packageVersion}-arm64.dmg`,
         },
+        {
+          platform: "darwin",
+          architecture: "x64",
+          packageType: "dmg",
+          versioned: `ApprovedProduct-${packageVersion}-x64.dmg`,
+        },
       ],
       correspondingSource: {
         fileName: `ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`,
@@ -185,6 +202,7 @@ describe("desktop release staging", () => {
     expect(fs.readdirSync(value.options.output).sort()).toEqual([
       `ApprovedProduct-${packageVersion}-arm64.dmg`,
       `ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`,
+      `ApprovedProduct-${packageVersion}-x64.dmg`,
       `ApprovedProduct-Setup-${packageVersion}-x64.exe`,
       "SHA256SUMS",
       "release-manifest.json",
@@ -203,9 +221,10 @@ describe("desktop release staging", () => {
       "THIRD-PARTY-NOTICES.md",
     ]);
     const sums = fs.readFileSync(path.join(value.options.output, "SHA256SUMS"), "utf8");
-    expect(sums.trim().split("\n")).toHaveLength(5);
+    expect(sums.trim().split("\n")).toHaveLength(6);
     expect(sums).toContain(`ApprovedProduct-Setup-${packageVersion}-x64.exe`);
     expect(sums).toContain(`ApprovedProduct-${packageVersion}-arm64.dmg`);
+    expect(sums).toContain(`ApprovedProduct-${packageVersion}-x64.dmg`);
     expect(sums).toContain(`ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`);
     expect(sums).toContain("release-manifest.sig");
     expect(sums).not.toContain("ApprovedProduct-Setup-x64.exe");

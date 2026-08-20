@@ -197,9 +197,11 @@ describe("desktop artifact targets", () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "lerience-release-artifacts-"));
     roots.push(directory);
     const windowsName = `Lerience-Setup-${packageVersion}-x64.exe`;
-    const macName = `Lerience-${packageVersion}-arm64.dmg`;
+    const armMacName = `Lerience-${packageVersion}-arm64.dmg`;
+    const intelMacName = `Lerience-${packageVersion}-x64.dmg`;
     fs.writeFileSync(path.join(directory, windowsName), "windows");
-    fs.writeFileSync(path.join(directory, macName), "macos");
+    fs.writeFileSync(path.join(directory, armMacName), "arm macos");
+    fs.writeFileSync(path.join(directory, intelMacName), "intel macos");
     const result = evaluate(
       `const {describeDesktopReleaseArtifacts}=await import('./scripts/desktop-artifacts.mjs'); console.log(JSON.stringify(await describeDesktopReleaseArtifacts({directory:${JSON.stringify(directory)}, executableName:'Lerience'})));`,
     );
@@ -218,9 +220,17 @@ describe("desktop artifact targets", () => {
         platform: "darwin",
         architecture: "arm64",
         packageType: "dmg",
-        fileName: macName,
-        size: 5,
-        sha256: createHash("sha256").update("macos").digest("hex"),
+        fileName: armMacName,
+        size: 9,
+        sha256: createHash("sha256").update("arm macos").digest("hex"),
+      }),
+      expect.objectContaining({
+        platform: "darwin",
+        architecture: "x64",
+        packageType: "dmg",
+        fileName: intelMacName,
+        size: 11,
+        sha256: createHash("sha256").update("intel macos").digest("hex"),
       }),
     ]);
   });
@@ -230,6 +240,7 @@ describe("desktop artifact targets", () => {
     roots.push(directory);
     fs.writeFileSync(path.join(directory, `Lerience-Setup-${packageVersion}-x64.exe`), "windows");
     fs.writeFileSync(path.join(directory, `Lerience-${packageVersion}-arm64.dmg`), "macos");
+    fs.writeFileSync(path.join(directory, `Lerience-${packageVersion}-x64.dmg`), "intel macos");
     fs.writeFileSync(path.join(directory, `Lerience-${packageVersion}-arm64.zip`), "unwanted");
     const extraVariant = evaluate(
       `const {describeDesktopReleaseArtifacts}=await import('./scripts/desktop-artifacts.mjs'); await describeDesktopReleaseArtifacts({directory:${JSON.stringify(directory)}, executableName:'Lerience'});`,

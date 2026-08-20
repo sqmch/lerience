@@ -11,6 +11,7 @@ import {
   type GitRunner,
   validateCourseName,
 } from "../src/main/course-creator";
+import { loadAssembledRuntime } from "./helpers/assembled-runtime";
 
 const temporaryRoots: string[] = [];
 
@@ -198,57 +199,43 @@ describe("CourseCreator", () => {
   });
 
   it.runIf(process.env["PRAXEUM_RUNTIME_ROOT"] !== undefined)(
-    "creates and inspects a course using only the assembled Windows runtime",
+    "creates and inspects a course using the assembled native runtime",
     async () => {
-      const runtimeRoot = process.env["PRAXEUM_RUNTIME_ROOT"];
-      if (runtimeRoot === undefined) throw new Error("PRAXEUM_RUNTIME_ROOT was removed");
-      const resolvedRuntimeRoot = path.resolve(runtimeRoot);
+      const runtime = loadAssembledRuntime();
       const workspace = temporaryRoot();
       const parent = path.join(workspace, "courses");
       fs.mkdirSync(parent);
-      const gitExecutable = path.join(resolvedRuntimeRoot, "tools", "git", "cmd", "git.exe");
       const creator = new CourseCreator({
-        courseTemplateRoot: path.join(resolvedRuntimeRoot, "course-engine", "template"),
-        git: new HostGitRunner(gitExecutable),
+        courseTemplateRoot: runtime.layout.courseTemplateRoot,
+        git: new HostGitRunner(runtime.layout.gitExecutable),
       });
       const created = await creator.create({ parentDirectory: parent, name: "Packaged Course" });
 
       expect(
-        execFileSync(gitExecutable, ["-C", created.rootPath, "status", "--porcelain"], {
-          encoding: "utf8",
-          windowsHide: true,
-        }),
+        execFileSync(
+          runtime.layout.gitExecutable,
+          ["-C", created.rootPath, "status", "--porcelain"],
+          {
+            encoding: "utf8",
+            windowsHide: true,
+          },
+        ),
       ).toBe("");
       expect(
-        execFileSync(gitExecutable, ["-C", created.rootPath, "remote"], {
+        execFileSync(runtime.layout.gitExecutable, ["-C", created.rootPath, "remote"], {
           encoding: "utf8",
           windowsHide: true,
         }),
       ).toBe("");
 
-      const runtimePath = [
-        path.join(resolvedRuntimeRoot, "tools", "git", "cmd"),
-        path.join(resolvedRuntimeRoot, "tools", "npm", "bin"),
-      ].join(";");
-      const electronExecutable = path.resolve("node_modules", "electron", "dist", "electron.exe");
       const doctor = spawnSync(
-        electronExecutable,
+        runtime.electronExecutable,
         [path.join(created.rootPath, "scripts", "doctor.mjs"), created.rootPath, "--json"],
         {
           cwd: created.rootPath,
           encoding: "utf8",
           windowsHide: true,
-          env: {
-            PATH: runtimePath,
-            PATHEXT: ".COM;.EXE;.BAT;.CMD",
-            ELECTRON_RUN_AS_NODE: "1",
-            PRAXEUM_ELECTRON_EXECUTABLE: electronExecutable,
-            ...(process.env["SystemRoot"] === undefined
-              ? {}
-              : { SystemRoot: process.env["SystemRoot"] }),
-            ...(process.env["TEMP"] === undefined ? {} : { TEMP: process.env["TEMP"] }),
-            ...(process.env["TMP"] === undefined ? {} : { TMP: process.env["TMP"] }),
-          },
+          env: runtime.environment,
         },
       );
       expect([0, 1]).toContain(doctor.status);

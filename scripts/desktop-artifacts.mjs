@@ -44,7 +44,11 @@ const targetDefinitions = Object.freeze({
   },
 });
 
-export const CURRENT_RELEASE_TARGET_KEYS = Object.freeze(["win32-x64", "darwin-arm64"]);
+export const CURRENT_RELEASE_TARGET_KEYS = Object.freeze([
+  "win32-x64",
+  "darwin-arm64",
+  "darwin-x64",
+]);
 
 export function resolveDesktopTarget(targetKey) {
   if (typeof targetKey !== "string" || !Object.hasOwn(targetDefinitions, targetKey)) {

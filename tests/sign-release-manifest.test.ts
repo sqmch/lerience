@@ -23,13 +23,15 @@ function fixture() {
   const artifacts = path.join(root, "artifacts");
   fs.mkdirSync(artifacts);
   const nsis = path.join(artifacts, `ApprovedProduct-Setup-${packageVersion}-x64.exe`);
-  const dmg = path.join(artifacts, `ApprovedProduct-${packageVersion}-arm64.dmg`);
+  const armDmg = path.join(artifacts, `ApprovedProduct-${packageVersion}-arm64.dmg`);
+  const intelDmg = path.join(artifacts, `ApprovedProduct-${packageVersion}-x64.dmg`);
   const output = path.join(root, "release", "signed");
   fs.writeFileSync(privateKey, keys.privateKey.export({ type: "pkcs8", format: "pem" }));
   fs.writeFileSync(notes, "A bounded release test.");
   fs.writeFileSync(nsis, "installer");
-  fs.writeFileSync(dmg, "mac package");
-  return { keys, privateKey, notes, artifacts, nsis, dmg, output };
+  fs.writeFileSync(armDmg, "arm package");
+  fs.writeFileSync(intelDmg, "intel package");
+  return { keys, privateKey, notes, artifacts, nsis, armDmg, intelDmg, output };
 }
 
 function run(value: ReturnType<typeof fixture>, privateKey = value.privateKey) {
@@ -59,7 +61,7 @@ afterEach(() => {
 });
 
 describe("release manifest signer", () => {
-  it("hashes both desktop artifacts and signs the exact emitted bytes", () => {
+  it("hashes all three desktop artifacts and signs the exact emitted bytes", () => {
     const value = fixture();
     const result = run(value);
     expect(result.status).toBe(0);
@@ -85,12 +87,23 @@ describe("release manifest signer", () => {
       }),
     ).toMatchObject({
       version: packageVersion,
-      artifact: { fileName: path.basename(value.dmg), size: 11 },
+      artifact: { fileName: path.basename(value.armDmg), size: 11 },
+    });
+    expect(
+      verifyAndSelectRelease(bytes, signature, publicKey, {
+        currentVersion: "0.0.0",
+        target: { platform: "darwin", architecture: "x64", installation: "app-bundle" },
+        artifactBaseUrl: `https://example.test/releases/v${packageVersion}/`,
+      }),
+    ).toMatchObject({
+      version: packageVersion,
+      artifact: { fileName: path.basename(value.intelDmg), size: 13 },
     });
     const sums = fs.readFileSync(path.join(value.output, "SHA256SUMS"), "utf8");
     expect(sums).toContain(path.basename(value.nsis));
-    expect(sums).toContain(path.basename(value.dmg));
-    expect(sums.trim().split("\n")).toHaveLength(3);
+    expect(sums).toContain(path.basename(value.armDmg));
+    expect(sums).toContain(path.basename(value.intelDmg));
+    expect(sums.trim().split("\n")).toHaveLength(4);
   });
 
   it("refuses to create or use a repository-owned release key", () => {

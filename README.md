@@ -153,7 +153,9 @@ whole course without Lerience. App updates never rewrite course content or your 
 - **Provider support is experimental** and subject to whatever each provider's current product and
   authentication terms say. Lerience claims no ownership of those products and no authorization
   beyond them.
-- **Windows x64 only, unsigned, early.** This is a first community preview and it will show.
+- **Unsigned and early.** Public packages are currently Windows x64. Native Apple Silicon and Intel
+  Mac DMGs are now part of the release lane. Physical Gatekeeper and learner-path acceptance still
+  comes before the first public Mac release, including a run on a separate Intel Mac.
 
 ## Download
 
@@ -180,8 +182,8 @@ executable name is `Lerience` and the stable application ID is `io.github.sqmch.
 
 ## Development
 
-You need Node.js 24 and pnpm 11.9.0. Packaging currently targets Windows. Source validation is
-cross-platform by design.
+You need Node.js 24 and pnpm 11.9.0. Native packaging targets Windows x64, Apple Silicon Macs, and
+Intel Macs. Each target builds on a matching native host and carries its own reviewed runtime.
 
 ```powershell
 pnpm install --frozen-lockfile
@@ -192,7 +194,7 @@ pnpm dev
 `pnpm check` runs both TypeScript configurations, the application and Course Engine tests, ESLint,
 Prettier, the production build, and the typecheck and build of the synthetic
 [renderer harness](dev/renderer-harness/README.md). `pnpm audit:production` checks the production
-dependency graph. Windows packaging also needs an explicit preview or final application identity
+dependency graph. Native packaging also needs an explicit preview or final application identity
 and an assembled target runtime, described in [the distribution guide](distribution/README.md).
 
 ## Documentation

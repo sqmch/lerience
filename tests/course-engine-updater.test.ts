@@ -9,6 +9,7 @@ import {
   type CourseEngineUpdaterOptions,
 } from "../src/main/course-engine-updater";
 import { CourseCreator, HostGitRunner } from "../src/main/course-creator";
+import { loadAssembledRuntime } from "./helpers/assembled-runtime";
 
 const temporaryRoots: string[] = [];
 
@@ -316,57 +317,39 @@ describe("CourseEngineUpdater", { timeout: 30_000 }, () => {
   });
 
   it.runIf(process.env["PRAXEUM_RUNTIME_ROOT"] !== undefined)(
-    "applies and validates an update using only the assembled Windows runtime",
+    "applies and validates an update using the assembled native runtime",
     async () => {
-      const runtimeRoot = process.env["PRAXEUM_RUNTIME_ROOT"];
-      if (runtimeRoot === undefined) throw new Error("PRAXEUM_RUNTIME_ROOT was removed");
-      const resolvedRuntimeRoot = path.resolve(runtimeRoot);
+      const runtime = loadAssembledRuntime();
       const workspace = temporaryRoot();
       const oldTemplate = path.join(workspace, "old-template");
       const courses = path.join(workspace, "courses");
-      const targetTemplate = path.join(resolvedRuntimeRoot, "course-engine", "template");
+      const targetTemplate = runtime.layout.courseTemplateRoot;
       const manifest = JSON.parse(
-        fs.readFileSync(path.join(resolvedRuntimeRoot, "course-engine", "manifest.json"), "utf8"),
+        fs.readFileSync(path.join(runtime.root, "course-engine", "manifest.json"), "utf8"),
       ) as { engineVersion?: unknown };
       if (typeof manifest.engineVersion !== "string") {
         throw new Error("The assembled Course Engine version is unavailable");
       }
       createTemplate(oldTemplate, "old");
       fs.mkdirSync(courses);
-      const gitExecutable = path.join(resolvedRuntimeRoot, "tools", "git", "cmd", "git.exe");
       const creator = new CourseCreator({
         courseTemplateRoot: oldTemplate,
-        git: new HostGitRunner(gitExecutable),
+        git: new HostGitRunner(runtime.layout.gitExecutable),
       });
       const created = await creator.create({ parentDirectory: courses, name: "Runtime Update" });
-      const electronExecutable = path.resolve("node_modules", "electron", "dist", "electron.exe");
-      const runtimePath = [
-        path.join(resolvedRuntimeRoot, "tools", "git", "cmd"),
-        path.join(resolvedRuntimeRoot, "tools", "npm", "bin"),
-      ].join(";");
       const engineUpdater = new CourseEngineUpdater({
         courseTemplateRoot: targetTemplate,
         targetEngineVersion: manifest.engineVersion,
-        gitExecutable,
+        gitExecutable: runtime.layout.gitExecutable,
         validateCandidate: async (candidateRoot) => {
           const doctor = spawnSync(
-            electronExecutable,
+            runtime.electronExecutable,
             [path.join(candidateRoot, "scripts", "doctor.mjs"), candidateRoot, "--json"],
             {
               cwd: candidateRoot,
               encoding: "utf8",
               windowsHide: true,
-              env: {
-                PATH: runtimePath,
-                PATHEXT: ".COM;.EXE;.BAT;.CMD",
-                ELECTRON_RUN_AS_NODE: "1",
-                PRAXEUM_ELECTRON_EXECUTABLE: electronExecutable,
-                ...(process.env["SystemRoot"] === undefined
-                  ? {}
-                  : { SystemRoot: process.env["SystemRoot"] }),
-                ...(process.env["TEMP"] === undefined ? {} : { TEMP: process.env["TEMP"] }),
-                ...(process.env["TMP"] === undefined ? {} : { TMP: process.env["TMP"] }),
-              },
+              env: runtime.environment,
             },
           );
           if (
@@ -394,13 +377,17 @@ describe("CourseEngineUpdater", { timeout: 30_000 }, () => {
         courseDirty: false,
       });
       expect(
-        execFileSync(gitExecutable, ["-C", created.rootPath, "status", "--porcelain"], {
-          encoding: "utf8",
-          windowsHide: true,
-        }),
+        execFileSync(
+          runtime.layout.gitExecutable,
+          ["-C", created.rootPath, "status", "--porcelain"],
+          {
+            encoding: "utf8",
+            windowsHide: true,
+          },
+        ),
       ).toBe("");
       expect(
-        execFileSync(gitExecutable, ["-C", created.rootPath, "remote"], {
+        execFileSync(runtime.layout.gitExecutable, ["-C", created.rootPath, "remote"], {
           encoding: "utf8",
           windowsHide: true,
         }),
