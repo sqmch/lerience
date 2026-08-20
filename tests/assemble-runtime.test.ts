@@ -2,7 +2,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { assembleRuntime, copyNpmTree } from "../scripts/assemble-runtime.mjs";
+import {
+  assembleRuntime,
+  copyNpmTree,
+  normalizeRuntimeFileMode,
+} from "../scripts/assemble-runtime.mjs";
 
 const temporaryRoots: string[] = [];
 
@@ -11,6 +15,12 @@ afterEach(() => {
 });
 
 describe("runtime input normalization", () => {
+  it("normalizes cached POSIX modes while preserving executable files", () => {
+    expect(normalizeRuntimeFileMode(0o100664, "darwin")).toBe(0o644);
+    expect(normalizeRuntimeFileMode(0o100775, "darwin")).toBe(0o755);
+    expect(normalizeRuntimeFileMode(0o100664, "win32")).toBe(0o100664);
+  });
+
   it("excludes package-manager shims nested inside the npm package", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum-npm-copy-test-"));
     temporaryRoots.push(root);

@@ -310,7 +310,10 @@ async function copyEntry(source, destination, sourceRoot, ignoredRelativePaths =
     return;
   }
   if (info.isDirectory()) {
-    await mkdir(destination, { recursive: true, mode: info.mode });
+    await mkdir(destination, {
+      recursive: true,
+      mode: process.platform === "win32" ? info.mode : 0o755,
+    });
     const entries = await readdir(source, { withFileTypes: true });
     entries.sort((left, right) => lexicalCompare(left.name, right.name));
     for (const entry of entries) {
@@ -326,7 +329,14 @@ async function copyEntry(source, destination, sourceRoot, ignoredRelativePaths =
   if (!info.isFile()) throw new Error(`Unsupported runtime source entry: ${source}`);
   await mkdir(path.dirname(destination), { recursive: true });
   await copyFile(source, destination);
-  await chmod(destination, info.mode);
+  await chmod(destination, normalizeRuntimeFileMode(info.mode));
+}
+
+/** Package-manager caches may restore equivalent POSIX payloads with different
+ * writable bits. Runtime outputs deliberately keep only the executable class. */
+export function normalizeRuntimeFileMode(mode, platform = process.platform) {
+  if (platform === "win32") return mode;
+  return (mode & 0o111) === 0 ? 0o644 : 0o755;
 }
 
 async function hashTree(root) {
