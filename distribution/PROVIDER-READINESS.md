@@ -6,7 +6,7 @@ This records the public provider-policy and installed-client evidence used by M5
 risk register, not a legal opinion and not a substitute for a real packaged-provider acceptance run.
 ADR-025 owns the distribution split: Lerience does not redistribute either provider binary.
 
-## Codex - enabled; experimental compatibility and publication review
+## Codex - enabled; stable App Server contract and publication review
 
 OpenAI's Codex App Server documentation describes App Server as the interface for deep integration
 inside a developer's own product. The same interface documents Codex-managed ChatGPT login,
@@ -21,10 +21,11 @@ Sources:
 - <https://github.com/openai/codex/tree/main/codex-rs/app-server>
 - <https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan>
 
-App Server remains experimental. Every supported Codex bump requires protocol tests plus a real
-installed-client pass for login, session, controls, usage, expiry, interruption, and recovery.
-`clientInfo` must identify Lerience accurately. Missing or incompatible installations must produce
-official install/update guidance, not a raw process or protocol error.
+Lerience opts into only the documented stable API (`experimentalApi: false`). Codex can generate
+version-specific schemas; changes to the stable surface Lerience consumes require protocol tests
+plus a real installed-client pass for login, session, controls, usage, expiry, interruption, and
+recovery. `clientInfo` must identify Lerience accurately. Missing or incompatible installations
+must produce official install/update guidance, not a raw process or protocol error.
 
 ## Claude - private development enabled; public release blocked
 
@@ -92,19 +93,21 @@ well-known Windows locations, the standard macOS Codex and ChatGPT app bundles, 
 and exposes only a parsed semantic version. Each readiness check and fresh tutor session repeats
 discovery so installing a provider does not require restarting Lerience.
 
-| Provider    | Accepted by this build              | Older              | Newer/changed   |
-| ----------- | ----------------------------------- | ------------------ | --------------- |
-| Claude Code | `>=2.1.223 <3.0.0`                  | update Claude Code | update Lerience |
-| Codex       | exact `0.144.6` App Server contract | update Codex       | update Lerience |
+| Provider    | Accepted by this build                   | Older              | Newer/changed       |
+| ----------- | ---------------------------------------- | ------------------ | ------------------- |
+| Claude Code | `>=2.1.223 <3.0.0`                       | update Claude Code | compatibility issue |
+| Codex       | `>=0.144.6` plus stable App Server check | update Codex       | handshake checked   |
 
-The learner-facing states are `ready`, `not installed`, `provider update required`, `Lerience update
-required`, and `temporarily unavailable`. Missing/old providers link only to the official Claude
+The learner-facing states are `ready`, `not installed`, `provider update required`, `compatibility
+issue`, and `temporarily unavailable`. Missing/old providers link only to the official Claude
 installation page or official Codex CLI page. Returning focus to Lerience rechecks a selected tutor
 that is not ready, and the provider card keeps an explicit `Check again` action. The learner's
 selected provider is retained while opening guidance or checking again. No state exposes process
 stderr, executable paths, raw protocol frames, credentials, or a provider-specific settings
 surface.
 
-On the 2026-08-15 source machine, provider-owned Claude Code `2.1.223` and Codex `0.144.6` matched
-the supported version contract. This version check is not a substitute for the exact packaged
-clean-machine login/session matrix.
+On 2026-08-20, the generated Codex `0.144.6` and `0.148.0` schemas were contract-identical for every
+stable request, response, notification, and approval Lerience consumes. A live provider-owned
+Codex `0.148.0` completed initialization plus account and rate-limit reads using those same shapes.
+This Windows process evidence is not a substitute for the exact packaged clean-machine login and
+session matrix on macOS.

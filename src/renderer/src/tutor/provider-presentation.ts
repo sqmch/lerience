@@ -22,7 +22,7 @@ export function isReady(provider: ProviderReadiness): boolean {
 export function statusLabel(provider: ProviderReadiness): string {
   if (provider.runtime.state === "not-installed") return "Not installed";
   if (provider.runtime.state === "provider-update-required") return "Update needed";
-  if (provider.runtime.state === "praxeum-update-required") return "App update needed";
+  if (provider.runtime.state === "praxeum-update-required") return "Compatibility issue";
   if (provider.runtime.state === "temporarily-unavailable") return "Try again";
   if (provider.connection === "connected") return provider.planLabel ?? "Connected";
   if (provider.connection === "signed-out") return "Sign in";

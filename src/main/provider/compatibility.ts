@@ -6,19 +6,19 @@ import type {
   TutorProviderId,
 } from "../../shared/provider";
 import { PRODUCT_NAME } from "../../shared/product";
-import { CODEX_APP_SERVER_SCHEMA_VERSION } from "./codex-app-server";
+import { CODEX_APP_SERVER_MINIMUM_VERSION } from "./codex-app-server";
 import type { InstalledProviderRuntime } from "./installed-runtime";
 
 const OUTPUT_LIMIT = 16 * 1024;
 const VERSION_TIMEOUT_MS = 5_000;
 const SEMVER = /(?:^|[^0-9])(\d+)\.(\d+)\.(\d+)(?:[^0-9]|$)/u;
 
-/** Claude's CLI/SDK contract is capability-probed and compatible within the
- * current major. Codex App Server schemas are generated per exact build, so a
- * different Codex version requires a provider or app update. */
+/** Claude's CLI/SDK contract is compatible within the current major. Codex
+ * uses only the stable App Server surface and admits newer builds through its
+ * initialize handshake instead of treating a version bump as incompatibility. */
 export const PROVIDER_COMPATIBILITY = {
   claude: { minimum: "2.1.223", maximumExclusive: "3.0.0" },
-  codex: { exact: CODEX_APP_SERVER_SCHEMA_VERSION },
+  codex: { minimum: CODEX_APP_SERVER_MINIMUM_VERSION },
 } as const;
 
 export interface VersionCommandResult {
@@ -46,7 +46,7 @@ export function readinessForRuntime(
   const detail: Record<Exclude<ProviderRuntimeState, "ready">, string> = {
     "not-installed": `${provider.label} is not installed yet. Open the official setup guide, then check again.`,
     "provider-update-required": `The installed ${provider.label}${versionSuffix} is too old for this ${PRODUCT_NAME} build. Update it from the official guide, then check again.`,
-    "praxeum-update-required": `The installed ${provider.label}${versionSuffix} uses a newer connection contract. Update ${PRODUCT_NAME}, then check again.`,
+    "praxeum-update-required": `The installed ${provider.label}${versionSuffix} is not compatible with this ${PRODUCT_NAME} build. Check for a newer release or choose another tutor.`,
     "temporarily-unavailable": `${provider.label} could not be reached just now. Check again in a moment.`,
   };
   return {
@@ -102,14 +102,9 @@ export function compatibilityState(
   if (parsed === null) return "praxeum-update-required";
 
   if (providerId === "codex") {
-    const exact = semanticVersion(PROVIDER_COMPATIBILITY.codex.exact);
-    if (exact === null) return "praxeum-update-required";
-    const compared = compareVersions(parsed, exact);
-    return compared < 0
-      ? "provider-update-required"
-      : compared > 0
-        ? "praxeum-update-required"
-        : "ready";
+    const minimum = semanticVersion(PROVIDER_COMPATIBILITY.codex.minimum);
+    if (minimum === null) return "praxeum-update-required";
+    return compareVersions(parsed, minimum) < 0 ? "provider-update-required" : "ready";
   }
 
   const minimum = semanticVersion(PROVIDER_COMPATIBILITY.claude.minimum);

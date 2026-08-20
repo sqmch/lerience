@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  CODEX_APP_SERVER_SCHEMA_VERSION,
   CodexAppServerClient,
   type CodexAppServerFailure,
   type CodexAppServerTransport,
@@ -36,7 +35,7 @@ class FakeTransport implements CodexAppServerTransport {
 }
 
 describe("CodexAppServerClient", () => {
-  it("negotiates only stable capabilities against the pinned schema", async () => {
+  it("negotiates only stable capabilities", async () => {
     const transport = new FakeTransport();
     const client = new CodexAppServerClient("9.8.7", transport);
     const initializing = client.initialize();
@@ -53,7 +52,7 @@ describe("CodexAppServerClient", () => {
     transport.receive({
       id: 1,
       result: {
-        userAgent: `codex-cli/${CODEX_APP_SERVER_SCHEMA_VERSION}`,
+        userAgent: "codex-cli/0.144.6",
         codexHome: "C:/Users/learner/.codex",
         platformFamily: "windows",
         platformOs: "windows",
@@ -64,13 +63,26 @@ describe("CodexAppServerClient", () => {
     expect(JSON.parse(transport.writes[1] ?? "null")).toEqual({ method: "initialized" });
   });
 
-  it("fails closed on a different protocol version", async () => {
+  it("accepts a newer Codex after a valid stable handshake", async () => {
     const transport = new FakeTransport();
     const client = new CodexAppServerClient("9.8.7", transport);
     const initializing = client.initialize();
-    transport.receive({ id: 1, result: { userAgent: "codex-cli/9.9.9" } });
+    transport.receive({
+      id: 1,
+      result: { userAgent: "Codex Desktop/0.148.0 (macOS 15.6; x86_64)" },
+    });
 
-    await expect(initializing).rejects.toMatchObject({ code: "unsupported" });
+    await expect(initializing).resolves.toBeUndefined();
+    expect(JSON.parse(transport.writes[1] ?? "null")).toEqual({ method: "initialized" });
+  });
+
+  it("fails closed on a malformed handshake", async () => {
+    const transport = new FakeTransport();
+    const client = new CodexAppServerClient("9.8.7", transport);
+    const initializing = client.initialize();
+    transport.receive({ id: 1, result: { platformOs: "macos" } });
+
+    await expect(initializing).rejects.toMatchObject({ code: "protocol" });
   });
 
   it("never forwards a raw JSON-RPC error", async () => {

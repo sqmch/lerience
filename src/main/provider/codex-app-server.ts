@@ -5,9 +5,9 @@ const MAX_LINE_BYTES = 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
 const INITIALIZE_TIMEOUT_MS = 10_000;
 
-/** The protocol shape was generated from this exact developer-runtime build.
- * M5 will ship that runtime with the app instead of resolving it from PATH. */
-export const CODEX_APP_SERVER_SCHEMA_VERSION = "0.144.6";
+/** Oldest provider-owned Codex build covered by Lerience's stable App Server
+ * contract. Newer builds are admitted through the real stable handshake. */
+export const CODEX_APP_SERVER_MINIMUM_VERSION = "0.144.6";
 
 type JsonRpcId = string | number;
 type NotificationListener = (method: string, params: unknown) => void;
@@ -66,7 +66,7 @@ function isRpcId(value: unknown): value is JsonRpcId {
   return typeof value === "string" || (typeof value === "number" && Number.isFinite(value));
 }
 
-/** JSONL/JSON-RPC client pinned to the generated 0.144.6 contract. */
+/** JSONL/JSON-RPC client for the stable App Server surface Lerience consumes. */
 export class CodexAppServerClient implements CodexAppServerConnection {
   private nextId = 1;
   private closed = false;
@@ -94,16 +94,6 @@ export class CodexAppServerClient implements CodexAppServerConnection {
     );
     if (!isRecord(response) || typeof response.userAgent !== "string") {
       throw new CodexAppServerFailure("protocol", "Codex returned an invalid handshake.");
-    }
-    if (
-      !new RegExp(
-        `(?:^|\\D)${CODEX_APP_SERVER_SCHEMA_VERSION.replaceAll(".", "\\.")}(?:\\D|$)`,
-      ).test(response.userAgent)
-    ) {
-      throw new CodexAppServerFailure(
-        "unsupported",
-        `This Codex version is not supported by the current ${PRODUCT_NAME} development build.`,
-      );
     }
     this.notify("initialized");
   }

@@ -5,7 +5,6 @@ import type {
   ProviderUsageWindow,
   TutorProvider,
 } from "../../shared/provider";
-import { PRODUCT_NAME } from "../../shared/product";
 import type { TutorAgent } from "../../shared/seminar";
 import { CodexTutorAgent } from "../agent/codex";
 import { readinessForRuntime, type ProviderRuntimeProbe } from "./compatibility";
@@ -190,8 +189,10 @@ function safeAuthUrl(value: unknown): string | null {
 function failureDetail(error: unknown): string {
   if (error instanceof CodexAppServerFailure) {
     if (error.code === "missing") return "Codex is not installed yet.";
-    if (error.code === "unsupported") return error.message;
     if (error.code === "timeout") return "Codex did not answer the connection check. Try again.";
+    if (error.code === "unsupported" || error.code === "protocol") {
+      return "Codex answered in a format Lerience could not validate. Check again; if this continues, report the installed Codex and Lerience versions.";
+    }
   }
   return "Codex could not report its connection state.";
 }
@@ -250,7 +251,7 @@ export class CodexTutorProvider implements TutorProvider {
       return (
         readiness ??
         unavailable(
-          `This Codex version uses a connection format this ${PRODUCT_NAME} build does not understand. Update ${PRODUCT_NAME}, then check again.`,
+          "Codex answered in a format Lerience could not validate. Check again; if this continues, report the installed Codex and Lerience versions.",
           { state: "praxeum-update-required", version: runtime.version },
         )
       );

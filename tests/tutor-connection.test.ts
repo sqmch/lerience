@@ -73,7 +73,7 @@ describe("provider readiness actions", () => {
     expect(statusLabel(missing)).toBe("Not installed");
     expect(providerPrimaryAction(newer)).toEqual({ kind: "refresh", label: "Check again" });
     expect(providerSecondaryAction(newer)).toBeNull();
-    expect(statusLabel(newer)).toBe("App update needed");
+    expect(statusLabel(newer)).toBe("Compatibility issue");
   });
 });
 
