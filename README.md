@@ -1,4 +1,5 @@
 # Lerience
+[https://lerience.vercel.app/](https://lerience.vercel.app/)
 
 <img src="build/icon.svg" alt="Lerience icon" width="96" height="96" />
 
