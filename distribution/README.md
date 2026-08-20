@@ -53,7 +53,7 @@ defines what enters a public release-acceptance record.
 A packaged launch checks its own runtime before the app starts, behind the "Checking installation"
 window. `inspectPackagedRuntime` reads the installed `runtime/manifest.json` and confirms that it
 belongs to this app version and this platform/architecture, that every critical path is declared,
-that each of the three components (Course Engine, Git, npm) hashes to its recorded complete-tree
+that each of the three components (Course Engine, Git, npm) matches its recorded complete-tree
 digest, that the critical files are ordinary non-symlinked files of the recorded size, mode and
 SHA-256, and that the payload as a whole matches its recorded file count and tree hash. Anything
 short of that shows a repair dialog and quits; the app never starts on a half-installed runtime.
@@ -65,12 +65,17 @@ installation directory: a per-user NSIS install and the app's own data live in t
 domain, so an attacker with that access can replace the executable itself. OS-level code signing is
 the control for that, and ADR-024 defers it.
 
-The work is real: the Windows x64 payload is 2 355 files and about 125 MiB, all of it read and
-hashed on every launch. Reads run in a small pool (`HASH_CONCURRENCY`) because the wait is disk
-rather than SHA-256; a warm end-to-end inspection of the assembled runtime measures about 0.9 s on
-a developer NVMe machine, and a cold first launch is several times that. The same check runs
-headless as the release-acceptance contract: `Lerience.exe --verify-installation` opens no window,
-starts no provider, touches no app data, and reports package-owned facts through its exit code.
+The first launch of an installed build reads and hashes the Windows x64 payload's 2 355 files and
+about 125 MiB. Reads run in a small pool (`HASH_CONCURRENCY`) because the wait is disk rather than
+SHA-256. After a successful inspection, ordinary startup caches each payload digest against the
+exact manifest/install identity and the file's device, inode, size, mode, modification time and
+change time (ADR-035). An unchanged launch still walks the complete tree and directly hashes the
+seven critical files, but it does not reread every file's contents. A missing or invalid cache
+falls back to the complete check, and the app writes a replacement only after that check passes.
+
+The headless release-acceptance contract never uses the cache: `Lerience.exe
+--verify-installation` opens no window, starts no provider, touches no app data, hashes every
+payload file, and reports package-owned facts through its exit code.
 
 ## Native desktop package scaffold
 

@@ -1,12 +1,13 @@
-import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { lstat, readFile, readdir, readlink } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { createReadStream, type BigIntStats } from "node:fs";
+import { lstat, mkdir, readFile, readdir, readlink, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { RuntimeLayout } from "./runtime-layout";
 
 const SHA256 = /^[a-f0-9]{64}$/u;
 const VERSION = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
+const RUNTIME_HASH_CACHE_VERSION = 1;
 const SAFE_RELATIVE_PATH = z.string().min(1).refine(isSafeRelativePath, {
   message: "Runtime paths must be normalized relative paths.",
 });
@@ -80,8 +81,44 @@ export const RuntimeManifestSchema = z
 
 export type RuntimeManifest = z.infer<typeof RuntimeManifestSchema>;
 
+const CachedRuntimeFileSchema = z
+  .object({
+    device: z.string().regex(/^\d+$/u),
+    inode: z.string().regex(/^\d+$/u),
+    size: z.string().regex(/^\d+$/u),
+    mode: z.string().regex(/^\d+$/u),
+    modified: z.string().regex(/^\d+$/u),
+    changed: z.string().regex(/^\d+$/u),
+    sha256: z.string().regex(SHA256),
+  })
+  .strict();
+
+const RuntimeHashCacheSchema = z
+  .object({
+    schemaVersion: z.literal(RUNTIME_HASH_CACHE_VERSION),
+    identity: z.string().regex(SHA256),
+    files: z.record(SAFE_RELATIVE_PATH, CachedRuntimeFileSchema),
+  })
+  .strict();
+
+type CachedRuntimeFile = z.infer<typeof CachedRuntimeFileSchema>;
+
+export interface RuntimeInspectionOptions {
+  /** App-data file used only for ordinary packaged startup. Omit it for a
+   * complete release-acceptance inspection. */
+  cachePath?: string;
+  forceFull?: boolean;
+}
+
 export type RuntimeInspection =
-  { ok: true; manifest: RuntimeManifest } | { ok: false; reason: string };
+  | {
+      ok: true;
+      manifest: RuntimeManifest;
+      /** Payload file hashes only. Critical-file hashes remain deliberately
+       * cheap, unconditional checks. */
+      hashes: { computed: number; reused: number };
+    }
+  | { ok: false; reason: string };
 
 /** Validate the target, complete component trees, and critical-file metadata
  * without trusting paths from the manifest to escape the installer-owned root.
@@ -91,14 +128,17 @@ export type RuntimeInspection =
 export async function inspectPackagedRuntime(
   layout: RuntimeLayout,
   expectedAppVersion: string,
+  options: RuntimeInspectionOptions = {},
 ): Promise<RuntimeInspection> {
   if (layout.mode !== "packaged" || layout.root === null || layout.manifestPath === null) {
     return { ok: false, reason: "Packaged runtime inspection requires a packaged layout." };
   }
 
+  let manifestSource: string;
   let parsed: unknown;
   try {
-    parsed = JSON.parse(await readFile(layout.manifestPath, "utf8")) as unknown;
+    manifestSource = await readFile(layout.manifestPath, "utf8");
+    parsed = JSON.parse(manifestSource) as unknown;
   } catch {
     return { ok: false, reason: "The packaged runtime manifest is unavailable." };
   }
@@ -124,9 +164,21 @@ export async function inspectPackagedRuntime(
     }
   }
 
+  const cachePath = options.forceFull === true ? undefined : options.cachePath;
+  const cacheIdentity = runtimeHashCacheIdentity(
+    layout.root,
+    expectedAppVersion,
+    layout.platform,
+    layout.architecture,
+    manifestSource,
+  );
+  const cachedFiles =
+    cachePath === undefined
+      ? new Map<string, CachedRuntimeFile>()
+      : await readRuntimeHashCache(cachePath, cacheIdentity);
   let inventory: RuntimeInventoryDescription;
   try {
-    inventory = await describeRuntimeInventory(layout.root);
+    inventory = await describeRuntimeInventory(layout.root, cachedFiles);
   } catch {
     return { ok: false, reason: "The packaged runtime payload is unavailable." };
   }
@@ -162,7 +214,19 @@ export async function inspectPackagedRuntime(
   ) {
     return { ok: false, reason: "The packaged runtime payload is corrupt." };
   }
-  return { ok: true, manifest };
+  if (cachePath !== undefined && inventory.hashes.computed > 0) {
+    try {
+      await writeRuntimeHashCache(cachePath, {
+        schemaVersion: RUNTIME_HASH_CACHE_VERSION,
+        identity: cacheIdentity,
+        files: inventory.cacheFiles,
+      });
+    } catch {
+      /* The cache is optional. A read-only or full disk must not turn a valid
+         packaged runtime into an app that refuses to start. */
+    }
+  }
+  return { ok: true, manifest, hashes: inventory.hashes };
 }
 
 export interface RuntimeTreeDescription {
@@ -183,6 +247,8 @@ interface RuntimeTreeEntry {
  * reads can overlap. */
 interface ScannedEntry extends RuntimeTreeEntry {
   pendingFile: string | null;
+  cacheMetadata: Omit<CachedRuntimeFile, "sha256"> | null;
+  hashSource: "cache" | "computed" | "link";
 }
 
 type RuntimeComponentId = (typeof COMPONENT_IDS)[number];
@@ -190,6 +256,8 @@ type RuntimeComponentId = (typeof COMPONENT_IDS)[number];
 interface RuntimeInventoryDescription {
   payload: RuntimeTreeDescription;
   components: Record<RuntimeComponentId, RuntimeTreeDescription>;
+  cacheFiles: Record<string, CachedRuntimeFile>;
+  hashes: { computed: number; reused: number };
 }
 
 const COMPONENT_PREFIXES: Record<RuntimeComponentId, string> = {
@@ -248,13 +316,16 @@ async function describeTree(
   return summarizeTree(entries);
 }
 
-async function describeRuntimeInventory(root: string): Promise<RuntimeInventoryDescription> {
+async function describeRuntimeInventory(
+  root: string,
+  cachedFiles: ReadonlyMap<string, CachedRuntimeFile>,
+): Promise<RuntimeInventoryDescription> {
   const rootInfo = await lstat(root);
   if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) {
     throw new Error("Runtime payload root is not an ordinary directory.");
   }
   const payload: ScannedEntry[] = [];
-  await scanRuntimeInventory(root, root, payload);
+  await scanRuntimeInventory(root, root, payload, cachedFiles);
   await settleScannedFiles(payload);
 
   /* The components are the same bytes at a different relative root, so they
@@ -270,12 +341,24 @@ async function describeRuntimeInventory(root: string): Promise<RuntimeInventoryD
       components[component.id].push({ ...entry, path: component.relativePath });
     }
   }
+  const cacheFiles = Object.fromEntries(
+    payload.flatMap((entry) =>
+      entry.cacheMetadata === null
+        ? []
+        : [[entry.path, { ...entry.cacheMetadata, sha256: entry.sha256 }] as const],
+    ),
+  );
   return {
     payload: summarizeTree(payload),
     components: {
       "course-engine": summarizeTree(components["course-engine"]),
       git: summarizeTree(components.git),
       npm: summarizeTree(components.npm),
+    },
+    cacheFiles,
+    hashes: {
+      computed: payload.filter((entry) => entry.hashSource === "computed").length,
+      reused: payload.filter((entry) => entry.hashSource === "cache").length,
     },
   };
 }
@@ -295,6 +378,7 @@ async function scanRuntimeInventory(
   root: string,
   current: string,
   payload: ScannedEntry[],
+  cachedFiles: ReadonlyMap<string, CachedRuntimeFile>,
 ): Promise<void> {
   const names = await readdir(current);
   names.sort(lexicalCompare);
@@ -302,9 +386,9 @@ async function scanRuntimeInventory(
     const absolutePath = path.join(current, name);
     const relativePath = toManifestPath(root, absolutePath);
     if (relativePath === "manifest.json") continue;
-    const info = await lstat(absolutePath);
+    const info = await lstat(absolutePath, { bigint: true });
     if (info.isDirectory() && !info.isSymbolicLink()) {
-      await scanRuntimeInventory(root, absolutePath, payload);
+      await scanRuntimeInventory(root, absolutePath, payload, cachedFiles);
       continue;
     }
 
@@ -318,7 +402,7 @@ async function scanRuntimeInventory(
           : path.join(root, ...COMPONENT_PREFIXES[component.id].slice(0, -1).split("/"));
       payload.push(await scanLink(absolutePath, relativePath, boundary));
     } else if (info.isFile()) {
-      payload.push(scanFile(absolutePath, relativePath, info.mode, info.size));
+      payload.push(scanInventoryFile(absolutePath, relativePath, info, cachedFiles));
     } else {
       throw new Error("Runtime payload contains an unsupported entry.");
     }
@@ -376,6 +460,8 @@ async function scanLink(
     size: Buffer.byteLength(target),
     sha256: createHash("sha256").update(target).digest("hex"),
     pendingFile: null,
+    cacheMetadata: null,
+    hashSource: "link",
   };
 }
 
@@ -392,6 +478,39 @@ function scanFile(
     size,
     sha256: "",
     pendingFile: absolutePath,
+    cacheMetadata: null,
+    hashSource: "computed",
+  };
+}
+
+function scanInventoryFile(
+  absolutePath: string,
+  relativePath: string,
+  info: BigIntStats,
+  cachedFiles: ReadonlyMap<string, CachedRuntimeFile>,
+): ScannedEntry {
+  if (info.size > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error("Runtime payload contains a file that is too large to describe safely.");
+  }
+  const cacheMetadata = {
+    device: info.dev.toString(),
+    inode: info.ino.toString(),
+    size: info.size.toString(),
+    mode: (info.mode & 0o777n).toString(),
+    modified: info.mtimeNs.toString(),
+    changed: info.ctimeNs.toString(),
+  };
+  const cached = cachedFiles.get(relativePath);
+  const reuse = cached !== undefined && cachedRuntimeFileMatches(cached, cacheMetadata);
+  return {
+    type: "file",
+    path: relativePath,
+    mode: Number(info.mode & 0o777n),
+    size: Number(info.size),
+    sha256: reuse ? cached.sha256 : "",
+    pendingFile: reuse ? null : absolutePath,
+    cacheMetadata,
+    hashSource: reuse ? "cache" : "computed",
   };
 }
 
@@ -430,6 +549,79 @@ function isSafeRelativePath(value: string): boolean {
 function isWithin(root: string, candidate: string): boolean {
   const relative = path.relative(path.resolve(root), candidate);
   return relative !== "" && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function runtimeHashCacheIdentity(
+  root: string,
+  appVersion: string,
+  platform: string,
+  architecture: string,
+  manifestSource: string,
+): string {
+  return createHash("sha256")
+    .update(
+      [
+        String(RUNTIME_HASH_CACHE_VERSION),
+        path.resolve(root),
+        appVersion,
+        platform,
+        architecture,
+        createHash("sha256").update(manifestSource).digest("hex"),
+      ].join("\0"),
+    )
+    .digest("hex");
+}
+
+async function readRuntimeHashCache(
+  cachePath: string,
+  expectedIdentity: string,
+): Promise<Map<string, CachedRuntimeFile>> {
+  try {
+    const parsed = JSON.parse(await readFile(cachePath, "utf8")) as unknown;
+    const result = RuntimeHashCacheSchema.safeParse(parsed);
+    if (!result.success || result.data.identity !== expectedIdentity) return new Map();
+    return new Map(Object.entries(result.data.files));
+  } catch {
+    return new Map();
+  }
+}
+
+function cachedRuntimeFileMatches(
+  cached: CachedRuntimeFile,
+  current: Omit<CachedRuntimeFile, "sha256">,
+): boolean {
+  return (
+    cached.device === current.device &&
+    cached.inode === current.inode &&
+    cached.size === current.size &&
+    cached.mode === current.mode &&
+    cached.modified === current.modified &&
+    cached.changed === current.changed
+  );
+}
+
+async function writeRuntimeHashCache(
+  cachePath: string,
+  cache: z.infer<typeof RuntimeHashCacheSchema>,
+): Promise<void> {
+  const directory = path.dirname(cachePath);
+  await mkdir(directory, { recursive: true });
+  const temporary = path.join(directory, `.${path.basename(cachePath)}-${randomUUID()}.tmp`);
+  try {
+    await writeFile(temporary, `${JSON.stringify(cache)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    await rename(temporary, cachePath);
+  } catch (error) {
+    try {
+      await rm(temporary, { force: true });
+    } catch {
+      // Preserve the cache-write failure; a stale private temp file is harmless.
+    }
+    throw error;
+  }
 }
 
 async function sha256File(filePath: string): Promise<string> {

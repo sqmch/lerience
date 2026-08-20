@@ -407,7 +407,9 @@ void app.whenReady().then(async () => {
         packaged: true,
         resourcesPath: process.resourcesPath,
       });
-      const inspection = await inspectPackagedRuntime(runtime, app.getVersion());
+      const inspection = await inspectPackagedRuntime(runtime, app.getVersion(), {
+        forceFull: true,
+      });
       const report = inspection.ok
         ? {
             ok: true,
@@ -453,7 +455,9 @@ void app.whenReady().then(async () => {
         },
   });
   if (runtime.mode === "packaged") {
-    const inspection = await inspectPackagedRuntime(runtime, app.getVersion());
+    const inspection = await inspectPackagedRuntime(runtime, app.getVersion(), {
+      cachePath: path.join(app.getPath("userData"), "runtime-verification-cache.json"),
+    });
     if (!inspection.ok) {
       dialog.showErrorBox(
         `${PRODUCT_NAME} needs repair`,
