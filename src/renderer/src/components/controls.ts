@@ -40,4 +40,19 @@ export const LINKISH =
   "underline-offset-4 transition-colors rounded-xs focus-visible:outline-2 " +
   "focus-visible:outline-offset-2 focus-visible:outline-focus";
 
+/* An instrument: a chrome control, quiet where it sits until you reach for
+   it. No border at rest — a head row or a footer full of outlined pills reads
+   as a toolbar competing with the work — and border, ground and full ink
+   together on hover, so the whole thing arrives as one control rather than
+   lighting up in pieces. `aria-pressed` holds that state for the ones that
+   toggle something open.
+
+   The transparent border is drawn, not omitted: it holds the pixel the hover
+   border needs, so nothing shifts under the pointer. */
+export const INSTRUMENT =
+  "border-transparent text-ink-dim hover:bg-surface-raised hover:border-line hover:text-hi " +
+  "focus-visible:outline-focus flex min-w-0 items-center gap-1.5 rounded-pill border px-2.5 py-1.5 " +
+  "text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 " +
+  "aria-pressed:bg-surface-raised aria-pressed:border-line aria-pressed:text-hi";
+
 export const CHIP = "font-data rounded-pill px-2 py-0.5 text-2xs font-medium tabular-nums";

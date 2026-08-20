@@ -31,7 +31,7 @@ import type { CheckRunSummary } from "../../../shared/session";
 import { CHIP, QUIET } from "../components/controls";
 import { DiamondGlyph, PlayGlyph, SpinnerGlyph } from "../components/glyphs";
 import { CourseMarkdown, DocMarkdown } from "../components/markdown-view";
-import { EditorControl } from "./editor-control";
+import { Dismiss } from "../components/notice";
 import { RecallMark } from "./recall-mark";
 
 export type MaterialTab = "lesson" | "brief" | "quiz" | "visual";
@@ -67,7 +67,11 @@ function Pane({
       className="bg-surface-read @container flex min-h-0 min-w-0 flex-1 flex-col"
       aria-label="Course material"
     >
-      <div className="border-line-soft bg-surface-read/92 flex h-12 shrink-0 items-center gap-4 border-b px-6 backdrop-blur-(--blur-chrome) @max-pane:px-4">
+      {/* `overflow-hidden` is a guard, not a layout: the head's contents are
+          all `whitespace-nowrap`, so without it a narrow pane paints them
+          straight over the seam and into the seminar column. Clipped at the
+          pane's own edge, a squeeze looks like a squeeze. */}
+      <div className="border-line-soft bg-surface-read/92 flex h-12 shrink-0 items-center gap-4 overflow-hidden border-b px-6 backdrop-blur-(--blur-chrome) @max-pane:gap-2 @max-pane:px-4">
         {head}
       </div>
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto">
@@ -188,43 +192,6 @@ function CheckResult({ run, onDismiss }: { run: CheckRun; onDismiss: () => void 
   );
 }
 
-function Dismiss({ label, onDismiss }: { label: string; onDismiss: () => void }) {
-  return (
-    <button
-      type="button"
-      className="text-ink-faint hover:text-hi focus-visible:outline-focus -mt-1 -mr-1 shrink-0 rounded-pill p-1 text-xs transition-colors focus-visible:outline-2"
-      onClick={onDismiss}
-    >
-      <span className="sr-only">{label}</span>
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-        <path
-          d="M1.5 1.5 L8.5 8.5 M8.5 1.5 L1.5 8.5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </svg>
-    </button>
-  );
-}
-
-/** Something the head row's controls need to say and have no room for — an
- *  editor that would not start, chiefly. Same card as a failed check run, so
- *  the pane has one voice for "that did not work". */
-function PaneNotice({ detail, onDismiss }: { detail: string; onDismiss: () => void }) {
-  return (
-    <div
-      className="border-line border-l-bad bg-surface-panel mb-8 rounded-lg border border-l-2 p-4"
-      role="status"
-    >
-      <div className="flex items-start gap-3">
-        <p className="text-ink min-w-0 flex-1 text-sm leading-normal text-pretty">{detail}</p>
-        <Dismiss label="Dismiss this notice" onDismiss={onDismiss} />
-      </div>
-    </div>
-  );
-}
-
 /** This module's slice of the bank: what is scheduled, when, and how it went
  *  last time. Not a test — the tutor asks these in conversation. */
 function QuizSchedule({ items }: { items: CourseQuizItem[] }): React.JSX.Element {
@@ -291,14 +258,12 @@ export function MaterialPane({
   // hide behind a branch.
   const body = useRef<HTMLDivElement>(null);
   const [checkRun, setCheckRun] = useState<CheckRun | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const documentKey = `${activeModule?.id ?? ""}:${tab}`;
   useEffect(() => {
     if (body.current !== null) body.current.scrollTop = 0;
   }, [documentKey]);
   useEffect(() => {
     setCheckRun(null);
-    setNotice(null);
   }, [activeModule?.id]);
 
   if (activeModule === null) return <UnwrittenCourse courseDoc={courseDoc} />;
@@ -369,54 +334,40 @@ export function MaterialPane({
           <>
             {/* Stretched to the head's height so the active rule lands exactly
                 on the head's own bottom edge rather than floating above it. */}
+            {/* The gap closes up in a squeezed pane rather than the row
+                growing past its edge. No scroll container here: the active
+                rule is drawn a pixel BELOW its trigger, and any overflow on
+                the list clips it away. */}
             <Tabs.List
-              className="flex items-stretch gap-5 self-stretch"
+              className="flex items-stretch gap-5 self-stretch @max-pane:gap-3.5"
               aria-label="Course material"
             >
               {tabs.map((entry) => (
                 <Tab key={entry.id} value={entry.id} label={entry.label} />
               ))}
             </Tabs.List>
-            {/* Presence-based (ADR-013): each renders because THIS module's
-                files say so — a scaffold/ for the editor handoff, a runnable
-                check script for the checks. The pair is the build loop in two
-                controls: write in your editor, run the checks here. */}
-            {activeModule.hasScaffold || activeModule.hasChecks ? (
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-                {activeModule.hasScaffold ? (
-                  <EditorControl
-                    target={{ kind: "module", moduleId: activeModule.id }}
-                    onNotice={setNotice}
-                  />
-                ) : null}
-                {activeModule.hasChecks ? (
-                  <button
-                    type="button"
-                    className={`${QUIET} px-3 py-1.5 text-xs`}
-                    disabled={checkRun?.phase === "running"}
-                    onClick={runChecks}
-                  >
-                    {checkRun?.phase === "running" ? (
-                      <SpinnerGlyph className="animate-spin size-3.5" />
-                    ) : (
-                      <PlayGlyph className="size-3.5" />
-                    )}
-                    <span>{checkRun?.phase === "running" ? "Running…" : "Run checks"}</span>
-                  </button>
-                ) : null}
-              </div>
+            {/* Presence-based (ADR-013): the checks render because THIS
+                module ships a runnable check script. Its other half — the
+                handoff to the learner's own editor — sits in the seminar
+                column's head, which has room the tab row does not. */}
+            {activeModule.hasChecks ? (
+              <button
+                type="button"
+                className={`${QUIET} ml-auto shrink-0 px-3 py-1.5 text-xs`}
+                disabled={checkRun?.phase === "running"}
+                onClick={runChecks}
+              >
+                {checkRun?.phase === "running" ? (
+                  <SpinnerGlyph className="animate-spin size-3.5" />
+                ) : (
+                  <PlayGlyph className="size-3.5" />
+                )}
+                <span>{checkRun?.phase === "running" ? "Running…" : "Run checks"}</span>
+              </button>
             ) : null}
           </>
         }
       >
-        {notice === null ? null : (
-          <PaneNotice
-            detail={notice}
-            onDismiss={() => {
-              setNotice(null);
-            }}
-          />
-        )}
         {checkRun === null || checkRun.moduleId !== activeModule.id ? null : (
           <CheckResult
             run={checkRun}

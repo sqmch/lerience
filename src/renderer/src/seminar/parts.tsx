@@ -355,27 +355,11 @@ export function SessionControlBar({
   const efforts = model?.efforts ?? [];
   if (controls.models.length === 0 && controls.autonomy.length === 0) return null;
 
-  const pendingLabels: string[] = [];
-  if (controls.pending?.model !== undefined) {
-    pendingLabels.push(model?.label ?? controls.pending.model ?? "Default model");
-  }
-  if (controls.pending?.effort !== undefined) {
-    pendingLabels.push(
-      controls.pending.effort === null ? "Default effort" : EFFORT_LABELS[controls.pending.effort],
-    );
-  }
-  if (controls.pending?.autonomy !== undefined) {
-    pendingLabels.push(
-      controls.autonomy.find((mode) => mode.id === controls.pending?.autonomy)?.label ??
-        controls.pending.autonomy,
-    );
-  }
-  const pendingMessage =
-    pendingLabels.length === 0
-      ? null
-      : pendingLabels.length === 1
-        ? `${pendingLabels[0]} applies to your next reply.`
-        : "Your selected settings apply to your next reply.";
+  /* A setting changed mid-turn takes effect on the next reply, and the bar
+     used to say so in a line under the pills. It said nothing the triggers do
+     not already show — they read the pending value the moment it is picked —
+     and it appeared and vanished between the pills and Send, shoving the row
+     down a line each time. Only a REFUSED change gets a line now. */
 
   return (
     <div className="min-w-0 flex-1">
@@ -424,13 +408,7 @@ export function SessionControlBar({
           />
         )}
       </div>
-      {notice === undefined || notice === null ? (
-        pendingMessage === null ? null : (
-          <p className="text-ink-faint px-1 pt-1 text-2xs" role="status">
-            {pendingMessage}
-          </p>
-        )
-      ) : (
+      {notice === undefined || notice === null ? null : (
         <p className="text-bad px-1 pt-1 text-2xs" role="alert">
           {notice.message}
         </p>
