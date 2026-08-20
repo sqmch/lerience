@@ -94,15 +94,153 @@ describe("packaged runtime manifest", () => {
       platform: "win32",
       architecture: "x64",
     });
-    await expect(inspectPackagedRuntime(layout, "0.0.1")).resolves.toEqual({ ok: true, manifest });
+    await expect(inspectPackagedRuntime(layout, "0.0.1")).resolves.toEqual({
+      ok: true,
+      manifest,
+      hashes: { computed: 7, reused: 0 },
+    });
+  });
+
+  it("reuses cached payload hashes and rehashes only metadata changes", async () => {
+    const { root } = await fixture();
+    const layout = resolveRuntimeLayout({
+      packaged: true,
+      resourcesPath: root,
+      platform: "win32",
+      architecture: "x64",
+    });
+    const cachePath = path.join(root, "runtime-verification-cache.json");
+
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: true,
+      hashes: { computed: 7, reused: 0 },
+    });
+    expect(fs.existsSync(cachePath)).toBe(true);
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: true,
+      hashes: { computed: 0, reused: 7 },
+    });
+
+    const touched = layout.npmCliPath;
+    const original = fs.statSync(touched);
+    fs.utimesSync(touched, original.atime, new Date(original.mtimeMs + 60_000));
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: true,
+      hashes: { computed: 1, reused: 6 },
+    });
+
+    await expect(
+      inspectPackagedRuntime(layout, "0.0.1", { cachePath, forceFull: true }),
+    ).resolves.toMatchObject({
+      ok: true,
+      hashes: { computed: 7, reused: 0 },
+    });
+  });
+
+  it("does not let a cached hash hide a changed file", async () => {
+    const changed = await fixture();
+    const layout = resolveRuntimeLayout({
+      packaged: true,
+      resourcesPath: changed.root,
+      platform: "win32",
+      architecture: "x64",
+    });
+    const cachePath = path.join(changed.root, "runtime-verification-cache.json");
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: true,
+    });
+    fs.appendFileSync(layout.npmCliPath, "tampered");
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toEqual({
+      ok: false,
+      reason: "The packaged npm runtime tree is corrupt.",
+    });
+  });
+
+  it("does not let cached hashes hide an added file", async () => {
+    const added = await fixture();
+    const layout = resolveRuntimeLayout({
+      packaged: true,
+      resourcesPath: added.root,
+      platform: "win32",
+      architecture: "x64",
+    });
+    const cachePath = path.join(added.root, "runtime-verification-cache.json");
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: true,
+    });
+    fs.writeFileSync(path.join(layout.root as string, "tools", "npm", "helper.js"), "extra");
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toEqual({
+      ok: false,
+      reason: "The packaged npm runtime tree is corrupt.",
+    });
+  });
+
+  it("does not let cached hashes hide a missing file", async () => {
+    const removed = await fixture();
+    const layout = resolveRuntimeLayout({
+      packaged: true,
+      resourcesPath: removed.root,
+      platform: "win32",
+      architecture: "x64",
+    });
+    const cachePath = path.join(removed.root, "runtime-verification-cache.json");
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: true,
+    });
+    fs.rmSync(layout.nodeShimPath);
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: false,
+    });
+  });
+
+  it("ignores a malformed cache and replaces it only after a successful full check", async () => {
+    const { root } = await fixture();
+    const layout = resolveRuntimeLayout({
+      packaged: true,
+      resourcesPath: root,
+      platform: "win32",
+      architecture: "x64",
+    });
+    const cachePath = path.join(root, "runtime-verification-cache.json");
+    fs.writeFileSync(cachePath, "not json");
+
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: true,
+      hashes: { computed: 7, reused: 0 },
+    });
+    expect(JSON.parse(fs.readFileSync(cachePath, "utf8"))).toMatchObject({ schemaVersion: 1 });
+
+    fs.writeFileSync(cachePath, "keep me");
+    fs.appendFileSync(layout.gitExecutable, "tampered");
+    await expect(inspectPackagedRuntime(layout, "0.0.1", { cachePath })).resolves.toMatchObject({
+      ok: false,
+    });
+    expect(fs.readFileSync(cachePath, "utf8")).toBe("keep me");
   });
 
   it.runIf(process.env["PRAXEUM_RUNTIME_ROOT"] !== undefined)(
     "accepts the exact assembled native runtime",
     async () => {
       const { layout } = loadAssembledRuntime();
-      await expect(inspectPackagedRuntime(layout, packageVersion)).resolves.toMatchObject({
+      const cacheRoot = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), "lerience-runtime-cache-"),
+      );
+      temporaryRoots.push(cacheRoot);
+      const cachePath = path.join(cacheRoot, "runtime-verification-cache.json");
+
+      const first = await inspectPackagedRuntime(layout, packageVersion, { cachePath });
+      expect(first).toMatchObject({
         ok: true,
+        hashes: { reused: 0 },
+      });
+      if (!first.ok) return;
+      expect(first.hashes.computed).toBeGreaterThan(0);
+
+      await expect(
+        inspectPackagedRuntime(layout, packageVersion, { cachePath }),
+      ).resolves.toMatchObject({
+        ok: true,
+        hashes: { computed: 0, reused: first.hashes.computed },
       });
     },
     60_000,
