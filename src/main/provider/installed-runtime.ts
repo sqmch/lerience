@@ -39,22 +39,40 @@ function wellKnownCandidates(
   platform: NodeJS.Platform,
   environment: NodeJS.ProcessEnv,
 ): string[] {
+  const nativePath = platform === "win32" ? path.win32 : path.posix;
   const userHome = environment[platform === "win32" ? "USERPROFILE" : "HOME"];
   if (platform === "win32") {
     const localAppData = environment.LOCALAPPDATA;
     return unique([
       providerId === "codex" && localAppData
-        ? path.join(localAppData, "Programs", "OpenAI", "Codex", "bin", "codex.exe")
+        ? nativePath.join(localAppData, "Programs", "OpenAI", "Codex", "bin", "codex.exe")
         : null,
       userHome
-        ? path.join(userHome, ".local", "bin", providerId === "claude" ? "claude.exe" : "codex.exe")
+        ? nativePath.join(
+            userHome,
+            ".local",
+            "bin",
+            providerId === "claude" ? "claude.exe" : "codex.exe",
+          )
         : null,
     ]);
   }
 
   const executable = providerId === "claude" ? "claude" : "codex";
   return unique([
-    userHome ? path.join(userHome, ".local", "bin", executable) : null,
+    platform === "darwin" && providerId === "codex"
+      ? "/Applications/ChatGPT.app/Contents/Resources/codex"
+      : null,
+    platform === "darwin" && providerId === "codex"
+      ? "/Applications/Codex.app/Contents/Resources/codex"
+      : null,
+    platform === "darwin" && providerId === "codex" && userHome
+      ? nativePath.join(userHome, "Applications", "ChatGPT.app", "Contents", "Resources", "codex")
+      : null,
+    platform === "darwin" && providerId === "codex" && userHome
+      ? nativePath.join(userHome, "Applications", "Codex.app", "Contents", "Resources", "codex")
+      : null,
+    userHome ? nativePath.join(userHome, ".local", "bin", executable) : null,
     `/opt/homebrew/bin/${executable}`,
     `/usr/local/bin/${executable}`,
   ]);
@@ -65,6 +83,7 @@ function pathCandidates(
   platform: NodeJS.Platform,
   environment: NodeJS.ProcessEnv,
 ): string[] {
+  const nativePath = platform === "win32" ? path.win32 : path.posix;
   const pathValue = Object.entries(environment).find(
     ([key, value]) => key.toLowerCase() === "path" && typeof value === "string",
   )?.[1];
@@ -76,7 +95,7 @@ function pathCandidates(
       .split(platform === "win32" ? ";" : ":")
       .map((directory) => directory.trim().replace(/^"(.*)"$/u, "$1"))
       .filter((directory) => directory !== "")
-      .flatMap((directory) => names.map((name) => path.join(directory, name))),
+      .flatMap((directory) => names.map((name) => nativePath.join(directory, name))),
   );
 }
 

@@ -4,7 +4,7 @@ import { discoverInstalledProviderRuntime } from "../src/main/provider/installed
 
 describe("installed provider runtime discovery", () => {
   it("finds official Windows install locations without requiring terminal PATH", () => {
-    const expected = path.join(
+    const expected = path.win32.join(
       "C:/Users/learner/AppData/Local",
       "Programs",
       "OpenAI",
@@ -26,7 +26,7 @@ describe("installed provider runtime discovery", () => {
   });
 
   it("finds native provider executables on PATH and ignores command wrappers", () => {
-    const expected = path.join("C:/Program Files/Claude Code", "claude.exe");
+    const expected = path.win32.join("C:/Program Files/Claude Code", "claude.exe");
     expect(
       discoverInstalledProviderRuntime("claude", {
         platform: "win32",
@@ -40,7 +40,7 @@ describe("installed provider runtime discovery", () => {
   });
 
   it("works with a minimal PATH-only environment", () => {
-    const expected = path.join("/opt/provider tools/bin", "codex");
+    const expected = path.posix.join("/opt/provider tools/bin", "codex");
     expect(
       discoverInstalledProviderRuntime("codex", {
         platform: "linux",
@@ -48,6 +48,37 @@ describe("installed provider runtime discovery", () => {
         isFile: (candidate) => candidate === expected,
       }),
     ).toEqual({ providerId: "codex", executablePath: expected, source: "path" });
+  });
+
+  it.each(["Codex.app", "ChatGPT.app"])(
+    "finds the Codex CLI bundled in the macOS %s app with Finder's minimal PATH",
+    (appName) => {
+      const expected = `/Applications/${appName}/Contents/Resources/codex`;
+      expect(
+        discoverInstalledProviderRuntime("codex", {
+          platform: "darwin",
+          environment: {
+            HOME: "/Users/learner",
+            PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+          },
+          isFile: (candidate) => candidate === expected,
+        }),
+      ).toEqual({ providerId: "codex", executablePath: expected, source: "well-known" });
+    },
+  );
+
+  it("prefers the macOS desktop app over a separate global Codex CLI", () => {
+    const bundled = "/Applications/Codex.app/Contents/Resources/codex";
+    expect(
+      discoverInstalledProviderRuntime("codex", {
+        platform: "darwin",
+        environment: {
+          HOME: "/Users/learner",
+          PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+        },
+        isFile: (candidate) => candidate === bundled || candidate === "/usr/local/bin/codex",
+      }),
+    ).toEqual({ providerId: "codex", executablePath: bundled, source: "well-known" });
   });
 
   it("reports a missing install as data instead of inventing a bundled fallback", () => {

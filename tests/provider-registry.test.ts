@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TutorProviderRegistry } from "../src/main/provider/registry";
+import {
+  createRefreshingTutorProvider,
+  TutorProviderRegistry,
+} from "../src/main/provider/registry";
 import type {
   ProviderLoginReply,
   ProviderReadiness,
@@ -107,5 +110,79 @@ describe("TutorProviderRegistry", () => {
     const registry = new TutorProviderRegistry([provider("claude")], chosen.store);
 
     expect(() => registry.select("codex")).toThrow("That tutor is not available.");
+  });
+});
+
+describe("createRefreshingTutorProvider", () => {
+  it("re-discovers an installation between readiness checks and before session creation", async () => {
+    let installed = false;
+    let loads = 0;
+    const refreshing = createRefreshingTutorProvider({
+      id: "codex",
+      label: "Codex",
+      load: () => {
+        loads += 1;
+        return provider("codex", {
+          describeReadiness: async () => ({
+            ...(await provider("codex").describeReadiness()),
+            runtime: installed
+              ? { state: "ready", version: "0.144.6" }
+              : { state: "not-installed", version: null },
+            connection: installed ? "connected" : "unavailable",
+            canLogin: installed,
+          }),
+          createAgent: () => {
+            if (!installed) throw new Error("Codex is not installed.");
+            return { providerId: "codex" } as TutorAgent;
+          },
+        });
+      },
+    });
+    const chosen = selection("codex");
+    const registry = new TutorProviderRegistry([refreshing], chosen.store);
+
+    expect((await registry.catalog()).providers[0]?.runtime.state).toBe("not-installed");
+    installed = true;
+    expect((await registry.catalog()).providers[0]?.runtime.state).toBe("ready");
+    expect(registry.createSelectedAgent().providerId).toBe("codex");
+    expect(loads).toBe(3);
+  });
+
+  it("keeps cancellation bound to the provider that owns an active login", async () => {
+    const readiness = await provider("codex").describeReadiness();
+    let loads = 0;
+    let cancelCalls = 0;
+    let finishLogin: (reply: ProviderLoginReply) => void = () => undefined;
+    const loginCompletion = new Promise<ProviderLoginReply>((resolve) => {
+      finishLogin = resolve;
+    });
+    const refreshing = createRefreshingTutorProvider({
+      id: "codex",
+      label: "Codex",
+      load: () => {
+        loads += 1;
+        if (loads !== 1) return provider("codex");
+        return provider("codex", {
+          beginLogin: async () => await loginCompletion,
+          cancelLogin: () => {
+            cancelCalls += 1;
+            finishLogin({
+              ok: false,
+              reason: "cancelled",
+              detail: "Codex sign-in was cancelled.",
+              readiness,
+            });
+          },
+        });
+      },
+    });
+
+    const login = refreshing.beginLogin();
+    await refreshing.describeReadiness();
+    refreshing.cancelLogin();
+
+    await expect(login).resolves.toMatchObject({ ok: false, reason: "cancelled" });
+    expect(loads).toBe(2);
+    expect(cancelCalls).toBe(1);
   });
 });
