@@ -1,0 +1,474 @@
+name: Desktop release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing reviewed tag, exactly vMAJOR.MINOR.PATCH
+        required: true
+        type: string
+      create_draft:
+        description: Create a draft in this public source repository after staging
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-candidate-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+env:
+  PRAXEUM_PRODUCT_NAME: Lerience
+  PRAXEUM_APP_ID: io.github.sqmch.lerience
+  PRAXEUM_EXECUTABLE_NAME: Lerience
+  PRAXEUM_RELEASE_REPOSITORY_URL: https://github.com/${{ github.repository }}/releases/
+  PRAXEUM_RELEASE_PUBLIC_KEY_PATH: distribution/release-public-key.pem
+
+jobs:
+  source:
+    name: Validate reviewed tag and collect sources
+    runs-on: windows-2025
+    timeout-minutes: 45
+    outputs:
+      source_commit: ${{ steps.release.outputs.source_commit }}
+      version: ${{ steps.release.outputs.version }}
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      CREATE_DRAFT: ${{ inputs.create_draft }}
+      REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+
+    steps:
+      - name: Check out reviewed release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release identity and provenance
+        id: release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Get-Content -Raw 'package.json' | ConvertFrom-Json
+          $expectedTag = "v$($package.version)"
+          if ($env:RELEASE_TAG -cne $expectedTag) {
+            throw "Release tag must be $expectedTag."
+          }
+          if ((git cat-file -t "refs/tags/$expectedTag") -ne 'tag') {
+            throw 'The release tag must be annotated.'
+          }
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) { throw 'The release tag is not on reviewed main history.' }
+          if ($env:CREATE_DRAFT -eq 'true' -and $env:REPOSITORY_PRIVATE -eq 'true') {
+            throw 'Release drafts may be created only in the canonical public source repository.'
+          }
+          $notes = "distribution/releases/$expectedTag.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) {
+            throw "Missing reviewed release notes at $notes."
+          }
+          "source_commit=$(git rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          "version=$($package.version)" >> $env:GITHUB_OUTPUT
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate exact source
+        run: pnpm check
+
+      - name: Collect checksum-pinned corresponding sources
+        run: pnpm release:collect-sources -- --output dist/release-sources
+
+      - name: Upload exact corresponding sources
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-release-sources-${{ steps.release.outputs.source_commit }}
+          path: dist/release-sources/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+  windows:
+    name: Build reviewed Windows x64 artifact
+    needs: source
+    runs-on: windows-2025
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out exact reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.source_commit }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assemble reviewed Windows runtime
+        run: pnpm runtime:assemble -- --output dist/runtime/win32-x64-release
+
+      - name: Build unsigned release installer
+        env:
+          PRAXEUM_RUNTIME_ROOT: dist/runtime/win32-x64-release
+        run: pnpm package:windows
+
+      - name: Verify unpacked application
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $unpacked = "dist/package/windows-x64/win-unpacked/$env:PRAXEUM_EXECUTABLE_NAME.exe"
+          $verification = Start-Process -FilePath $unpacked -ArgumentList '--verify-installation' -WindowStyle Hidden -Wait -PassThru
+          if ($verification.ExitCode -ne 0) { exit $verification.ExitCode }
+
+      - name: Stage exact Windows artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path 'dist/release-artifacts' | Out-Null
+          $version = '${{ needs.source.outputs.version }}'
+          Copy-Item -LiteralPath "dist/package/windows-x64/$env:PRAXEUM_EXECUTABLE_NAME-Setup-$version-x64.exe" -Destination 'dist/release-artifacts/'
+
+      - name: Upload exact Windows artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-release-windows-${{ needs.source.outputs.source_commit }}
+          path: dist/release-artifacts/*.exe
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+  macos_arm64:
+    name: Build reviewed macOS arm64 artifact
+    needs: source
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out exact reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.source_commit }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+
+      # Dugite's macOS archive contains symlinks that pnpm's restored side-effects cache expands.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Confirm native Apple Silicon runner
+        run: |
+          test "$(uname -m)" = 'arm64'
+          test "$(node -p process.arch)" = 'arm64'
+
+      - name: Assemble reviewed macOS arm64 runtime
+        run: pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-release
+
+      - name: Reproduce exact macOS arm64 runtime manifest
+        run: |
+          pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-reproduction
+          cmp dist/runtime/darwin-arm64-release/manifest.json dist/runtime/darwin-arm64-reproduction/manifest.json
+
+      - name: Build unsigned arm64 release DMG
+        env:
+          PRAXEUM_RUNTIME_ROOT: dist/runtime/darwin-arm64-release
+        run: pnpm package:macos:arm64
+
+      - name: Verify unpacked arm64 application
+        run: |
+          plutil -extract LSFileQuarantineEnabled raw -o - "dist/package/macos-arm64/mac-arm64/Lerience.app/Contents/Info.plist" | grep -qx true
+          "dist/package/macos-arm64/mac-arm64/Lerience.app/Contents/MacOS/Lerience" --verify-installation
+
+      - name: Stage exact macOS arm64 artifact
+        run: |
+          mkdir -p dist/release-artifacts
+          cp "dist/package/macos-arm64/$PRAXEUM_EXECUTABLE_NAME-${{ needs.source.outputs.version }}-arm64.dmg" dist/release-artifacts/
+
+      - name: Upload exact macOS arm64 artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-release-macos-arm64-${{ needs.source.outputs.source_commit }}
+          path: dist/release-artifacts/*.dmg
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+  macos_x64:
+    name: Build reviewed macOS x64 artifact
+    needs: source
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out exact reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.source_commit }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+
+      # Dugite's macOS archive contains symlinks that pnpm's restored side-effects cache expands.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Confirm native Intel runner
+        run: |
+          test "$(uname -m)" = 'x86_64'
+          test "$(node -p process.arch)" = 'x64'
+
+      - name: Assemble reviewed macOS x64 runtime
+        run: pnpm runtime:assemble -- --output dist/runtime/darwin-x64-release
+
+      - name: Reproduce exact macOS x64 runtime manifest
+        run: |
+          pnpm runtime:assemble -- --output dist/runtime/darwin-x64-reproduction
+          cmp dist/runtime/darwin-x64-release/manifest.json dist/runtime/darwin-x64-reproduction/manifest.json
+
+      - name: Build unsigned x64 release DMG
+        env:
+          PRAXEUM_RUNTIME_ROOT: dist/runtime/darwin-x64-release
+        run: pnpm package:macos:x64
+
+      - name: Verify unpacked x64 application
+        run: |
+          plutil -extract LSFileQuarantineEnabled raw -o - "dist/package/macos-x64/mac/Lerience.app/Contents/Info.plist" | grep -qx true
+          "dist/package/macos-x64/mac/Lerience.app/Contents/MacOS/Lerience" --verify-installation
+
+      - name: Record x64 artifact hash
+        run: shasum -a 256 dist/package/macos-x64/*.dmg
+
+      - name: Stage exact macOS x64 artifact
+        run: |
+          mkdir -p dist/release-artifacts
+          cp "dist/package/macos-x64/$PRAXEUM_EXECUTABLE_NAME-${{ needs.source.outputs.version }}-x64.dmg" dist/release-artifacts/
+
+      - name: Upload exact macOS x64 artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-release-macos-x64-${{ needs.source.outputs.source_commit }}
+          path: dist/release-artifacts/*.dmg
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+  sign:
+    name: Sign and stage exact desktop release bundle
+    needs: [source, windows, macos_arm64, macos_x64]
+    runs-on: windows-2025
+    timeout-minutes: 20
+    environment: release-signing
+    env:
+      PRODUCT_NAME: Lerience
+      EXECUTABLE_NAME: Lerience
+      RELEASE_TAG: ${{ inputs.release_tag }}
+
+    steps:
+      - name: Check out exact reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.source_commit }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Download exact Windows artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-release-windows-${{ needs.source.outputs.source_commit }}
+          path: dist/release-artifacts
+
+      - name: Download exact macOS arm64 artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-release-macos-arm64-${{ needs.source.outputs.source_commit }}
+          path: dist/release-artifacts
+
+      - name: Download exact macOS x64 artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-release-macos-x64-${{ needs.source.outputs.source_commit }}
+          path: dist/release-artifacts
+
+      - name: Download exact corresponding sources
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-release-sources-${{ needs.source.outputs.source_commit }}
+          path: dist/release-sources
+
+      - name: Materialize protected signing key
+        id: signing
+        shell: pwsh
+        env:
+          RELEASE_PRIVATE_KEY_PEM: ${{ secrets.RELEASE_PRIVATE_KEY_PEM }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:RELEASE_PRIVATE_KEY_PEM)) {
+            throw 'RELEASE_PRIVATE_KEY_PEM is not configured in release-signing.'
+          }
+          $privateKey = Join-Path $env:RUNNER_TEMP 'release-private.pem'
+          [IO.File]::WriteAllText($privateKey, $env:RELEASE_PRIVATE_KEY_PEM, [Text.Encoding]::ASCII)
+          "private_key=$privateKey" >> $env:GITHUB_OUTPUT
+          "published_at=$([DateTimeOffset]::UtcNow.ToString('O'))" >> $env:GITHUB_OUTPUT
+
+      - name: Sign exact desktop manifest
+        shell: pwsh
+        run: |
+          pnpm release:sign-manifest -- `
+            --artifacts dist/release-artifacts `
+            --executable-name $env:EXECUTABLE_NAME `
+            --notes "distribution/releases/$env:RELEASE_TAG.md" `
+            --published-at '${{ steps.signing.outputs.published_at }}' `
+            --private-key '${{ steps.signing.outputs.private_key }}' `
+            --output dist/release-signed
+
+      - name: Stage verified desktop release bundle
+        shell: pwsh
+        run: |
+          pnpm release:stage-desktop -- `
+            --artifacts-dir dist/release-artifacts `
+            --signed-dir dist/release-signed `
+            --sources dist/release-sources `
+            --notes "distribution/releases/$env:RELEASE_TAG.md" `
+            --notices distribution/THIRD-PARTY-NOTICES.md `
+            --public-key distribution/release-public-key.pem `
+            --product-name $env:PRODUCT_NAME `
+            --executable-name $env:EXECUTABLE_NAME `
+            --source-commit '${{ needs.source.outputs.source_commit }}' `
+            --output dist/release-bundle
+
+      - name: Remove materialized signing key
+        if: always()
+        shell: pwsh
+        run: |
+          $privateKey = Join-Path $env:RUNNER_TEMP 'release-private.pem'
+          if (Test-Path -LiteralPath $privateKey -PathType Leaf) {
+            Remove-Item -LiteralPath $privateKey -Force
+          }
+
+      - name: Upload staged desktop release bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-release-bundle-${{ needs.source.outputs.source_commit }}
+          path: dist/release-bundle/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  draft:
+    name: Create same-repository release draft
+    if: inputs.create_draft
+    needs: [source, sign]
+    runs-on: windows-2025
+    timeout-minutes: 10
+    environment: release-publishing
+    permissions:
+      contents: write
+    env:
+      PRODUCT_NAME: Lerience
+      EXECUTABLE_NAME: Lerience
+      RELEASE_TAG: ${{ inputs.release_tag }}
+
+    steps:
+      - name: Check out exact release notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.source_commit }}
+          persist-credentials: false
+
+      - name: Download staged release bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-release-bundle-${{ needs.source.outputs.source_commit }}
+          path: dist/release-bundle
+
+      - name: Create draft release only
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $metadata = gh repo view $env:GITHUB_REPOSITORY --json isPrivate | ConvertFrom-Json
+          if ($metadata.isPrivate) { throw 'The canonical source repository must be public.' }
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'A release already exists for this tag.' }
+          $version = '${{ needs.source.outputs.version }}'
+          $expected = @(
+            "$env:EXECUTABLE_NAME-$version-arm64.dmg"
+            "$env:EXECUTABLE_NAME-$version-corresponding-source.tar.gz"
+            "$env:EXECUTABLE_NAME-$version-x64.dmg"
+            "$env:EXECUTABLE_NAME-Setup-$version-x64.exe"
+            'release-manifest.json'
+            'release-manifest.sig'
+            'SHA256SUMS'
+          ) | Sort-Object
+          $assets = Get-ChildItem -LiteralPath 'dist/release-bundle' -File
+          $actual = $assets.Name | Sort-Object
+          if (Compare-Object -ReferenceObject $expected -DifferenceObject $actual) {
+            throw 'The staged release bundle does not contain exactly the seven approved uploads.'
+          }
+          $notes = "distribution/releases/$env:RELEASE_TAG.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) {
+            throw "Missing reviewed release notes at $notes."
+          }
+          $assetPaths = $assets | ForEach-Object FullName
+          gh release create $env:RELEASE_TAG @assetPaths `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "$env:PRODUCT_NAME $env:RELEASE_TAG" `
+            --notes-file $notes `
+            --draft

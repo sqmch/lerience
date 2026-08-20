@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertLedger } from "./collect-release-sources.mjs";
 import { createCorrespondingSourceArchive } from "./create-corresponding-source-archive.mjs";
+import { describeDesktopReleaseArtifacts } from "./desktop-artifacts.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -13,7 +14,7 @@ const SAFE_PRODUCT_NAME = /^[^<>:"/\\|?*]{1,80}$/u;
 const SOURCE_COMMIT = /^[a-f0-9]{40}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 
-export async function stageWindowsRelease(options) {
+export async function stageDesktopRelease(options) {
   assertOptions(options);
   const packageJson = JSON.parse(await readFile(path.join(repositoryRoot, "package.json"), "utf8"));
   const version = packageJson.version;
@@ -21,16 +22,12 @@ export async function stageWindowsRelease(options) {
     throw new Error("package.json must contain a stable semantic version.");
   }
   const tag = `v${version}`;
-  const expectedNames = {
-    nsis: `${options.executableName}-Setup-${version}-x64.exe`,
-  };
-  if (path.basename(options.nsis) !== expectedNames.nsis) {
-    throw new Error(`The NSIS artifact must be named ${expectedNames.nsis}.`);
-  }
+  const artifacts = await describeDesktopReleaseArtifacts({
+    directory: options.artifactsDir,
+    executableName: options.executableName,
+    version,
+  });
 
-  const artifacts = {
-    nsis: await describeFile(options.nsis),
-  };
   const signedDirectory = path.resolve(options.signedDir);
   const manifestBytes = await readFile(path.join(signedDirectory, "release-manifest.json"));
   const signatureText = (
@@ -80,7 +77,7 @@ export async function stageWindowsRelease(options) {
     );
   };
 
-  await copy(options.nsis, expectedNames.nsis);
+  for (const artifact of artifacts) await copy(artifact.filePath, artifact.fileName);
   await copy(path.join(signedDirectory, "release-manifest.json"), "release-manifest.json");
   await copy(path.join(signedDirectory, "release-manifest.sig"), "release-manifest.sig");
   const correspondingSourceName = `${options.executableName}-${version}-corresponding-source.tar.gz`;
@@ -101,13 +98,14 @@ export async function stageWindowsRelease(options) {
     version,
     tag,
     sourceCommit: options.sourceCommit,
-    artifacts: {
-      nsis: {
-        versioned: expectedNames.nsis,
-        bytes: artifacts.nsis.bytes,
-        sha256: artifacts.nsis.sha256,
-      },
-    },
+    artifacts: artifacts.map((artifact) => ({
+      platform: artifact.platform,
+      architecture: artifact.architecture,
+      packageType: artifact.packageType,
+      versioned: artifact.fileName,
+      bytes: artifact.size,
+      sha256: artifact.sha256,
+    })),
     correspondingSource,
   };
 
@@ -131,7 +129,15 @@ function assertOptions(options) {
   ) {
     throw new Error("The release identity or source commit is unsafe.");
   }
-  for (const name of ["nsis", "signedDir", "sources", "notes", "notices", "publicKey", "output"]) {
+  for (const name of [
+    "artifactsDir",
+    "signedDir",
+    "sources",
+    "notes",
+    "notices",
+    "publicKey",
+    "output",
+  ]) {
     if (typeof options[name] !== "string" || options[name].trim() === "") {
       throw new Error(`The release option ${name} is required.`);
     }
@@ -145,21 +151,25 @@ function assertManifest(manifest, version, artifacts) {
     manifest.channel !== "stable" ||
     manifest.version !== version ||
     !Array.isArray(manifest.artifacts) ||
-    manifest.artifacts.length !== 1
+    manifest.artifacts.length !== artifacts.length
   ) {
     throw new Error("The signed release manifest does not describe this stable release.");
   }
-  for (const packageType of ["nsis"]) {
-    const expected = artifacts[packageType];
-    const candidate = manifest.artifacts.find((artifact) => artifact.packageType === packageType);
+  for (const expected of artifacts) {
+    const candidate = manifest.artifacts.find(
+      (artifact) =>
+        artifact.platform === expected.platform &&
+        artifact.architecture === expected.architecture &&
+        artifact.packageType === expected.packageType,
+    );
     if (
-      candidate?.platform !== "win32" ||
-      candidate.architecture !== "x64" ||
-      candidate.fileName !== expected.fileName ||
-      candidate.size !== expected.bytes ||
+      candidate?.fileName !== expected.fileName ||
+      candidate.size !== expected.size ||
       candidate.sha256 !== expected.sha256
     ) {
-      throw new Error(`The signed ${packageType} artifact does not match the staged bytes.`);
+      throw new Error(
+        `The signed ${expected.platform}-${expected.architecture} artifact does not match the staged bytes.`,
+      );
     }
   }
 }
@@ -221,7 +231,7 @@ function parseArguments(args) {
     values.set(name, value);
   }
   const names = [
-    "--nsis",
+    "--artifacts-dir",
     "--signed-dir",
     "--sources",
     "--notes",
@@ -243,11 +253,11 @@ function toCamelCase(value) {
 }
 
 function usage() {
-  return "Usage: stage-windows-release --nsis <exe> --signed-dir <directory> --sources <directory> --notes <md> --notices <md> --public-key <pem> --product-name <name> --executable-name <name> --source-commit <sha> --output <directory>";
+  return "Usage: stage-desktop-release --artifacts-dir <directory> --signed-dir <directory> --sources <directory> --notes <md> --notices <md> --public-key <pem> --product-name <name> --executable-name <name> --source-commit <sha> --output <directory>";
 }
 
 if (path.resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
-  stageWindowsRelease(parseArguments(process.argv.slice(2))).catch((error) => {
+  stageDesktopRelease(parseArguments(process.argv.slice(2))).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });

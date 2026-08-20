@@ -39,6 +39,25 @@ async function main() {
 
   const sources = await resolveInstalledSources(targetKey, ledger);
   const outputRoot = path.resolve(options.outputRoot);
+  await assembleRuntime({
+    platform,
+    architecture,
+    targetKey,
+    ledger,
+    sources,
+    outputRoot,
+  });
+  process.stdout.write(`${outputRoot}\n`);
+}
+
+export async function assembleRuntime({
+  platform,
+  architecture,
+  targetKey,
+  ledger,
+  sources,
+  outputRoot,
+}) {
   if (await exists(outputRoot)) throw new Error(`Runtime output already exists: ${outputRoot}`);
   await mkdir(path.dirname(outputRoot), { recursive: true });
   await mkdir(outputRoot);
@@ -62,7 +81,6 @@ async function main() {
   } finally {
     if (!complete) await rm(outputRoot, { recursive: true, force: true });
   }
-  process.stdout.write(`${outputRoot}\n`);
 }
 
 function parseArguments(args) {
@@ -101,6 +119,7 @@ async function resolveInstalledSources(targetKey, ledger) {
   const npmPackage = path.dirname(require.resolve("npm/package.json"));
   const npmManifest = await readJson(path.join(npmPackage, "package.json"));
   assertVersion("npm", npmManifest.version, ledger.components.npm.version);
+  const gitLicense = await downloadVerifiedSource(ledger.components.notices.git);
   const gitLfsLicense = await downloadVerifiedSource(ledger.components.notices.gitLfs);
 
   return {
@@ -109,11 +128,10 @@ async function resolveInstalledSources(targetKey, ledger) {
     npmRoot: npmPackage,
     licenseSources: {
       dugite: path.join(dugitePackage, "LICENSE"),
-      git: path.join(dugitePackage, "git", "LICENSE.txt"),
       npm: path.join(npmPackage, "LICENSE"),
       notices: path.join(repositoryRoot, "distribution", "THIRD-PARTY-NOTICES.md"),
     },
-    remoteLicenses: { "git-lfs.md": gitLfsLicense },
+    remoteLicenses: { "git.txt": gitLicense, "git-lfs.md": gitLfsLicense },
   };
 }
 
@@ -172,13 +190,20 @@ async function materializeRuntime({ platform, architecture, targetKey, ledger, s
     },
   };
 
-  const components = [];
+  const candidateTrees = {};
+  for (const id of COMPONENT_IDS) {
+    candidateTrees[id] = await hashTree(destinations[id]);
+  }
   const acceptedTrees = ledger.acceptedComponentTrees?.[targetKey];
   if (acceptedTrees === undefined) {
-    throw new Error(`The reviewed ledger has no accepted component trees for ${targetKey}.`);
+    throw new Error(
+      `The reviewed ledger has no accepted component trees for ${targetKey}. Candidate component trees: ${JSON.stringify(candidateTrees)}.`,
+    );
   }
+
+  const components = [];
   for (const id of COMPONENT_IDS) {
-    const tree = await hashTree(destinations[id]);
+    const tree = candidateTrees[id];
     const acceptedTree = acceptedTrees[id];
     if (
       acceptedTree?.fileCount !== tree.fileCount ||

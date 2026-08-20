@@ -7,9 +7,9 @@ module. Bumps are deliberate source changes followed by native assembly and repr
 clean-machine acceptance remains a separate release gate. The assembler never asks a registry for
 "latest".
 
-The ledger covers Windows x64 and future native macOS arm64/x64 targets. Windows currently has
-accepted complete-tree hashes for Course Engine, Git, and npm. macOS source pins are present, but
-its complete-tree hashes remain an M5.3 native-build input and assembly fails closed until recorded.
+The ledger covers Windows x64 and both native Mac targets. Windows x64, macOS arm64, and macOS x64
+have separate accepted complete-tree hashes for Course Engine, Git, and npm. Assembly fails closed
+when the current native tree differs from its reviewed target record.
 The npm assembly deliberately omits package-manager-generated `node_modules/.bin` wrappers: they
 contain checkout-specific paths, are not part of npm's published payload, and are not used by the
 packaged runtime.
@@ -25,12 +25,13 @@ Standalone Node, Claude, and Codex are deliberately absent under ADR-025:
 
 Supply decisions and gates:
 
-- `GIT-PAYLOAD-DECISION.md` accepts the complete 113.62 MiB Dugite Native Windows payload; custom
-  pruning is forbidden without an upstream build profile and a new native acceptance matrix.
+- `GIT-PAYLOAD-DECISION.md` accepts the complete reviewed Dugite Native payload on Windows and
+  macOS; custom pruning is forbidden without an upstream build profile and a new native acceptance
+  matrix.
 - `THIRD-PARTY-NOTICES.md` records packaged-library and font notices plus exact source revisions for
   payloads with corresponding-source delivery. A public release packages those notices, ledgers,
   checksums, and exact source archives into one versioned corresponding-source archive beside the
-  installers. `release-source-ledger.json` pins their archive URLs, byte lengths, and SHA-256
+  desktop packages. `release-source-ledger.json` pins their archive URLs, byte lengths, and SHA-256
   digests; `pnpm release:collect-sources` fails closed on any changed byte.
 - Renderer fonts come only from the exact locked Fontsource packages; the installed notice carries
   each family copyright and the full common OFL-1.1 text.
@@ -71,16 +72,19 @@ a developer NVMe machine, and a cold first launch is several times that. The sam
 headless as the release-acceptance contract: `Lerience.exe --verify-installation` opens no window,
 starts no provider, touches no app data, and reports package-owned facts through its exit code.
 
-## Windows package scaffold
+## Native desktop package scaffold
 
-M5.2's non-publishing scaffold is pinned in `electron-builder.config.mjs`. It requires repository-
-owned identity inputs and an exact assembled runtime; it has no publish target. ADR-032 fixes the
-public Lerience identity while the rehearsal workflow uses isolated `Lerience Preview` values.
-`pnpm package:windows:dir` builds the unpacked directory, while `pnpm package:windows` builds
-the per-user NSIS target. Both run the runtime preflight first, and the post-pack hook
-checks physical files plus ASAR contents with a 600 MiB unpacked ceiling. Preflight also repeats
-CourseCreator and ADR-027 Course Engine update acceptance with the exact assembled Git/runtime; a
-developer-machine Git success is not package proof.
+The non-publishing scaffold is pinned in `electron-builder.config.mjs`. It requires repository-owned
+identity inputs, an explicit `win32-x64`, `darwin-arm64`, or `darwin-x64` target, and an exact
+matching assembled runtime; it has no publish target. ADR-032 fixes the public Lerience identity
+while the rehearsal workflow uses isolated `Lerience Preview` values. `pnpm package:windows` builds
+the per-user NSIS target. The desktop builder creates separate unsigned DMGs for `darwin-arm64` and
+`darwin-x64`. Its `--dir` mode retains the unpacked application. Every command rejects a non-native
+build host, runs the same focused runtime preflight, and applies the same 600 MiB post-pack inventory
+to physical files and ASAR contents. Preflight repeats CourseCreator and ADR-027 Course Engine
+update acceptance with the exact assembled Git/runtime; a developer-machine Git success is not
+package proof. The Mac package enables `LSFileQuarantineEnabled`, so DMGs downloaded by the app are
+handed back to macOS Gatekeeper; both native jobs assert the key in the packaged `Info.plist`.
 
 The runtime ledger pins the accepted npm input, while the lockfile policy applies the three-day
 dependency quarantine and CI repeats the frozen-install checks.
@@ -91,18 +95,21 @@ separate offline-key step. It consumes existing artifacts and an Ed25519 private
 repository; it does not generate a key or upload anything. ADR-024 and `RELEASE-OPERATIONS.md`
 define the remaining custody and promotion gates.
 
-`pnpm release:stage-windows` verifies the signer key against the public key compiled into the app,
-the signature over the exact manifest bytes, the versioned installer, release notes, and the full
-corresponding-source set. It then emits exactly five uploads: the installer, the manifest and
-signature, one combined corresponding-source archive, and `SHA256SUMS`. Release notes come from
-the tagged repository document, and the signed updater selects the versioned package filenames.
+`pnpm release:stage-desktop` verifies the signer key against the public key compiled into the app,
+the signature over the exact manifest bytes, all three versioned packages, release notes, and the
+full corresponding-source set. It emits exactly seven uploads: Windows x64 EXE, macOS arm64 DMG,
+macOS x64 DMG, the manifest and signature, one combined corresponding-source archive, and
+`SHA256SUMS`. Release notes come from the tagged repository document. The signed updater selects
+the package matching the installed platform and architecture.
 
-`.github/workflows/windows-release-candidate.yml` runs that chain from an existing annotated tag on
-reviewed `main`. Its default result is a short-lived Actions bundle. Its optional drafting
-job fails if the repository is private and can create only a **draft** in the canonical public
-source repository. The `release-signing` and `release-publishing` environments protect signing and
-draft creation; the latter uses the job-scoped `GITHUB_TOKEN`, not a cross-repository secret. The
-workflow contains no release-publish command.
+`.github/workflows/desktop-release-candidate.yml` runs that chain from one existing annotated tag on
+reviewed `main`. It validates the source once, builds Windows x64, macOS arm64, and macOS x64 on
+matching native runners, and signs one combined manifest only after all three jobs pass. Its default
+result is a short-lived Actions bundle. Its optional drafting job fails if the repository is private
+and can create only a **draft** in the canonical public source repository. The `release-signing`
+and `release-publishing` environments protect signing and draft creation; the latter uses the
+job-scoped `GITHUB_TOKEN`, not a cross-repository secret. The workflow contains no release-publish
+command.
 
 ## Update-channel build inputs
 

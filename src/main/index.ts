@@ -99,7 +99,12 @@ import { inspectPackagedRuntime } from "./runtime-manifest";
 import type { ProviderCatalog, ProviderLoginReply, TutorProviderId } from "../shared/provider";
 import type { UpdateAction, UpdateStatus } from "../shared/update";
 import { compiledReleaseConfig } from "./update/release-config";
-import { compiledFrameColors, TITLE_BAR_HEIGHT } from "./window-frame";
+import {
+  compiledFrameColors,
+  TITLE_BAR_HEIGHT,
+  WINDOWS_CAPTION_WIDTH,
+  windowTitleBarOptions,
+} from "./window-frame";
 import { UpdateService } from "./update/service";
 import type { ReleaseTarget } from "./update/release-manifest";
 
@@ -139,15 +144,11 @@ function createWindow(content: "app" | "runtime-check" = "app"): BrowserWindow {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
-    /* ADR-016: the app draws the bar, the OS keeps drawing the caption buttons,
-       so Snap Layouts, maximise semantics and accessible controls come free.
-       The renderer repaints the overlay on first render and on every theme
-       change, because it is the only side that knows what the theme resolves
-       to; the compiled colours here are what the window opens with, so the
-       caption buttons are not the OS default light on a dark window for as
-       long as it takes a renderer to exist. */
-    titleBarStyle: "hidden",
-    titleBarOverlay: openingTitleBarOverlay(),
+    /* ADR-016: the app draws the bar while the OS keeps its native controls.
+       Windows receives the exact overlay it had before; macOS uses hiddenInset
+       and enables the overlay geometry variables so renderer content clears
+       the real traffic-light area instead of a guessed pixel width. */
+    ...windowTitleBarOptions(process.platform, openingTitleBarOverlay()),
     webPreferences: {
       preload: path.join(import.meta.dirname, "../preload/index.cjs"),
       contextIsolation: true,
@@ -179,17 +180,16 @@ function loadWindowContent(window: BrowserWindow): void {
 /** The page shown while a packaged launch verifies its own runtime. It is
  *  plain inline HTML rather than the renderer because the check gates the app
  *  starting at all, and it draws its own title bar for the same reason the app
- *  does: with `titleBarStyle: "hidden"` there is no native bar, so a page
- *  without a drag region is a window the learner cannot move (ADR-016). The
- *  bar is the same height and sits in the same place as the app's, so the swap
- *  to real content moves nothing. */
+ *  does: both supported hidden title-bar styles need an app drag region. The
+ *  bar is the same height and uses the same OS-reported control insets as the
+ *  app, so the swap to real content moves nothing. */
 function runtimeCheckPage(): string {
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
 <title>${PRODUCT_NAME}</title><style>
 html,body{height:100%;margin:0}body{display:grid;grid-template-rows:auto 1fr;background:Canvas;color:CanvasText;font:.875rem/1.5 Inter,system-ui,sans-serif}
-header{-webkit-app-region:drag;display:flex;align-items:center;gap:.5rem;height:${String(TITLE_BAR_HEIGHT)}px;padding-left:.875rem}
+header{-webkit-app-region:drag;display:flex;align-items:center;gap:.5rem;height:${String(TITLE_BAR_HEIGHT)}px;padding-left:max(.875rem,env(titlebar-area-x,0));padding-right:max(.875rem,calc(100vw - env(titlebar-area-x,0) - env(titlebar-area-width,calc(100vw - ${String(WINDOWS_CAPTION_WIDTH)}px))))}
 .chip{width:.625rem;height:.625rem;border:.0625rem solid GrayText;border-radius:.1875rem}
 .wordmark{color:GrayText;font-weight:500;letter-spacing:-.01em}
 main{place-self:center;text-align:center}

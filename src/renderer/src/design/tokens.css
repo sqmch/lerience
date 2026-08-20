@@ -324,12 +324,18 @@
      sized before any renderer exists; the two must not drift. */
   --titlebar-h: 38px;
   --statusbar-h: 26px;
-  /* The strip at the END of the title bar that the OS draws its caption buttons
-     into (Windows: three 46px hit targets). Nothing of ours may be laid out
-     there, and title text must reserve it or a long course name slides under
-     the close button. Windows-first, like the rest of ADR-016; macOS puts its
-     traffic lights at the other end and gets its own measure when it lands. */
+  /* Fallback for browsers without the Window Controls Overlay environment
+     variables. On Electron/Windows the measured end inset resolves to this
+     same three-button strip; on macOS the reported start inset clears the
+     traffic lights and the end falls back to ordinary titlebar padding. */
   --caption-w: 138px;
+  --titlebar-inset-start: max(var(--space-3-5), env(titlebar-area-x, 0px));
+  --titlebar-inset-end: max(
+    var(--space-3-5),
+    calc(
+      100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - var(--caption-w)))
+    )
+  );
   /* the first-run column: wide enough that its one explanatory line sets on a
      single line, which is the measure the copy was written against */
   --measure-start: 38rem;

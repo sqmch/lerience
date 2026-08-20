@@ -1,4 +1,4 @@
-name: Windows distribution rehearsal
+name: Desktop distribution rehearsal
 
 on:
   workflow_dispatch:
@@ -7,21 +7,21 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-distribution-rehearsal
+  group: desktop-distribution-rehearsal
   cancel-in-progress: false
 
-jobs:
-  package:
-    name: Non-promotable rehearsal / Windows x64
-    runs-on: windows-2025
-    timeout-minutes: 60
-    env:
-      PRAXEUM_PRODUCT_NAME: Lerience Preview
-      PRAXEUM_APP_ID: io.github.sqmch.lerience.preview
-      PRAXEUM_EXECUTABLE_NAME: LeriencePreview
-      PRAXEUM_RELEASE_REPOSITORY_URL: https://github.com/${{ github.repository }}/releases/
-      PRAXEUM_RELEASE_PUBLIC_KEY_PATH: distribution/release-public-key.pem
+env:
+  PRAXEUM_PRODUCT_NAME: Lerience Preview
+  PRAXEUM_APP_ID: io.github.sqmch.lerience.preview
+  PRAXEUM_EXECUTABLE_NAME: LeriencePreview
+  PRAXEUM_RELEASE_REPOSITORY_URL: https://github.com/${{ github.repository }}/releases/
+  PRAXEUM_RELEASE_PUBLIC_KEY_PATH: distribution/release-public-key.pem
 
+jobs:
+  validate:
+    name: Validate source once
+    runs-on: windows-2025
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,6 +46,32 @@ jobs:
       - name: Validate source
         run: pnpm check
 
+  windows:
+    name: Non-promotable rehearsal / Windows x64
+    needs: validate
+    runs-on: windows-2025
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Assemble reviewed Windows runtime
         run: pnpm runtime:assemble -- --output dist/runtime/win32-x64-rehearsal
 
@@ -55,23 +81,151 @@ jobs:
         run: pnpm package:windows
 
       - name: Verify exact unpacked application
+        shell: pwsh
         run: |
           $verification = Start-Process -FilePath 'dist/package/windows-x64/win-unpacked/LeriencePreview.exe' -ArgumentList '--verify-installation' -WindowStyle Hidden -Wait -PassThru
           if ($verification.ExitCode -ne 0) { exit $verification.ExitCode }
 
       - name: Record artifact hashes
+        shell: pwsh
         run: |
           Get-FileHash -Algorithm SHA256 'dist/package/windows-x64/*.exe' | ForEach-Object {
             "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))"
           }
 
-      - name: Upload short-lived rehearsal artifacts
+      - name: Upload short-lived Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: lerience-preview-windows-x64-${{ github.sha }}
           path: |
             dist/package/windows-x64/*.exe
             dist/runtime/win32-x64-rehearsal/manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  macos_arm64:
+    name: Non-promotable rehearsal / macOS arm64
+    needs: validate
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+
+      # Dugite's macOS archive contains symlinks that pnpm's restored side-effects cache expands.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Confirm native Apple Silicon runner
+        run: |
+          test "$(uname -m)" = 'arm64'
+          test "$(node -p process.arch)" = 'arm64'
+
+      - name: Assemble reviewed macOS arm64 runtime
+        run: pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-rehearsal
+
+      - name: Reproduce exact macOS arm64 runtime manifest
+        run: |
+          pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-reproduction
+          cmp dist/runtime/darwin-arm64-rehearsal/manifest.json dist/runtime/darwin-arm64-reproduction/manifest.json
+
+      - name: Build unsigned arm64 rehearsal DMG
+        env:
+          PRAXEUM_RUNTIME_ROOT: dist/runtime/darwin-arm64-rehearsal
+        run: pnpm package:macos:arm64
+
+      - name: Verify exact unpacked arm64 application
+        run: |
+          plutil -extract LSFileQuarantineEnabled raw -o - "dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/Info.plist" | grep -qx true
+          "dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/MacOS/LeriencePreview" --verify-installation
+
+      - name: Record arm64 artifact hashes
+        run: shasum -a 256 dist/package/macos-arm64/*.dmg
+
+      - name: Upload short-lived macOS arm64 artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lerience-preview-macos-arm64-${{ github.sha }}
+          path: |
+            dist/package/macos-arm64/*.dmg
+            dist/runtime/darwin-arm64-rehearsal/manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  macos_x64:
+    name: Non-promotable rehearsal / macOS x64
+    needs: validate
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+
+      # Dugite's macOS archive contains symlinks that pnpm's restored side-effects cache expands.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Confirm native Intel runner
+        run: |
+          test "$(uname -m)" = 'x86_64'
+          test "$(node -p process.arch)" = 'x64'
+
+      - name: Assemble reviewed macOS x64 runtime
+        run: pnpm runtime:assemble -- --output dist/runtime/darwin-x64-rehearsal
+
+      - name: Reproduce exact macOS x64 runtime manifest
+        run: |
+          pnpm runtime:assemble -- --output dist/runtime/darwin-x64-reproduction
+          cmp dist/runtime/darwin-x64-rehearsal/manifest.json dist/runtime/darwin-x64-reproduction/manifest.json
+
+      - name: Build unsigned x64 rehearsal DMG
+        env:
+          PRAXEUM_RUNTIME_ROOT: dist/runtime/darwin-x64-rehearsal
+        run: pnpm package:macos:x64
+
+      - name: Verify exact unpacked x64 application
+        run: |
+          plutil -extract LSFileQuarantineEnabled raw -o - "dist/package/macos-x64/mac/LeriencePreview.app/Contents/Info.plist" | grep -qx true
+          "dist/package/macos-x64/mac/LeriencePreview.app/Contents/MacOS/LeriencePreview" --verify-installation
+
+      - name: Record x64 artifact hashes
+        run: shasum -a 256 dist/package/macos-x64/*.dmg
+
+      - name: Upload short-lived macOS x64 artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lerience-preview-macos-x64-${{ github.sha }}
+          path: |
+            dist/package/macos-x64/*.dmg
+            dist/runtime/darwin-x64-rehearsal/manifest.json
           if-no-files-found: error
           retention-days: 7
           compression-level: 0

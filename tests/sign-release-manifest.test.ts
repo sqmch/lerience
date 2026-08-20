@@ -20,12 +20,18 @@ function fixture() {
   const keys = generateKeyPairSync("ed25519");
   const privateKey = path.join(root, "release-private.pem");
   const notes = path.join(root, "notes.txt");
-  const nsis = path.join(root, `ApprovedProduct-Setup-${packageVersion}-x64.exe`);
+  const artifacts = path.join(root, "artifacts");
+  fs.mkdirSync(artifacts);
+  const nsis = path.join(artifacts, `ApprovedProduct-Setup-${packageVersion}-x64.exe`);
+  const armDmg = path.join(artifacts, `ApprovedProduct-${packageVersion}-arm64.dmg`);
+  const intelDmg = path.join(artifacts, `ApprovedProduct-${packageVersion}-x64.dmg`);
   const output = path.join(root, "release", "signed");
   fs.writeFileSync(privateKey, keys.privateKey.export({ type: "pkcs8", format: "pem" }));
   fs.writeFileSync(notes, "A bounded release test.");
   fs.writeFileSync(nsis, "installer");
-  return { keys, privateKey, notes, nsis, output };
+  fs.writeFileSync(armDmg, "arm package");
+  fs.writeFileSync(intelDmg, "intel package");
+  return { keys, privateKey, notes, artifacts, nsis, armDmg, intelDmg, output };
 }
 
 function run(value: ReturnType<typeof fixture>, privateKey = value.privateKey) {
@@ -33,8 +39,10 @@ function run(value: ReturnType<typeof fixture>, privateKey = value.privateKey) {
     process.execPath,
     [
       script,
-      "--nsis",
-      value.nsis,
+      "--artifacts",
+      value.artifacts,
+      "--executable-name",
+      "ApprovedProduct",
       "--notes",
       value.notes,
       "--published-at",
@@ -53,7 +61,7 @@ afterEach(() => {
 });
 
 describe("release manifest signer", () => {
-  it("hashes the Windows installer and signs the exact emitted bytes", () => {
+  it("hashes all three desktop artifacts and signs the exact emitted bytes", () => {
     const value = fixture();
     const result = run(value);
     expect(result.status).toBe(0);
@@ -71,9 +79,31 @@ describe("release manifest signer", () => {
       version: packageVersion,
       artifact: { fileName: path.basename(value.nsis), size: 9 },
     });
+    expect(
+      verifyAndSelectRelease(bytes, signature, publicKey, {
+        currentVersion: "0.0.0",
+        target: { platform: "darwin", architecture: "arm64", installation: "app-bundle" },
+        artifactBaseUrl: `https://example.test/releases/v${packageVersion}/`,
+      }),
+    ).toMatchObject({
+      version: packageVersion,
+      artifact: { fileName: path.basename(value.armDmg), size: 11 },
+    });
+    expect(
+      verifyAndSelectRelease(bytes, signature, publicKey, {
+        currentVersion: "0.0.0",
+        target: { platform: "darwin", architecture: "x64", installation: "app-bundle" },
+        artifactBaseUrl: `https://example.test/releases/v${packageVersion}/`,
+      }),
+    ).toMatchObject({
+      version: packageVersion,
+      artifact: { fileName: path.basename(value.intelDmg), size: 13 },
+    });
     const sums = fs.readFileSync(path.join(value.output, "SHA256SUMS"), "utf8");
     expect(sums).toContain(path.basename(value.nsis));
-    expect(sums.trim().split("\n")).toHaveLength(2);
+    expect(sums).toContain(path.basename(value.armDmg));
+    expect(sums).toContain(path.basename(value.intelDmg));
+    expect(sums.trim().split("\n")).toHaveLength(4);
   });
 
   it("refuses to create or use a repository-owned release key", () => {

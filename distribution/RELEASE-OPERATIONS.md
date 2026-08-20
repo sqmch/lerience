@@ -81,13 +81,16 @@ before creating a release draft.
   versioned because they are immutable records of a particular release.
 - `releases/latest/download/release-manifest.json` and `.sig` identify the latest candidate.
 - Signed artifact filenames resolve only beneath `releases/download/vMAJOR.MINOR.PATCH/`.
-- The supported Windows release surface is the per-user installer. Omitting another target means
-  the app offers no update for that installation type.
+- The supported release surfaces are the Windows x64 per-user installer plus separate native DMGs
+  for Apple Silicon and Intel Macs. Omitting a target means the app offers no update for that
+  platform or architecture.
 
-Required Windows assets:
+Required desktop assets:
 
 ```text
 <Executable>-Setup-<version>-x64.exe
+<Executable>-<version>-arm64.dmg
+<Executable>-<version>-x64.dmg
 release-manifest.json
 release-manifest.sig
 <Executable>-<version>-corresponding-source.tar.gz
@@ -97,7 +100,7 @@ SHA256SUMS
 The combined corresponding-source archive contains the third-party notices, reviewed source ledger,
 source checksums, and approved corresponding-source files. GitHub displays the tagged release notes
 as the release description and automatically adds its own source snapshots; those are not duplicate
-prepared assets. `SHA256SUMS` covers the other four prepared assets.
+prepared assets. `SHA256SUMS` covers the other six prepared assets.
 
 ## Promotion
 
@@ -106,25 +109,28 @@ prepared assets. `SHA256SUMS` covers the other four prepared assets.
    all compatibility evidence that changed since the prior release.
 3. Merge without bypassing required checks, then create the signed `v<version>` tag from the exact
    merge commit.
-4. Assemble the native runtime and package on the declared release runner using the Lerience identity,
-   the canonical repository's `https://github.com/<owner>/<repository>/releases/` URL, and committed
-   public key. Draft creation fails while the repository is private because an anonymous app cannot
-   consume private GitHub Releases.
-5. Run package inventory and `--verify-installation` against the exact unpacked application. Record
-   installer size and SHA-256 digest.
+4. Assemble each native runtime and package on its matching Windows x64, macOS arm64, or macOS x64
+   runner using the Lerience identity, the canonical repository's
+   `https://github.com/<owner>/<repository>/releases/` URL, and committed public key. Reproduce both
+   Mac runtime manifests before packaging. Draft creation fails while the repository is private
+   because an anonymous app cannot consume private GitHub Releases.
+5. Run package inventory and `--verify-installation` against all three exact unpacked applications.
+   Record each package size and SHA-256 digest.
 6. Sign the exact manifest bytes with `pnpm release:sign-manifest`; immediately verify the emitted
    signature, selected targets, artifact sizes, and hashes independently.
-7. Run the Windows release-candidate workflow with `create_draft: true`. It creates a **draft** in
-   the canonical public source repository and attaches exactly the five required uploads above. It
+7. Run the desktop release-candidate workflow with `create_draft: true`. It creates a **draft** in
+   the canonical public source repository and attaches exactly the seven required uploads above. It
    cannot publish the release. Do not replace accepted bytes in place.
 8. Perform target acceptance against the draft's downloaded bytes. Compare the downloaded hashes to
-   the signed manifest and recorded build evidence.
+   the signed manifest and recorded build evidence. Record the two Mac architectures separately;
+   the Intel DMG must pass Gatekeeper and the learner path on a physical Intel Mac.
 9. Publish only when the acceptance record names the tag, commit, manifest digest, and exact artifact
    digests. Keep the accepted release immutable.
 
-The repository's manual Windows distribution workflow is a non-promotable rehearsal. It uses the preview
-identity, compiles the repository-derived feed URL and committed preview public key, creates no
-GitHub Release, and retains artifacts for seven days. Its output cannot be promoted.
+The repository's manual desktop distribution workflow is a non-promotable rehearsal. It builds
+Windows x64, macOS arm64, and macOS x64 with the preview identity, compiles the repository-derived
+feed URL and committed preview public key, creates no GitHub Release, and retains artifacts for
+seven days. Its output cannot be promoted.
 
 The production candidate workflow is also non-publishing by default. It requires an annotated tag,
 reviewed version-specific notes, the repository-owned Lerience identity, and the `release-signing` environment's

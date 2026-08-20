@@ -1,7 +1,7 @@
 # Portable Git payload decision
 
-Decision: retain the complete reviewed Dugite Native payload for M5.1. Do not maintain a Lerience
-fork or delete individual binaries from it.
+Decision: retain the complete reviewed Dugite Native payload on Windows and macOS. Do not maintain
+a Lerience fork or delete individual binaries from it.
 
 ## Why full Dugite is the safe baseline
 
@@ -24,7 +24,9 @@ The largest optional-looking features are Git Credential Manager (about 18.24 Mi
 (about 12.15 MiB), but deleting either does not remove all of its transitive libraries and does not
 produce a vendor-tested payload. The size is accepted for the M5 Windows baseline. Future reduction
 requires a reproducible upstream build profile, a complete command/capability matrix, HTTPS and
-recovery tests, a new supply-ledger hash, and clean-machine proof.
+recovery tests, a new supply-ledger hash, and clean-machine proof. The accepted macOS arm64 payload
+contains 460 files. The Intel payload follows the same no-pruning decision. Each Mac architecture
+has its own complete-tree digest because the native payloads are not byte-identical.
 
 ## Redistribution boundary
 

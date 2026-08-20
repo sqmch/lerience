@@ -14,9 +14,12 @@ Each record must identify:
 - the signed manifest and signature digests plus the trusted public-key fingerprint;
 - the combined corresponding-source archive and its included source files, ledgers, checksums, and
   third-party notices;
-- package inventory and `--verify-installation` results for the exact installer build;
-- the Windows install, launch, provider-discovery, course-creation, update, uninstall, and
-  data-preservation checks actually performed; and
+- package inventory and `--verify-installation` results for every exact native package build;
+- the install, Gatekeeper or publisher-warning handling, launch, provider-discovery,
+  course-creation, update, uninstall, and data-preservation checks actually performed on each
+  supported platform;
+- separate macOS arm64 and macOS x64 results. One Mac architecture does not accept the other
+  package, and the Intel release requires a physical Intel Mac Gatekeeper and learner-path run; and
 - every warning, limitation, skipped check, or failed check without converting it into a pass.
 
 Evidence must come from the exact draft assets downloaded from GitHub. Local build output, an

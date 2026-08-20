@@ -16,6 +16,14 @@ function filesUnder(relativeRoot: string): string[] {
   });
 }
 
+function workflowJob(source: string, jobName: string): string {
+  const start = source.indexOf(`  ${jobName}:`);
+  if (start === -1) throw new Error(`Missing workflow job: ${jobName}`);
+  const remaining = source.slice(start + 1);
+  const nextJob = remaining.search(/\r?\n {2}[a-z0-9_]+:\r?\n/u);
+  return source.slice(start, nextJob === -1 ? undefined : start + 1 + nextJob);
+}
+
 describe("repository publication hygiene", () => {
   it("pins every third-party workflow action to a full commit SHA", () => {
     const workflowRoot = path.join(root, ".github", "workflows");
@@ -55,6 +63,25 @@ describe("repository publication hygiene", () => {
     expect(workflow).toMatch(
       /- name: Build rehearsal installer\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/win32-x64-rehearsal\r?\n\s+run: pnpm package:windows/u,
     );
+    expect(workflow).toContain(
+      "run: pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-rehearsal",
+    );
+    expect(workflow).toMatch(
+      /- name: Build unsigned arm64 rehearsal DMG\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/darwin-arm64-rehearsal\r?\n\s+run: pnpm package:macos:arm64/u,
+    );
+    expect(workflow).toContain(
+      "run: pnpm runtime:assemble -- --output dist/runtime/darwin-x64-rehearsal",
+    );
+    expect(workflow).toMatch(
+      /- name: Build unsigned x64 rehearsal DMG\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/darwin-x64-rehearsal\r?\n\s+run: pnpm package:macos:x64/u,
+    );
+    expect(workflow).toContain(
+      '"dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/MacOS/LeriencePreview"',
+    );
+    expect(workflow).toContain(
+      '"dist/package/macos-x64/mac/LeriencePreview.app/Contents/MacOS/LeriencePreview"',
+    );
+    expect(workflow.match(/plutil -extract LSFileQuarantineEnabled/gmu)).toHaveLength(2);
   });
 
   it("records complete artifact hash and filename pairs", () => {
@@ -65,8 +92,20 @@ describe("repository publication hygiene", () => {
     expect(workflow).not.toContain("Format-Table");
   });
 
+  it("does not restore pnpm's link-expanding cache in native macOS package jobs", () => {
+    for (const workflowPath of [
+      ".github/workflows/distribution-rehearsal.yml",
+      ".github/workflows/desktop-release-candidate.yml",
+    ]) {
+      const workflow = read(workflowPath);
+      for (const jobName of ["macos_arm64", "macos_x64"]) {
+        expect(workflowJob(workflow, jobName)).not.toContain("cache: pnpm");
+      }
+    }
+  });
+
   it("keeps production release automation draft-only in the canonical source repository", () => {
-    const workflow = read(".github/workflows/windows-release-candidate.yml");
+    const workflow = read(".github/workflows/desktop-release-candidate.yml");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("default: false");
     expect(workflow).toContain("if: inputs.create_draft");
@@ -91,8 +130,12 @@ describe("repository publication hygiene", () => {
       "Release drafts may be created only in the canonical public source repository.",
     );
     expect(workflow).toContain("The canonical source repository must be public.");
-    expect(workflow).toContain("exactly the five approved uploads");
-    const staging = read("scripts/stage-windows-release.mjs");
+    expect(workflow).toContain("exactly the seven approved uploads");
+    expect(workflow).toContain("runs-on: macos-latest");
+    expect(workflow).toContain("runs-on: macos-15-intel");
+    expect(workflow.match(/plutil -extract LSFileQuarantineEnabled/gmu)).toHaveLength(2);
+    expect(workflow).toContain("--artifacts dist/release-artifacts");
+    const staging = read("scripts/stage-desktop-release.mjs");
     expect(staging).toContain("-corresponding-source.tar.gz");
     expect(staging).not.toContain("-Setup-x64.exe");
     expect(staging).not.toContain("-Portable-x64.exe");
@@ -115,11 +158,29 @@ describe("repository publication hygiene", () => {
     const packageJson = JSON.parse(read("package.json")) as {
       scripts?: Record<string, string>;
     };
-    const preflight = packageJson.scripts?.["package:windows:preflight"] ?? "";
-    expect(preflight).toContain("pnpm exec install-electron --no");
-    expect(preflight).toContain("tests/runtime-manifest.test.ts");
-    expect(preflight).toContain("tests/course-creator.test.ts");
-    expect(preflight).toContain("tests/course-engine-updater.test.ts");
+    expect(packageJson.scripts?.["package:windows:preflight"]).toContain("--target win32-x64");
+    expect(packageJson.scripts?.["package:macos:preflight"]).toBe(
+      "pnpm package:macos:arm64:preflight",
+    );
+    expect(packageJson.scripts?.["package:macos:dir"]).toBe("pnpm package:macos:arm64:dir");
+    expect(packageJson.scripts?.["package:macos"]).toBe("pnpm package:macos:arm64");
+    expect(packageJson.scripts?.["package:macos:arm64:preflight"]).toContain(
+      "--target darwin-arm64 --preflight",
+    );
+    expect(packageJson.scripts?.["package:macos:arm64:dir"]).toContain(
+      "--target darwin-arm64 --dir",
+    );
+    expect(packageJson.scripts?.["package:macos:arm64"]).toContain("--target darwin-arm64");
+    expect(packageJson.scripts?.["package:macos:x64:preflight"]).toContain(
+      "--target darwin-x64 --preflight",
+    );
+    expect(packageJson.scripts?.["package:macos:x64:dir"]).toContain("--target darwin-x64 --dir");
+    expect(packageJson.scripts?.["package:macos:x64"]).toContain("--target darwin-x64");
+    const builder = read("scripts/build-desktop-artifact.mjs");
+    expect(builder).toContain('installElectron: path.join(repositoryRoot, "node_modules"');
+    expect(builder).toContain('"tests/runtime-manifest.test.ts"');
+    expect(builder).toContain('"tests/course-creator.test.ts"');
+    expect(builder).toContain('"tests/course-engine-updater.test.ts"');
   });
 
   it("keeps automated dependency maintenance below deliberate major migrations", () => {
@@ -319,7 +380,7 @@ describe("repository publication hygiene", () => {
     expect(status).toContain("five-upload release");
     expect(status).toContain("downloaded-byte signature");
     expect(status).toContain("Encrypted recovery of the release key has been confirmed");
-    expect(status).toMatch(/normal learner-path\s+smoke/);
+    expect(status).toMatch(/normal Windows learner-path smoke/);
     expect(status).toContain("publication are complete");
     expect(status).not.toContain("No binary is public yet");
     expect(status).not.toContain("private development-history");

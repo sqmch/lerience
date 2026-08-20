@@ -18,7 +18,10 @@ interface RuntimeLedger {
   components: {
     npm: { version: string; url: string; integrity: string };
     git: { packageVersion: string; targets: Record<string, TargetSource> };
-    notices: { gitLfs: { version: string; license: string; url: string; sha256: string } };
+    notices: {
+      git: { version: string; license: string; url: string; sha256: string };
+      gitLfs: { version: string; license: string; url: string; sha256: string };
+    };
   };
 }
 
@@ -75,15 +78,20 @@ describe("runtime supply ledger", () => {
     expect(ledger.components.notices.gitLfs.version).toBe("3.7.1");
     expect(new URL(ledger.components.notices.gitLfs.url).protocol).toBe("https:");
     expect(ledger.components.notices.gitLfs.sha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(ledger.components.notices.git.version).toBe("2.53.0");
+    expect(new URL(ledger.components.notices.git.url).protocol).toBe("https:");
+    expect(ledger.components.notices.git.sha256).toMatch(/^[a-f0-9]{64}$/u);
   });
 
-  it("binds the accepted Windows assembly to reviewed complete component trees", () => {
-    expect(Object.keys(ledger.acceptedComponentTrees)).toEqual(["win32-x64"]);
-    const windowsTrees = ledger.acceptedComponentTrees["win32-x64"];
-    expect(Object.keys(windowsTrees ?? {}).sort()).toEqual(["course-engine", "git", "npm"]);
-    for (const tree of Object.values(windowsTrees ?? {})) {
-      expect(tree.fileCount).toBeGreaterThan(0);
-      expect(tree.treeSha256).toMatch(/^[a-f0-9]{64}$/u);
+  it("binds accepted native assemblies to reviewed complete component trees", () => {
+    expect(Object.keys(ledger.acceptedComponentTrees)).toEqual(ledger.targets);
+    for (const target of ledger.targets) {
+      const trees = ledger.acceptedComponentTrees[target];
+      expect(Object.keys(trees ?? {}).sort()).toEqual(["course-engine", "git", "npm"]);
+      for (const tree of Object.values(trees ?? {})) {
+        expect(tree.fileCount).toBeGreaterThan(0);
+        expect(tree.treeSha256).toMatch(/^[a-f0-9]{64}$/u);
+      }
     }
   });
 });

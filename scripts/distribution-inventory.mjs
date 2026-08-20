@@ -19,7 +19,7 @@ export async function inspectDistributionInventory(root) {
   let fileCount = 0;
   let totalBytes = 0;
   let asarEntryCount = 0;
-  const physicalPaths = new Set();
+  const physicalFiles = new Set();
   let appAsarEntries = null;
 
   async function visit(current) {
@@ -28,7 +28,6 @@ export async function inspectDistributionInventory(root) {
       const absolutePath = path.join(current, entry.name);
       const relativePath = path.relative(absoluteRoot, absolutePath).split(path.sep).join("/");
       const normalized = relativePath.toLowerCase();
-      physicalPaths.add(normalized);
       if (PROVIDER_PACKAGE.test(normalized)) {
         violations.push({ path: relativePath, reason: "provider-native-package" });
         continue;
@@ -39,6 +38,7 @@ export async function inspectDistributionInventory(root) {
         continue;
       }
       if (!info.isFile()) continue;
+      physicalFiles.add(normalized);
       fileCount += 1;
       totalBytes += info.size;
       const filename = entry.name.toLowerCase();
@@ -84,7 +84,11 @@ export async function inspectDistributionInventory(root) {
         violations.push({ path: `app.asar:${notice}`, reason: "missing-license-notice" });
       }
     }
-    if (!physicalPaths.has(REQUIRED_PACKAGE_NOTICE)) {
+    if (
+      ![...physicalFiles].some((candidate) =>
+        hasNormalizedSuffix(candidate, REQUIRED_PACKAGE_NOTICE),
+      )
+    ) {
       violations.push({ path: REQUIRED_PACKAGE_NOTICE, reason: "missing-license-notice" });
     }
   }
@@ -110,6 +114,10 @@ export async function assertDistributionInventory(root, options = {}) {
 
 function isElectronNodeShim(relativePath) {
   return relativePath.endsWith("tools/npm/bin/node");
+}
+
+function hasNormalizedSuffix(candidate, requiredPath) {
+  return candidate === requiredPath || candidate.endsWith(`/${requiredPath}`);
 }
 
 function parseOptions(args) {
