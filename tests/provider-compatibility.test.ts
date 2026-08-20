@@ -19,14 +19,15 @@ describe("provider runtime compatibility", () => {
     expect(parseProviderVersion("token=secret C:\\Users\\learner")).toBeNull();
   });
 
-  it("normalizes provider-old, exact, and app-old boundaries", () => {
+  it("normalizes provider minimum and major-version boundaries", () => {
     expect(compatibilityState("claude", "2.1.222")).toBe("provider-update-required");
     expect(compatibilityState("claude", PROVIDER_COMPATIBILITY.claude.minimum)).toBe("ready");
     expect(compatibilityState("claude", "2.99.0")).toBe("ready");
     expect(compatibilityState("claude", "3.0.0")).toBe("praxeum-update-required");
     expect(compatibilityState("codex", "0.144.5")).toBe("provider-update-required");
-    expect(compatibilityState("codex", PROVIDER_COMPATIBILITY.codex.exact)).toBe("ready");
-    expect(compatibilityState("codex", "0.144.7")).toBe("praxeum-update-required");
+    expect(compatibilityState("codex", PROVIDER_COMPATIBILITY.codex.minimum)).toBe("ready");
+    expect(compatibilityState("codex", "0.144.7")).toBe("ready");
+    expect(compatibilityState("codex", "0.148.0")).toBe("ready");
   });
 
   it("runs the exact discovered executable with a minimal environment and no shell lookup", async () => {
@@ -89,5 +90,16 @@ describe("provider runtime compatibility", () => {
       canLogin: false,
       detail: "Codex could not be reached just now. Check again in a moment.",
     });
+  });
+
+  it("describes an actual compatibility failure without claiming an app update exists", () => {
+    expect(
+      readinessForRuntime(
+        { id: "claude", label: "Claude Code", description: "Use Claude." },
+        { state: "praxeum-update-required", version: "3.0.0" },
+      )?.detail,
+    ).toBe(
+      "The installed Claude Code 3.0.0 is not compatible with this Lerience build. Check for a newer release or choose another tutor.",
+    );
   });
 });
