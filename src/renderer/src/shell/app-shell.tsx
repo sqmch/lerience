@@ -124,7 +124,7 @@ function UpdateBanner(): React.JSX.Element | null {
       ? "Download update"
       : status.phase === "ready"
         ? status.action === "install-restart"
-          ? "Install & restart"
+          ? "Restart to update"
           : "Open downloaded package"
         : status.phase === "error"
           ? "Try again"

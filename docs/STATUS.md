@@ -32,7 +32,9 @@ Intel Mac run is still required before the Intel DMG can be published.
 - The Windows NSIS package and both native Mac DMGs are fail-closed on the committed Lerience
   identity, exact platform runtime manifest, third-party notices, and package inventory.
 - Update checks use an app-owned Ed25519 signature and bind each artifact by filename, size, and
-  SHA-256 digest. Download and installation remain learner-approved actions.
+  SHA-256 digest. Download and installation remain learner-approved actions. After that approval,
+  installed Windows builds hand the verified package to NSIS silently and request an app restart;
+  native installed-upgrade acceptance of that handoff remains required before release.
 
 ## Release boundary
 
