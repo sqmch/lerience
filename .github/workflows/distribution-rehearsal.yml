@@ -150,7 +150,7 @@ jobs:
 
       - name: Verify exact unpacked arm64 application
         run: >-
-          "dist/package/macos-arm64/mac-arm64/Lerience Preview.app/Contents/MacOS/LeriencePreview"
+          "dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/MacOS/LeriencePreview"
           --verify-installation
 
       - name: Record arm64 artifact hashes
@@ -213,7 +213,7 @@ jobs:
 
       - name: Verify exact unpacked x64 application
         run: >-
-          "dist/package/macos-x64/mac/Lerience Preview.app/Contents/MacOS/LeriencePreview"
+          "dist/package/macos-x64/mac/LeriencePreview.app/Contents/MacOS/LeriencePreview"
           --verify-installation
 
       - name: Record x64 artifact hashes

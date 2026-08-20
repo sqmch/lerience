@@ -67,6 +67,12 @@ describe("repository publication hygiene", () => {
     expect(workflow).toMatch(
       /- name: Build unsigned x64 rehearsal DMG\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/darwin-x64-rehearsal\r?\n\s+run: pnpm package:macos:x64/u,
     );
+    expect(workflow).toContain(
+      '"dist/package/macos-arm64/mac-arm64/LeriencePreview.app/Contents/MacOS/LeriencePreview"',
+    );
+    expect(workflow).toContain(
+      '"dist/package/macos-x64/mac/LeriencePreview.app/Contents/MacOS/LeriencePreview"',
+    );
   });
 
   it("records complete artifact hash and filename pairs", () => {
