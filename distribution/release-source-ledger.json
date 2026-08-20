@@ -29,6 +29,15 @@
       "sha256": "88ca6b778c3daac6c58bb760cd41099b1f348b07ef3d8daf551269a142bccb5f"
     },
     {
+      "component": "Git source for macOS portable payload",
+      "version": "2.53.0",
+      "revision": "67ad42147a7acc2af6074753ebd03d904476118f",
+      "fileName": "git-67ad42147a7acc2af6074753ebd03d904476118f-source.tar.gz",
+      "url": "https://github.com/git/git/archive/67ad42147a7acc2af6074753ebd03d904476118f.tar.gz",
+      "bytes": 11950664,
+      "sha256": "89b73762be55037144c92eaf5d0657b644330770f66c584c1ba2e7b90b6218cf"
+    },
+    {
       "component": "Dugite wrapper",
       "version": "3.2.3",
       "revision": "84cd716e0bf0f177dfc984a3ce05dec639bf79b9",

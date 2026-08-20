@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
-import { stageWindowsRelease } from "../scripts/stage-windows-release.mjs";
+import { stageDesktopRelease } from "../scripts/stage-desktop-release.mjs";
 
 const roots: string[] = [];
 const packageVersion = (
@@ -15,13 +15,13 @@ const packageVersion = (
 ).version;
 
 it("loads as a direct Node CLI on the release workflow runtime", () => {
-  const result = spawnSync(process.execPath, ["scripts/stage-windows-release.mjs"], {
+  const result = spawnSync(process.execPath, ["scripts/stage-desktop-release.mjs"], {
     cwd: process.cwd(),
     encoding: "utf8",
   });
 
   expect(result.status).toBe(1);
-  expect(result.stderr).toContain("Usage: stage-windows-release");
+  expect(result.stderr).toContain("Usage: stage-desktop-release");
   expect(result.stderr).not.toContain("SyntaxError");
 });
 
@@ -53,9 +53,14 @@ function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum-stage-release-"));
   roots.push(root);
   const executableName = "ApprovedProduct";
-  const nsis = path.join(root, `${executableName}-Setup-${packageVersion}-x64.exe`);
+  const artifactsDir = path.join(root, "artifacts");
+  fs.mkdirSync(artifactsDir);
+  const nsis = path.join(artifactsDir, `${executableName}-Setup-${packageVersion}-x64.exe`);
+  const dmg = path.join(artifactsDir, `${executableName}-${packageVersion}-arm64.dmg`);
   const nsisBytes = Buffer.from("installer");
+  const dmgBytes = Buffer.from("mac package");
   fs.writeFileSync(nsis, nsisBytes);
+  fs.writeFileSync(dmg, dmgBytes);
   const notes = path.join(root, "notes.md");
   const notices = path.join(root, "notices.md");
   fs.writeFileSync(notes, "A reviewed release candidate.\n");
@@ -81,6 +86,14 @@ function fixture() {
         fileName: path.basename(nsis),
         size: nsisBytes.length,
         sha256: sha256(nsisBytes),
+      },
+      {
+        platform: "darwin",
+        architecture: "arm64",
+        packageType: "dmg",
+        fileName: path.basename(dmg),
+        size: dmgBytes.length,
+        sha256: sha256(dmgBytes),
       },
     ],
   };
@@ -123,7 +136,7 @@ function fixture() {
   return {
     root,
     options: {
-      nsis,
+      artifactsDir,
       signedDir,
       sources,
       notes,
@@ -142,25 +155,35 @@ afterEach(() => {
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
-describe("Windows release staging", () => {
-  it("verifies trust inputs and emits exactly five intentional release uploads", async () => {
+describe("desktop release staging", () => {
+  it("verifies trust inputs and emits exactly six intentional release uploads", async () => {
     const value = fixture();
-    const result = await stageWindowsRelease(value.options);
+    const result = await stageDesktopRelease(value.options);
 
     expect(result.bundle).toMatchObject({
       version: packageVersion,
       tag: `v${packageVersion}`,
       sourceCommit: "a".repeat(40),
-      artifacts: {
-        nsis: {
+      artifacts: [
+        {
+          platform: "win32",
+          architecture: "x64",
+          packageType: "nsis",
           versioned: `ApprovedProduct-Setup-${packageVersion}-x64.exe`,
         },
-      },
+        {
+          platform: "darwin",
+          architecture: "arm64",
+          packageType: "dmg",
+          versioned: `ApprovedProduct-${packageVersion}-arm64.dmg`,
+        },
+      ],
       correspondingSource: {
         fileName: `ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`,
       },
     });
     expect(fs.readdirSync(value.options.output).sort()).toEqual([
+      `ApprovedProduct-${packageVersion}-arm64.dmg`,
       `ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`,
       `ApprovedProduct-Setup-${packageVersion}-x64.exe`,
       "SHA256SUMS",
@@ -180,8 +203,9 @@ describe("Windows release staging", () => {
       "THIRD-PARTY-NOTICES.md",
     ]);
     const sums = fs.readFileSync(path.join(value.options.output, "SHA256SUMS"), "utf8");
-    expect(sums.trim().split("\n")).toHaveLength(4);
+    expect(sums.trim().split("\n")).toHaveLength(5);
     expect(sums).toContain(`ApprovedProduct-Setup-${packageVersion}-x64.exe`);
+    expect(sums).toContain(`ApprovedProduct-${packageVersion}-arm64.dmg`);
     expect(sums).toContain(`ApprovedProduct-${packageVersion}-corresponding-source.tar.gz`);
     expect(sums).toContain("release-manifest.sig");
     expect(sums).not.toContain("ApprovedProduct-Setup-x64.exe");
@@ -195,17 +219,20 @@ describe("Windows release staging", () => {
       value.options.publicKey,
       otherKeys.publicKey.export({ type: "spki", format: "pem" }),
     );
-    await expect(stageWindowsRelease(value.options)).rejects.toThrow("does not match");
+    await expect(stageDesktopRelease(value.options)).rejects.toThrow("does not match");
   });
 
   it("rejects changed package bytes and unsafe public identities", async () => {
     const changed = fixture();
-    fs.appendFileSync(changed.options.nsis, "changed");
-    await expect(stageWindowsRelease(changed.options)).rejects.toThrow("does not match");
+    fs.appendFileSync(
+      path.join(changed.options.artifactsDir, `ApprovedProduct-Setup-${packageVersion}-x64.exe`),
+      "changed",
+    );
+    await expect(stageDesktopRelease(changed.options)).rejects.toThrow("does not match");
 
     const unsafe = fixture();
     await expect(
-      stageWindowsRelease({ ...unsafe.options, executableName: "Unsafe Product" }),
+      stageDesktopRelease({ ...unsafe.options, executableName: "Unsafe Product" }),
     ).rejects.toThrow("unsafe");
   });
 });

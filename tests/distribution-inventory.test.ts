@@ -74,6 +74,52 @@ describe("distribution inventory", () => {
     expect(result.stderr).toContain("claude-agent-sdk/LICENSE.md");
   });
 
+  it("accepts the exact package notice beneath a macOS app Resources directory", async () => {
+    const root = fixture();
+    const source = path.join(root, "asar-source");
+    const applicationResources = path.join(root, "Lerience.app", "Contents", "Resources");
+    fs.mkdirSync(path.join(source, "node_modules", "@anthropic-ai", "claude-agent-sdk"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(source, "node_modules", "zod"), { recursive: true });
+    fs.writeFileSync(
+      path.join(source, "node_modules", "@anthropic-ai", "claude-agent-sdk", "LICENSE.md"),
+      "license",
+    );
+    fs.writeFileSync(path.join(source, "node_modules", "zod", "LICENSE"), "license");
+    fs.mkdirSync(applicationResources, { recursive: true });
+    await createPackage(source, path.join(applicationResources, "app.asar"));
+    fs.writeFileSync(path.join(applicationResources, "THIRD-PARTY-NOTICES.md"), "notices");
+
+    const output = execFileSync(process.execPath, [script, "--root", root], { encoding: "utf8" });
+
+    expect(JSON.parse(output)).toMatchObject({ violations: [] });
+  });
+
+  it("does not accept the notice filename outside a Resources path", async () => {
+    const root = fixture();
+    const source = path.join(root, "asar-source");
+    const applicationRoot = path.join(root, "Lerience.app", "Contents");
+    const applicationResources = path.join(applicationRoot, "Resources");
+    fs.mkdirSync(path.join(source, "node_modules", "@anthropic-ai", "claude-agent-sdk"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(source, "node_modules", "zod"), { recursive: true });
+    fs.writeFileSync(
+      path.join(source, "node_modules", "@anthropic-ai", "claude-agent-sdk", "LICENSE.md"),
+      "license",
+    );
+    fs.writeFileSync(path.join(source, "node_modules", "zod", "LICENSE"), "license");
+    fs.mkdirSync(applicationResources, { recursive: true });
+    await createPackage(source, path.join(applicationResources, "app.asar"));
+    fs.writeFileSync(path.join(applicationRoot, "THIRD-PARTY-NOTICES.md"), "notices");
+
+    const result = spawnSync(process.execPath, [script, "--root", root], { encoding: "utf8" });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("missing-license-notice: resources/third-party-notices.md");
+  });
+
   it("enforces a physical unpacked-size ceiling", () => {
     const root = fixture();
     fs.writeFileSync(path.join(root, "large.bin"), Buffer.alloc(64));

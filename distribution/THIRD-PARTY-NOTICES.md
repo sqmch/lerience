@@ -131,13 +131,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## Portable Git payload
 
-- Payload: Git for Windows `2.53.0.windows.4`, built by Dugite Native `v2.53.0-4`.
+- Payloads: Git for Windows `2.53.0.windows.4` on Windows and upstream Git `2.53.0` on
+  macOS, built by Dugite Native `v2.53.0-4`.
 - Primary license: GPL-2.0-only. The runtime includes `licenses/git.txt`, and the portable tree
   retains its own `share/licenses` directories and Git Credential Manager notice.
 - Exact build source: <https://github.com/desktop/dugite-native/tree/4098283a7ecb8a227b9d43580336c78a06f90e5d>
 - Source archive: <https://github.com/desktop/dugite-native/archive/4098283a7ecb8a227b9d43580336c78a06f90e5d.tar.gz>
 - Exact Git for Windows source package: <https://github.com/git-for-windows/git/releases/download/v2.53.0.windows.4/mingw-w64-git-2.52.0.1-1.src.tar.gz>
 - Exact MinGit package manifest: <https://github.com/git-for-windows/git/releases/download/v2.53.0.windows.4/package-versions-2.53.0.4-MinGit.txt>
+- Exact macOS Git source: <https://github.com/git/git/tree/67ad42147a7acc2af6074753ebd03d904476118f>
+- macOS Git source archive: <https://github.com/git/git/archive/67ad42147a7acc2af6074753ebd03d904476118f.tar.gz>
 - Dugite package source: <https://github.com/desktop/dugite/tree/84cd716e0bf0f177dfc984a3ce05dec639bf79b9>
 
 The payload also contains Git LFS `3.7.1` and Git Credential Manager `2.9.0`. The assembler fetches

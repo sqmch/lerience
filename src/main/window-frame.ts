@@ -6,6 +6,28 @@ import type { TitleBarOverlayColors } from "../shared/ipc";
  * from the design layer because the OS needs it before any renderer exists —
  * `tests/window-frame.test.ts` fails if it drifts from `--titlebar-h`. */
 export const TITLE_BAR_HEIGHT = 38;
+export const WINDOWS_CAPTION_WIDTH = 138;
+
+type WindowsTitleBarOverlay = {
+  color?: string;
+  symbolColor?: string;
+  height: number;
+};
+
+/** Keep the native controls on both supported platforms. Windows uses the
+ * coloured overlay from ADR-016; macOS uses its inset traffic lights and a
+ * boolean overlay so Chromium exposes the titlebar-area CSS environment
+ * variables to the renderer. */
+export function windowTitleBarOptions(
+  platform: NodeJS.Platform,
+  windowsOverlay: WindowsTitleBarOverlay,
+):
+  | { titleBarStyle: "hidden"; titleBarOverlay: WindowsTitleBarOverlay }
+  | { titleBarStyle: "hiddenInset"; titleBarOverlay: true } {
+  return platform === "darwin"
+    ? { titleBarStyle: "hiddenInset", titleBarOverlay: true }
+    : { titleBarStyle: "hidden", titleBarOverlay: windowsOverlay };
+}
 
 declare const __PRAXEUM_FRAME_COLORS__:
   { dark: TitleBarOverlayColors; light: TitleBarOverlayColors } | undefined;

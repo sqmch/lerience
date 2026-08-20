@@ -1,14 +1,11 @@
 import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { describeDesktopReleaseArtifacts } from "./desktop-artifacts.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
-const SAFE_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*\.exe$/u;
-const MAX_WINDOWS_ARTIFACT_BYTES = 350 * 1024 * 1024;
-
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   const privateKeyPath = path.resolve(options.privateKey);
@@ -24,7 +21,12 @@ async function main() {
   const releaseNotes = (await readFile(path.resolve(options.notes), "utf8")).trim();
   assertReleaseNotes(releaseNotes);
   const publishedAt = normalizePublishedAt(options.publishedAt);
-  const artifacts = [await describeArtifact("nsis", options.nsis)];
+  const describedArtifacts = await describeDesktopReleaseArtifacts({
+    directory: options.artifacts,
+    executableName: options.executableName,
+    version: packageJson.version,
+  });
+  const artifacts = describedArtifacts.map(({ filePath: _filePath, ...artifact }) => artifact);
   const manifest = {
     schemaVersion: 1,
     productId: "praxeum-desktop",
@@ -60,38 +62,24 @@ function parseArguments(args) {
     if (!name?.startsWith("--") || value === undefined) throw new Error(usage());
     values.set(name, value);
   }
-  const names = ["--nsis", "--notes", "--published-at", "--private-key", "--output"];
+  const names = [
+    "--artifacts",
+    "--executable-name",
+    "--notes",
+    "--published-at",
+    "--private-key",
+    "--output",
+  ];
   if (values.size !== names.length || names.some((name) => !values.has(name))) {
     throw new Error(usage());
   }
   return {
-    nsis: values.get("--nsis"),
+    artifacts: values.get("--artifacts"),
+    executableName: values.get("--executable-name"),
     notes: values.get("--notes"),
     publishedAt: values.get("--published-at"),
     privateKey: values.get("--private-key"),
     output: values.get("--output"),
-  };
-}
-
-async function describeArtifact(packageType, source) {
-  const absolutePath = path.resolve(source);
-  const fileName = path.basename(absolutePath);
-  if (!SAFE_FILE_NAME.test(fileName)) {
-    throw new Error(`The ${packageType} artifact filename is not release-safe.`);
-  }
-  const info = await stat(absolutePath);
-  if (!info.isFile() || info.size <= 0 || info.size > MAX_WINDOWS_ARTIFACT_BYTES) {
-    throw new Error(`The ${packageType} artifact is missing, empty, or over the 350 MiB limit.`);
-  }
-  const digest = createHash("sha256");
-  for await (const chunk of createReadStream(absolutePath)) digest.update(chunk);
-  return {
-    platform: "win32",
-    architecture: "x64",
-    packageType,
-    fileName,
-    size: info.size,
-    sha256: digest.digest("hex"),
   };
 }
 
@@ -121,7 +109,7 @@ function isWithin(root, candidate) {
 }
 
 function usage() {
-  return "Usage: sign-release-manifest --nsis <exe> --notes <file> --published-at <iso> --private-key <pem> --output <directory>";
+  return "Usage: sign-release-manifest --artifacts <directory> --executable-name <name> --notes <file> --published-at <iso> --private-key <pem> --output <directory>";
 }
 
 if (path.resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

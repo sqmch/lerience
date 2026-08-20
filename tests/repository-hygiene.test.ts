@@ -55,6 +55,12 @@ describe("repository publication hygiene", () => {
     expect(workflow).toMatch(
       /- name: Build rehearsal installer\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/win32-x64-rehearsal\r?\n\s+run: pnpm package:windows/u,
     );
+    expect(workflow).toContain(
+      "run: pnpm runtime:assemble -- --output dist/runtime/darwin-arm64-rehearsal",
+    );
+    expect(workflow).toMatch(
+      /- name: Build unsigned rehearsal DMG\r?\n\s+env:\r?\n\s+PRAXEUM_RUNTIME_ROOT: dist\/runtime\/darwin-arm64-rehearsal\r?\n\s+run: pnpm package:macos/u,
+    );
   });
 
   it("records complete artifact hash and filename pairs", () => {
@@ -66,7 +72,7 @@ describe("repository publication hygiene", () => {
   });
 
   it("keeps production release automation draft-only in the canonical source repository", () => {
-    const workflow = read(".github/workflows/windows-release-candidate.yml");
+    const workflow = read(".github/workflows/desktop-release-candidate.yml");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("default: false");
     expect(workflow).toContain("if: inputs.create_draft");
@@ -91,8 +97,10 @@ describe("repository publication hygiene", () => {
       "Release drafts may be created only in the canonical public source repository.",
     );
     expect(workflow).toContain("The canonical source repository must be public.");
-    expect(workflow).toContain("exactly the five approved uploads");
-    const staging = read("scripts/stage-windows-release.mjs");
+    expect(workflow).toContain("exactly the six approved uploads");
+    expect(workflow).toContain("runs-on: macos-latest");
+    expect(workflow).toContain("--artifacts dist/release-artifacts");
+    const staging = read("scripts/stage-desktop-release.mjs");
     expect(staging).toContain("-corresponding-source.tar.gz");
     expect(staging).not.toContain("-Setup-x64.exe");
     expect(staging).not.toContain("-Portable-x64.exe");
@@ -115,11 +123,13 @@ describe("repository publication hygiene", () => {
     const packageJson = JSON.parse(read("package.json")) as {
       scripts?: Record<string, string>;
     };
-    const preflight = packageJson.scripts?.["package:windows:preflight"] ?? "";
-    expect(preflight).toContain("pnpm exec install-electron --no");
-    expect(preflight).toContain("tests/runtime-manifest.test.ts");
-    expect(preflight).toContain("tests/course-creator.test.ts");
-    expect(preflight).toContain("tests/course-engine-updater.test.ts");
+    expect(packageJson.scripts?.["package:windows:preflight"]).toContain("--target win32-x64");
+    expect(packageJson.scripts?.["package:macos:preflight"]).toContain("--target darwin-arm64");
+    const builder = read("scripts/build-desktop-artifact.mjs");
+    expect(builder).toContain('installElectron: path.join(repositoryRoot, "node_modules"');
+    expect(builder).toContain('"tests/runtime-manifest.test.ts"');
+    expect(builder).toContain('"tests/course-creator.test.ts"');
+    expect(builder).toContain('"tests/course-engine-updater.test.ts"');
   });
 
   it("keeps automated dependency maintenance below deliberate major migrations", () => {

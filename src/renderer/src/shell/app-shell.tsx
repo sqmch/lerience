@@ -14,17 +14,17 @@ function ThemeMark(): React.JSX.Element {
   );
 }
 
-/** The window frame the app draws for itself (ADR-016). The caption buttons are
- *  NOT here: Windows draws them into the reserved strip at the end of this row,
- *  which is why Snap Layouts and maximise semantics still work — and why the
- *  row reserves --caption-w at its end rather than laying anything out there.
+/** The window frame the app draws for itself (ADR-016). Native caption controls
+ *  are not here. Chromium reports their actual available titlebar rectangle;
+ *  the inset tokens keep content clear of Windows controls at the end and Mac
+ *  traffic lights at the start without making either platform imitate the other.
  *
  *  A surface that passes `children` replaces the whole row, mark included: the
  *  course view leads with a back control, and a decorative mark in front of a
  *  navigation affordance reads as a logo you can click. */
 function TitleBar({ children }: { children?: ReactNode }): React.JSX.Element {
   return (
-    <header className="drag-region bg-chrome border-line flex h-(--titlebar-h) shrink-0 items-center gap-2 overflow-hidden border-b pl-3.5 pr-(--caption-w)">
+    <header className="drag-region bg-chrome border-line flex h-(--titlebar-h) shrink-0 items-center gap-2 overflow-hidden border-b pl-(--titlebar-inset-start) pr-(--titlebar-inset-end)">
       {children ?? (
         <>
           <span
