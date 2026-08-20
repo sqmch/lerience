@@ -16,7 +16,8 @@
  * raised card. Screen readers still get both, via aria-label on the turns. */
 
 import { useState, type ReactNode } from "react";
-import { PRIMARY, QUIET } from "../components/controls";
+import { INSTRUMENT, PRIMARY, QUIET } from "../components/controls";
+import { CloseGlyph } from "../components/glyphs";
 import { Notice } from "../components/notice";
 import {
   ApprovalCard,
@@ -78,23 +79,28 @@ export function SeminarColumn({
           across the workspace. It names the column, and its right end is where
           the workspace's chrome controls go: the one session action that must
           not sit next to Send, and whatever the caller hands it. The tab row
-          beside it is full at any width; this row is a heading and a link. */}
+          beside it is full at any width; this row is a heading and room. */}
       <header className="border-line-soft flex h-12 shrink-0 items-center gap-3 overflow-hidden border-b px-5">
         <h2 className="text-ink-dim shrink-0 text-xs font-medium">Seminar</h2>
         {/* `min-w-0` down the chain so a long editor name yields to the column
             instead of pushing "End session" out of it. */}
         <div className="ml-auto flex min-w-0 items-center gap-3">
           {head}
+          {/* An instrument, like the editor handoff beside it. It was an
+              underlined word, which put a text link and a control side by side
+              in one row: two vocabularies, and two different heights, so the
+              two labels did not even sit on the same line. */}
           {state.phase === "idle" ? (
             <button
               type="button"
-              className="text-ink-faint hover:text-hi focus-visible:outline-focus shrink-0 rounded-pill px-1 text-xs underline underline-offset-4 transition-colors focus-visible:outline-2"
+              className={`${INSTRUMENT} shrink-0`}
               title="Wrap this session up: journal entry, quiz seeds, progress, commit"
               onClick={() => {
                 void seminar.end();
               }}
             >
-              End session
+              <CloseGlyph className="size-3.5 shrink-0" />
+              <span>End session</span>
             </button>
           ) : null}
         </div>

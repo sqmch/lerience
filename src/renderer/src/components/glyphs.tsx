@@ -173,3 +173,26 @@ export function CodeGlyph({ className }: { className?: string }): React.JSX.Elem
     </svg>
   );
 }
+
+/** Ending something: the cross every window and every dialog closes on. Same
+ *  24-unit grid and 2-unit stroke as the glyphs it sits beside, drawn a little
+ *  inside their bounds so it does not read heavier than they do at the same
+ *  size — a diagonal covers more of a box than an upright shape does. */
+export function CloseGlyph({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M6.5 6.5 L17.5 17.5" />
+      <path d="M17.5 6.5 L6.5 17.5" />
+    </svg>
+  );
+}

@@ -13,6 +13,7 @@
 import type { ReactElement } from "react";
 
 import type { CourseLabEntry, CourseModule, ModuleStatus } from "../../../shared/course-data";
+import { INSTRUMENT } from "../components/controls";
 import { DiamondGlyph, FolderGlyph, StackGlyph } from "../components/glyphs";
 import { Tooltip } from "../components/tooltip";
 
@@ -109,12 +110,6 @@ function ModuleTip({
     </Tooltip>
   );
 }
-
-const INSTRUMENT =
-  "border-transparent text-ink-dim hover:bg-surface-raised hover:border-line hover:text-hi " +
-  "focus-visible:outline-focus flex min-w-0 items-center gap-1.5 rounded-pill border px-2.5 py-1.5 " +
-  "text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 " +
-  "aria-pressed:bg-surface-raised aria-pressed:border-line aria-pressed:text-hi";
 
 export function CourseRail({
   modules,
