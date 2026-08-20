@@ -84,8 +84,8 @@ describe("runtime supply ledger", () => {
   });
 
   it("binds accepted native assemblies to reviewed complete component trees", () => {
-    expect(Object.keys(ledger.acceptedComponentTrees)).toEqual(["win32-x64", "darwin-arm64"]);
-    for (const target of ["win32-x64", "darwin-arm64"]) {
+    expect(Object.keys(ledger.acceptedComponentTrees)).toEqual(ledger.targets);
+    for (const target of ledger.targets) {
       const trees = ledger.acceptedComponentTrees[target];
       expect(Object.keys(trees ?? {}).sort()).toEqual(["course-engine", "git", "npm"]);
       for (const tree of Object.values(trees ?? {})) {

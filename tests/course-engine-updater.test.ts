@@ -344,7 +344,11 @@ describe("CourseEngineUpdater", { timeout: 30_000 }, () => {
         validateCandidate: async (candidateRoot) => {
           const doctor = spawnSync(
             runtime.electronExecutable,
-            [path.join(candidateRoot, "scripts", "doctor.mjs"), candidateRoot, "--json"],
+            [
+              fs.realpathSync(path.join(candidateRoot, "scripts", "doctor.mjs")),
+              candidateRoot,
+              "--json",
+            ],
             {
               cwd: candidateRoot,
               encoding: "utf8",

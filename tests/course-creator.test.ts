@@ -230,7 +230,11 @@ describe("CourseCreator", () => {
 
       const doctor = spawnSync(
         runtime.electronExecutable,
-        [path.join(created.rootPath, "scripts", "doctor.mjs"), created.rootPath, "--json"],
+        [
+          fs.realpathSync(path.join(created.rootPath, "scripts", "doctor.mjs")),
+          created.rootPath,
+          "--json",
+        ],
         {
           cwd: created.rootPath,
           encoding: "utf8",
