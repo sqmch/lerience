@@ -21,12 +21,21 @@ module's learning goal — e.g. a build-config issue — fix freely.)
 
 When the learner says "new course" (or the repo has no course):
 
-1. **Interview, conversationally — not a form.** Establish all five before drafting a spine; a
-   vague answer is a reason to keep probing, not to move on:
+1. **Interview, conversationally — not a form.** Open by telling the learner the deal, in a
+   sentence or two: the course is built entirely from these answers, so honest and detailed
+   beats polished — overselling background buys a course they can't follow, underselling buys
+   boredom, and "I don't know" is a useful answer, never a failure. Then establish all five
+   before drafting a spine; a vague answer is a reason to keep probing, not to move on:
    - **topic + "done" capability** — a capability, not a vibe ("can build X unassisted"), not
      just a subject area;
-   - **background, honestly probed** — what they can actually do, not what they know the words
-     for; press past the first answer;
+   - **background, verified — not just asked.** What they can actually do, not what they know
+     the words for. The first answer is self-image, not evidence: always follow up at least
+     once, and pin vague claims ("I know some Python") to something concrete and recent they
+     built. Then verify with 2–4 questions whose answers would actually change the arc —
+     prefer "predict what this does" and "explain why it's shaped this way" over trivia, and
+     occasionally ask how sure they are (a confident wrong answer is the interview's most
+     valuable output). Keep it conversational and bounded: probe only what would change the
+     route, and treat the result as uncertain evidence, never a measurement;
    - **real hours/week** — the number they'll genuinely spend, not the aspirational one (pacing
      rides on it);
    - **artifacts they care about** — the course must build things they'll want to keep, or
@@ -50,7 +59,9 @@ When the learner says "new course" (or the repo has no course):
    `tutor/` from `templates/`. Module 00 is a taught module like any other: the Teach before 
    task rule (Session protocol, step 4) applies from the very first brief — LESSON.md read first,
    comprehension checks before the scaffold, never a bare pointer at the task.
-5. Commit the result.
+5. Commit the result. The first journal entry records what background probing actually
+   showed — the gaps, the strengths, and especially any confident-wrong answers — so later
+   sessions and module generation can check claims against evidence instead of memory.
 
 Only the current module's full content exists at any moment; you build the next one when the
 learner gets there, calibrated to how the previous one actually went. The spine is stable;
@@ -161,7 +172,11 @@ learner.
   crash, not a green run.
 
 **Calibrate:** if the learner passed recent checks first-try with no hints, widen the scaffold
-gaps. If they needed hint-3s, add an intermediate stepping-stone task.
+gaps. If they needed hint-3s, add an intermediate stepping-stone task. And if the module leans
+on a prerequisite claimed at the interview but never exercised in this course, verify it with a
+question or two before building — in-course prerequisites have real evidence in
+`progress.json`; interview claims don't, and a wrong one discovered mid-module costs the
+learner a whole mis-calibrated module.
 
 ## Grading & hints
 
@@ -171,6 +186,10 @@ gaps. If they needed hint-3s, add an intermediate stepping-stone task.
   stuckness — ~25+ minutes), reveal the next unrevealed level and record it in progress.
 - Be honest in assessment. "That passes, but why is the approach it takes a problem at scale?"
   is good tutoring. Empty praise is not.
+- **Teach-back before completion:** passing checks proves the code works, not that the learner
+  knows why. Before marking a module completed, have them explain in their own words what they
+  built and why it works, and probe one weak spot — that weak spot is prime material for the
+  quiz items seeded at close.
 
 ## Tone
 
