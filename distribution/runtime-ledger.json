@@ -5,7 +5,7 @@
     "win32-x64": {
       "course-engine": {
         "fileCount": 22,
-        "treeSha256": "85e465f730a9a0b1490c8bfcc8ac723debc24996b8393d52403badb6834b460c"
+        "treeSha256": "ef44b4ce513e9ac605d23a5664397d6755f60d08136237b93178f6679f79a9fb"
       },
       "git": {
         "fileCount": 384,
@@ -19,7 +19,7 @@
     "darwin-arm64": {
       "course-engine": {
         "fileCount": 22,
-        "treeSha256": "3408646b7e7445a0bb668e0515bb49ea06147fa3b79a27f7c959297efcf52863"
+        "treeSha256": "07f1530b11404d8d25dae984cd5a4ba18afaf0e76979b0296fa9922fa67936ef"
       },
       "git": {
         "fileCount": 460,
@@ -33,7 +33,7 @@
     "darwin-x64": {
       "course-engine": {
         "fileCount": 22,
-        "treeSha256": "3408646b7e7445a0bb668e0515bb49ea06147fa3b79a27f7c959297efcf52863"
+        "treeSha256": "07f1530b11404d8d25dae984cd5a4ba18afaf0e76979b0296fa9922fa67936ef"
       },
       "git": {
         "fileCount": 460,
