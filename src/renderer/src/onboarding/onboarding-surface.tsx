@@ -978,8 +978,12 @@ function ArcReview({
               <span className="text-ink-dim font-data text-2xs">COURSE.md</span>
               <span>{busy ? "being revised" : "in your course folder"}</span>
             </div>
+            {/* One ladder step down from lesson size: the arc is a plan being
+                reviewed, not a chapter being read, and at reading size a short
+                COURSE.md filled the column with headline-weight serif before
+                the decision buttons. */}
             <div className="px-7 py-7">
-              <CourseMarkdown className="prose" markdown={markdown} />
+              <CourseMarkdown className="prose prose-compact" markdown={markdown} />
             </div>
           </div>
         </div>

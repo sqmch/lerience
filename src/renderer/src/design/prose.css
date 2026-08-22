@@ -70,6 +70,24 @@
   font-size: var(--text-lg);
   margin-top: var(--space-7);
 }
+/* ── compact ──────────────────────────────────────────────────────────────
+   One ladder step down across the block, for course text that is being
+   reviewed rather than read: the arc card on the onboarding surface. Body
+   drops from the reading size to the UI size and each heading moves down
+   one step with it, so every size is still a whole ladder value and the
+   hierarchy keeps the same shape. */
+.prose-compact {
+  font-size: var(--text-md);
+}
+.prose-compact h1 {
+  font-size: var(--text-xl);
+}
+.prose-compact h2 {
+  font-size: var(--text-lg);
+}
+.prose-compact h3 {
+  font-size: var(--text-read);
+}
 /* A heading belongs to what follows it. */
 .prose :is(h1, h2, h3) + * {
   margin-top: var(--space-2-5);
