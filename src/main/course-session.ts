@@ -63,8 +63,10 @@ export function watchCourse(root: string, onChange: (paths: string[]) => void): 
     watcher = fs.watch(root, { recursive: true }, (_event, filename) => {
       if (filename === null) return;
       const rel = filename.split(path.sep).join("/");
-      // Only the lens's inputs matter; scaffold node_modules and .git churn constantly.
-      if (rel.includes("node_modules/") || rel.startsWith(".git")) return;
+      // Only the lens's inputs matter; scaffold node_modules and .git churn
+      // constantly. The directory entry itself is dropped along with its
+      // contents — it is the same install, not a course file.
+      if (/(^|\/)node_modules(\/|$)/.test(rel) || rel.startsWith(".git")) return;
       if (!/^(COURSE\.md|CLAUDE\.md|AGENTS\.md|tutor\/|curriculum\/)/.test(rel)) return;
       pending.add(rel);
       timer ??= setTimeout(() => {

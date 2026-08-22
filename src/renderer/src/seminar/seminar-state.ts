@@ -36,6 +36,10 @@ export interface SeminarApproval {
   /** A file edit inside the course folder — the only class the learner may
    *  grant for the rest of the session. */
   editWithinCourse: boolean;
+  /** The command a command approval asks about, shown on the card. */
+  command: string | null;
+  /** Where it runs, when known and not simply the course folder. */
+  cwd: string | null;
 }
 
 export interface SeminarState {
@@ -183,6 +187,8 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
         toolName: event.toolName,
         summary: event.summary,
         editWithinCourse: event.editWithinCourse,
+        command: event.command ?? null,
+        cwd: event.cwd ?? null,
       },
     };
   }

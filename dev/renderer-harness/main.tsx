@@ -131,15 +131,20 @@ function scriptFor(stage: Stage): { events: AgentEvent[]; busy: boolean } {
         },
         {
           type: "tool_activity",
-          name: "Write",
-          summary: "Write curriculum/00-one-reading/scaffold/src/reading.ts",
+          name: "Bash",
+          summary: "Running a command",
+          detail: "Install the scaffold's dependencies",
         },
+        // A command, with the command: the build's approvals are mostly these
+        // once file edits are granted, and the card states the actual action.
         {
           type: "approval_request",
           requestId: "harness-approval",
-          toolName: "Write",
-          summary: "Write curriculum/00-one-reading/scaffold/src/reading.ts",
-          editWithinCourse: true,
+          toolName: "Bash",
+          summary: "Install the scaffold's dependencies",
+          editWithinCourse: false,
+          command: "pnpm install --frozen-lockfile",
+          cwd: "curriculum/00-one-reading/scaffold",
         },
       ],
       busy: true,
@@ -382,23 +387,42 @@ function installBridge(
     endSeminar: () => Promise.resolve(),
     onSeminarEvent: (listener: (event: AgentEvent) => void) => {
       eventListeners.push(listener);
-      // Replay after mount, the way a live session's stream arrives.
+      // Replay after mount, the way a live session's stream arrives. A build
+      // lands its first file BEFORE the tutor's build turn is replayed, in a
+      // tick of its own: the build screen starts its conversation at the first
+      // message after building began, and a fixture that delivers the words
+      // first would file them under the interview and show nothing.
+      setTimeout(() => {
+        if (stage === "building") {
+          for (const notify of changeListeners) notify(["curriculum/00-one-reading/module.json"]);
+        }
+      }, 30);
       setTimeout(() => {
         for (const event of script.events) listener(event);
         if (stage === "building") {
           for (const path of [
             "COURSE.md",
-            // A temp twin lands beside every real write; the surface must
-            // filter these out rather than showing write plumbing.
+            "tutor/progress.json",
+            "tutor/journal.md",
+            // Write plumbing lands beside every real write — the app's own
+            // temp twins, pnpm's install temporaries, the dependency tree —
+            // and the surface must filter it rather than show it.
             "curriculum/00-one-reading/LESSON.md.tmp.99999.deadbeef",
+            "curriculum/00-one-reading/module.json",
             "curriculum/00-one-reading/LESSON.md",
             "curriculum/00-one-reading/BRIEF.md",
+            "curriculum/00-one-reading/quiz.md",
+            "curriculum/00-one-reading/scaffold",
+            "curriculum/00-one-reading/scaffold/package.json",
+            "curriculum/00-one-reading/scaffold/_tmp_16784_c7253531e0a568beb29c27dd637c7960",
+            "curriculum/00-one-reading/scaffold/node_modules",
+            "curriculum/00-one-reading/scaffold/src/reading.ts",
           ]) {
             // The real watch pushes course-relative, forward-slash paths.
             for (const notify of changeListeners) notify([path]);
           }
         }
-      }, 30);
+      }, 60);
       return () => undefined;
     },
     onSeminarSnapshot: () => () => undefined,

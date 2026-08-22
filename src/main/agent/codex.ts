@@ -163,6 +163,27 @@ export function codexFileEditWithinCourse(
   return typeof grantRoot === "string" && pathInsideCourse(grantRoot, courseDir, true);
 }
 
+/** The command as the provider sent it: one string, or argv joined with
+ *  spaces. Anything else is not a command and is not shown. */
+export function commandText(value: unknown): string | null {
+  if (typeof value === "string") return nonEmptyString(value);
+  if (Array.isArray(value) && value.every((part) => typeof part === "string")) {
+    return nonEmptyString(value.join(" "));
+  }
+  return null;
+}
+
+/** Where a command runs, in the learner's terms: nothing when it is the
+ *  course folder itself, a course-relative path inside it, the absolute path
+ *  outside it — the one case that most deserves to be seen. */
+export function commandCwd(cwd: string | null, courseDir: string): string | null {
+  if (cwd === null) return null;
+  const relative = path.relative(path.resolve(courseDir), path.resolve(cwd));
+  if (relative === "") return null;
+  if (relative.startsWith("..") || path.isAbsolute(relative)) return path.resolve(cwd);
+  return relative.split(path.sep).join("/");
+}
+
 function readCourseProtocol(courseDir: string): string {
   const protocolPath = path.join(courseDir, "CLAUDE.md");
   const stats = fs.statSync(protocolPath);
@@ -450,12 +471,23 @@ export class CodexAgentSession implements AgentSession {
         allowResult: { decision: "accept" },
         denyResult: { decision: "decline" },
       });
+      // The request carries the command; older items carry it too. The card
+      // shows it because an approval states the actual action (DESIGN.md).
+      const item = this.items.get(String(params.itemId));
+      const command =
+        commandText(params.command) ?? commandText(isRecord(item) ? item.command : null);
+      const cwd = commandCwd(
+        nonEmptyString(params.cwd) ?? (isRecord(item) ? nonEmptyString(item.cwd) : null),
+        this.courseDir,
+      );
       this.output.push({
         type: "approval_request",
         requestId,
         toolName: "Shell",
-        summary: "Codex wants to run a shell command",
+        summary: "Codex wants to run a command",
         editWithinCourse: false,
+        ...(command === null ? {} : { command }),
+        ...(cwd === null ? {} : { cwd }),
       });
       return;
     }

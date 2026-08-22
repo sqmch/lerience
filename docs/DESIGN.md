@@ -159,14 +159,18 @@ Onboarding is protocol-owned and file-derived:
 ### Building the first module
 
 The build is a dedicated wait surface, not a transcript with a tiny activity row. It shows the
-course identity, a plain-language expectation, indeterminate then complete progress, elapsed time,
-meaningful landed files, and current tool activity. Temporary write files are noise and stay
-filtered.
+course identity, a plain-language expectation that promises no duration, indeterminate then
+complete progress, elapsed time, current tool activity, and which parts of the module have landed.
+The parts are the module's fixed shape from the engine's format; a part is marked only when a file
+under it has appeared, and nothing is claimed about order or what is still to come. The landed
+paths stay available behind a closed disclosure, grouped by directory. Write plumbing — atomic-write
+twins, package-manager temporaries, dependency trees — is noise and stays filtered.
 
 The live edge of conversation remains available for real questions and approvals, but earlier
-interview prose is not repeated as status. A closing tutor summary belongs in the course workspace,
-where it can be read. The build and handoff are one surface whose state changes; do not flash an
-extra ready page that can be missed.
+interview prose is not repeated as status. The tutor's latest words are clamped to a status line
+with a control that opens them in place, shown only when text is actually cut off. A closing tutor
+summary belongs in the course workspace, where it can be read. The build and handoff are one
+surface whose state changes; do not flash an extra ready page that can be missed.
 
 ### Course workspace
 
@@ -212,7 +216,9 @@ their behavior.
 - Silent or failed provider turns get honest retryable states. Do not leave permanent thinking
   indicators after a turn completed without visible content.
 - Permission prompts are trust moments. State the actual action and scope; never hide a command or
-  outside-course effect inside a broad file-edit label.
+  outside-course effect inside a broad file-edit label. A command approval shows the command itself
+  and where it runs — the course folder, a path inside it, or an absolute path outside it. The
+  live activity line still never shows a command.
 - Session controls report provider-confirmed current values. Pending next-turn values must look
   pending, not active.
 - Model, effort, edit grants, and autonomy changes are learner-initiated and session-scoped. A new

@@ -264,9 +264,32 @@ export function ApprovalCard({
 }): React.JSX.Element {
   return (
     /* No header: the Deny/Allow pair says what this card is. The summary is
-       the whole message. */
+       the whole message — except for a command, which is shown as itself
+       underneath: a permission prompt states the actual action and its scope,
+       and "a shell command" is neither (DESIGN.md). */
     <div className="bg-surface-raised border-line rounded-lg border p-4">
       <p className="text-hi text-md text-pretty">{approval.summary}</p>
+      {approval.command === null ? null : (
+        <>
+          <pre className="bg-surface-input border-line text-ink font-data mt-2.5 overflow-x-auto rounded-sm border px-3 py-2 text-xs">
+            {approval.command}
+          </pre>
+          <p className="text-ink-faint mt-2 text-xs">
+            {approval.cwd === null ? (
+              "in your course folder"
+            ) : isAbsolutePath(approval.cwd) ? (
+              <>
+                outside your course, in{" "}
+                <span className="text-ink-dim font-data break-all">{approval.cwd}</span>
+              </>
+            ) : (
+              <>
+                in <span className="text-ink-dim font-data break-all">{approval.cwd}</span>
+              </>
+            )}
+          </p>
+        </>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -302,6 +325,12 @@ export function ApprovalCard({
       </div>
     </div>
   );
+}
+
+/** The adapter reports a cwd as course-relative inside the course and absolute
+ *  outside it; the card only has to tell the two apart. */
+function isAbsolutePath(value: string): boolean {
+  return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value) || value.startsWith("\\\\");
 }
 
 function failureTitle(kind: SeminarFailureKind): string {
