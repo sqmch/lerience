@@ -8,6 +8,7 @@ import {
   CourseCreator,
   CourseTargetExistsError,
   HostGitRunner,
+  InvalidCourseNameError,
   type GitRunner,
   validateCourseName,
 } from "../src/main/course-creator";
@@ -82,10 +83,11 @@ describe("CourseCreator", () => {
       git: new HostGitRunner(),
       createCourseId: () => courseId,
     });
+    // The typed name becomes a slug: this is the folder that lands on disk.
     const created = await creator.create({ parentDirectory: parent, name: "Applied AI" });
 
     expect(created).toEqual({
-      rootPath: path.join(parent, "Applied AI"),
+      rootPath: path.join(parent, "applied-ai"),
       identity: { courseId, formatVersion: 0 },
     });
     await expect(readCourseIdentity(created.rootPath)).resolves.toEqual(created.identity);
@@ -130,9 +132,30 @@ describe("CourseCreator", () => {
     );
   }, 15_000);
 
+  it("slugs a long free-text name to a short folder, and refuses one with nothing usable", async () => {
+    const parent = temporaryRoot();
+    const engine = path.join(temporaryRoot(), "engine");
+    createCourseTemplate(engine);
+    const creator = new CourseCreator({ courseTemplateRoot: engine, git: new HostGitRunner() });
+
+    const created = await creator.create({
+      parentDirectory: parent,
+      name: "Software architecture patterns through repair and design",
+    });
+    expect(path.basename(created.rootPath)).toBe("software-architecture-patterns-through-repair");
+
+    await expect(
+      creator.create({ parentDirectory: parent, name: "!!! ??? ..." }),
+    ).rejects.toBeInstanceOf(InvalidCourseNameError);
+    expect(fs.readdirSync(parent).filter((name) => name.startsWith(".praxeum-create-"))).toEqual(
+      [],
+    );
+  }, 15_000);
+
   it("refuses an existing final path without running Git or disturbing its contents", async () => {
     const parent = temporaryRoot();
-    const target = path.join(parent, "Existing Course");
+    // The conflict is with the folder the name resolves to — the slug.
+    const target = path.join(parent, "existing-course");
     fs.mkdirSync(target);
     fs.writeFileSync(path.join(target, "keep.txt"), "learner data\n");
     let gitCalls = 0;
@@ -192,10 +215,10 @@ describe("CourseCreator", () => {
       "git init failed",
     );
 
-    expect(partialClonePath).not.toBe(path.join(parent, "New Course"));
+    expect(partialClonePath).not.toBe(path.join(parent, "new-course"));
     expect(fs.existsSync(partialClonePath)).toBe(false);
     expect(fs.readFileSync(path.join(unrelated, "keep.txt"), "utf8")).toBe("not ours\n");
-    expect(fs.existsSync(path.join(parent, "New Course"))).toBe(false);
+    expect(fs.existsSync(path.join(parent, "new-course"))).toBe(false);
   });
 
   it.runIf(process.env["PRAXEUM_RUNTIME_ROOT"] !== undefined)(

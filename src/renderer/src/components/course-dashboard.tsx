@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { DashboardCourse } from "../../../shared/ipc";
+import { slugifyCourseName } from "../../../shared/course-name";
 import { CHIP, GHOST, LINKISH, PRIMARY, QUIET } from "./controls";
 import { ChevronLeftGlyph, SpinnerGlyph } from "./glyphs";
 
@@ -36,6 +37,10 @@ export function CourseDashboard({
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // The folder the typed name becomes. Empty when nothing usable is there yet,
+  // which is exactly when creating a course should be unavailable.
+  const folder = slugifyCourseName(name);
+
   const run = async (action: () => ActionResult): Promise<void> => {
     if (pending) return;
     setPending(true);
@@ -53,7 +58,10 @@ export function CourseDashboard({
 
   const create = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (name.trim() === "") return;
+    if (folder === "") return;
+    // The raw words still go to the main process: it owns the slug (the same
+    // function runs there), and the untouched name is the better seed for the
+    // tutor's interview than a dash-joined one.
     void run(() => onCreate(name.trim(), defaultParentDirectory));
   };
 
@@ -118,19 +126,37 @@ export function CourseDashboard({
               onChange={(event) => setName(event.target.value)}
               placeholder='Name it, ex. "Applied AI systems"'
               disabled={pending}
+              aria-describedby="course-folder-preview"
             />
             <button
               type="submit"
               className={`${PRIMARY} flex h-11 shrink-0 items-center gap-2 text-md`}
-              disabled={pending || name.trim() === ""}
+              disabled={pending || folder === ""}
             >
               {pending ? <SpinnerGlyph className="animate-spin size-4 shrink-0" /> : null}
               {pending ? "Creating…" : "Create course"}
             </button>
           </form>
 
+          {/* The folder the name becomes, shown as it is typed so nothing is a
+              surprise on disk: a title with spaces and capitals arrives as a
+              lowercase, dash-joined leaf, and a whole sentence is trimmed to a
+              few words. Reserved either for the field or the preview — it holds
+              its line so the layout below does not jump as the person types. */}
+          <p
+            id="course-folder-preview"
+            className="text-ink-faint mt-3 h-4 text-xs"
+            aria-live="polite"
+          >
+            {folder === "" ? null : (
+              <>
+                Folder: <span className="text-ink-dim font-data">{folder}</span>
+              </>
+            )}
+          </p>
+
           {error === null ? null : (
-            <p className="text-bad mt-4 text-sm" role="alert">
+            <p className="text-bad mt-3 text-sm" role="alert">
               {error}
             </p>
           )}
