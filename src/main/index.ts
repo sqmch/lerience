@@ -66,6 +66,7 @@ import type { AgentEvent, SessionControlPatch, SessionControls } from "../shared
 import type { RunChecksReply, SeminarSnapshot } from "../shared/session";
 import { describeRegisteredCourse } from "./course-dashboard";
 import { CourseCreator, HostGitRunner, validateCourseName } from "./course-creator";
+import { slugifyCourseName } from "../shared/course-name";
 import { FileCourseRegistry } from "./course-registry";
 import {
   clearLastCourse,
@@ -790,8 +791,17 @@ void app.whenReady().then(async () => {
       }
       try {
         // Validate the name BEFORE creating the parent chain, so a rejected
-        // form submission leaves no directories behind as a side effect.
-        const validation = validateCourseName(name);
+        // form submission leaves no directories behind as a side effect. The
+        // slug is what actually becomes the folder, so it is what is checked.
+        const folderName = slugifyCourseName(name);
+        if (folderName === "") {
+          return {
+            ok: false,
+            reason: "error",
+            detail: "Use some letters or numbers in the name — that becomes the folder.",
+          };
+        }
+        const validation = validateCourseName(folderName);
         if (!validation.ok) return { ok: false, reason: "error", detail: validation.reason };
         fs.mkdirSync(parentDirectory, { recursive: true });
         const created = await courseCreator().create({ name, parentDirectory });

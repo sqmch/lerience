@@ -19,6 +19,7 @@ import {
   getOrCreateCourseIdentity,
   type CourseIdentity,
 } from "./course-identity";
+import { slugifyCourseName } from "../shared/course-name";
 
 const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
 const UNSAFE_CHARACTER = /[<>:"/\\|?*]/u;
@@ -153,7 +154,16 @@ export class CourseCreator {
   }
 
   async create(request: CreateCourseRequest): Promise<CreatedCourse> {
-    const validation = validateCourseName(request.name);
+    // The learner's rough words become a folder name — lowercase, dash-joined,
+    // a sentence trimmed to a few words. The portability guard then runs on the
+    // slug, so a reserved or over-long result is still refused, not written.
+    const folderName = slugifyCourseName(request.name);
+    if (folderName === "") {
+      throw new InvalidCourseNameError(
+        "Use some letters or numbers in the name — that becomes the folder.",
+      );
+    }
+    const validation = validateCourseName(folderName);
     if (!validation.ok) throw new InvalidCourseNameError(validation.reason);
 
     const parentDirectory = path.resolve(request.parentDirectory);
