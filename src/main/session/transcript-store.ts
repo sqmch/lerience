@@ -45,6 +45,9 @@ export interface ToolActivityEntry extends EntryBase {
   kind: "tool_activity";
   name: string;
   summary: string;
+  /** The specific target, when the adapter could name one safely. Absent in
+   *  records written before the field existed. */
+  detail?: string;
 }
 
 export interface ApprovalEntry extends EntryBase {
@@ -396,6 +399,7 @@ export class FileTranscriptStore {
           kind: input.kind,
           name: redactCredentialText(input.name),
           summary: redactCredentialText(input.summary),
+          ...(input.detail === undefined ? {} : { detail: redactCredentialText(input.detail) }),
         };
         break;
       case "approval":
@@ -645,10 +649,17 @@ function parseEntry(value: unknown): TranscriptEntry {
     return { ...base, kind: value.kind, delta: value.delta };
   }
   if (value.kind === "tool_activity") {
-    requireKeys(value, [...baseKeys, "name", "summary"]);
+    requireKeys(value, [...baseKeys, "name", "summary"], ["detail"]);
     assertStoredText(value.name, "tool name");
     assertStoredText(value.summary, "tool summary");
-    return { ...base, kind: value.kind, name: value.name, summary: value.summary };
+    if (value.detail !== undefined) assertStoredText(value.detail, "tool detail");
+    return {
+      ...base,
+      kind: value.kind,
+      name: value.name,
+      summary: value.summary,
+      ...(value.detail === undefined ? {} : { detail: value.detail }),
+    };
   }
   if (value.kind === "approval") {
     requireKeys(value, [...baseKeys, "requestId", "toolName", "summary", "outcome"], ["reason"]);

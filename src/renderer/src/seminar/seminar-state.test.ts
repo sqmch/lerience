@@ -63,12 +63,17 @@ describe("seminarReducer", () => {
       { type: "event", event: { type: "message_delta", delta: "Let me inspect that." } },
       {
         type: "event",
-        event: { type: "tool_activity", name: "Read", summary: "Reading COURSE.md" },
+        event: {
+          type: "tool_activity",
+          name: "Read",
+          summary: "Reading a file",
+          detail: "COURSE.md",
+        },
       },
     ]);
 
     expect(state.phase).toBe("tool-activity");
-    expect(state.toolActivity).toBe("Reading COURSE.md");
+    expect(state.toolActivity).toEqual({ summary: "Reading a file", detail: "COURSE.md" });
     expect(state.items).toHaveLength(1);
     expect(state.items[0]).toMatchObject({ streaming: false });
   });

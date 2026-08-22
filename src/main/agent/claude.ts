@@ -102,6 +102,52 @@ function safeWebTarget(value: unknown): string | null {
   }
 }
 
+export interface ToolActivityCopy {
+  summary: string;
+  detail: string | null;
+}
+
+function activity(summary: string, detail: string | null = null): ToolActivityCopy {
+  return { summary, detail };
+}
+
+/** The waiting state's live line: what the tutor is doing right now, in the
+ *  present progressive, with the specific target as a second line when one is
+ *  safe to show. Commands never appear — the model's own one-line description
+ *  of a command (the Bash tool's `description` field, written for display)
+ *  stands in for it. `summarizeClaudeTool` is the imperative twin used for
+ *  approval cards, where the copy names a request rather than an activity. */
+export function describeClaudeActivity(toolName: string, input: unknown): ToolActivityCopy {
+  const fields = isRecord(input) ? input : {};
+  const target = nonEmptyString(fields.file_path) ?? nonEmptyString(fields.path);
+
+  switch (toolName) {
+    case "Bash":
+      return activity("Running a command", nonEmptyString(fields.description));
+    case "Read":
+      return activity("Reading a file", target);
+    case "Edit":
+    case "MultiEdit":
+    case "NotebookEdit":
+      return activity("Editing a file", target ?? nonEmptyString(fields.notebook_path));
+    case "Write":
+      return activity("Writing a file", target);
+    case "Glob":
+      return activity("Finding files", nonEmptyString(fields.pattern));
+    case "Grep":
+      return activity("Searching course files", nonEmptyString(fields.pattern));
+    case "WebFetch":
+      return activity("Reading a web page", safeWebTarget(fields.url));
+    case "WebSearch":
+      return activity("Searching the web", nonEmptyString(fields.query));
+    case "Task":
+    case "Agent":
+      return activity("Delegating a task", nonEmptyString(fields.description));
+    default:
+      return activity(`Using ${toolName}`);
+  }
+}
+
 /** Human-shaped tool copy only; provider input is never rendered as raw JSON. */
 export function summarizeClaudeTool(toolName: string, input: unknown): string {
   const fields = isRecord(input) ? input : {};
@@ -270,10 +316,12 @@ export function normalizeClaudeMessage(
       if (typeof block.name !== "string" || block.name === "") {
         throw new Error("Claude emitted malformed tool activity.");
       }
+      const copy = describeClaudeActivity(block.name, block.input);
       events.push({
         type: "tool_activity",
         name: block.name,
-        summary: summarizeClaudeTool(block.name, block.input),
+        summary: copy.summary,
+        ...(copy.detail === null ? {} : { detail: copy.detail }),
       });
     }
     return events;

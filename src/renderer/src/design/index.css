@@ -95,6 +95,7 @@
   --animate-settle: settle var(--dur-enter) var(--ease);
   --animate-spin: spin var(--dur-spin) linear infinite;
   --animate-dot: dot var(--dur-pulse) var(--ease) infinite;
+  --animate-breathe: breathe var(--dur-pulse) var(--ease) infinite;
   --animate-sweep: sweep var(--dur-sweep) var(--ease) infinite;
 
   @keyframes settle {
@@ -119,6 +120,17 @@
     }
     50% {
       opacity: 1;
+    }
+  }
+  /* the waiting state's live line: shallower than the dots, so the words stay
+     readable while still visibly alive */
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
     }
   }
   @keyframes sweep {

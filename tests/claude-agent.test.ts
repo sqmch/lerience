@@ -7,6 +7,7 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import {
   ClaudeTutorAgent,
+  describeClaudeActivity,
   isEditWithinCourse,
   normalizeClaudeError,
   normalizeClaudeMessage,
@@ -224,7 +225,8 @@ describe("ClaudeTutorAgent", () => {
       {
         type: "tool_activity",
         name: "Read",
-        summary: "Read curriculum/02/LESSON.md",
+        summary: "Reading a file",
+        detail: "curriculum/02/LESSON.md",
       },
       { type: "usage_update", totalCostUsd: 0.012 },
       { type: "turn_complete" },
@@ -384,6 +386,34 @@ describe("Claude adapter normalization", () => {
     );
   });
 
+  it("phrases the live activity line in the present progressive without the command", () => {
+    expect(
+      describeClaudeActivity("Bash", {
+        command: "echo super-secret",
+        description: "Run the checks",
+      }),
+    ).toEqual({ summary: "Running a command", detail: "Run the checks" });
+    expect(describeClaudeActivity("Bash", { command: "echo super-secret" })).toEqual({
+      summary: "Running a command",
+      detail: null,
+    });
+    expect(describeClaudeActivity("Read", { file_path: "COURSE.md" })).toEqual({
+      summary: "Reading a file",
+      detail: "COURSE.md",
+    });
+    expect(describeClaudeActivity("Grep", { pattern: "parseReading" })).toEqual({
+      summary: "Searching course files",
+      detail: "parseReading",
+    });
+    expect(
+      describeClaudeActivity("WebFetch", { url: "https://example.com/doc?token=secret" }),
+    ).toEqual({ summary: "Reading a web page", detail: "example.com/doc" });
+    expect(describeClaudeActivity("Mystery", { anything: "at all" })).toEqual({
+      summary: "Using Mystery",
+      detail: null,
+    });
+  });
+
   it("renders assistant text only when nothing streamed it", () => {
     const spoke = sdkMessage({
       type: "assistant",
@@ -399,12 +429,12 @@ describe("Claude adapter normalization", () => {
     // The normal path: the words already streamed as deltas, so repeating the
     // assistant frame's copy would print the turn twice.
     expect(normalizeClaudeMessage(spoke)).toEqual([
-      { type: "tool_activity", name: "Read", summary: "Read COURSE.md" },
+      { type: "tool_activity", name: "Read", summary: "Reading a file", detail: "COURSE.md" },
     ]);
 
     expect(normalizeClaudeMessage(spoke, { includeAssistantText: true })).toEqual([
       { type: "message_delta", delta: "Fresh repo, no course yet." },
-      { type: "tool_activity", name: "Read", summary: "Read COURSE.md" },
+      { type: "tool_activity", name: "Read", summary: "Reading a file", detail: "COURSE.md" },
     ]);
   });
 

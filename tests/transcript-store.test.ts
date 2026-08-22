@@ -47,7 +47,12 @@ describe("FileTranscriptStore", () => {
 
     await store.append({ kind: "operator", text: "start session" });
     await store.append({ kind: "tutor_delta", delta: "Opening " });
-    await store.append({ kind: "tool_activity", name: "Read", summary: "Reading COURSE.md" });
+    await store.append({
+      kind: "tool_activity",
+      name: "Read",
+      summary: "Reading a file",
+      detail: "COURSE.md",
+    });
     await store.append({ kind: "tutor_delta", delta: "question" });
     await store.append({ kind: "turn_complete" });
     await store.append({ kind: "learner", text: "My answer" });
@@ -201,11 +206,23 @@ describe("FileTranscriptStore", () => {
     await store.append({ kind: "tutor_delta", delta: "KEY=env-secret " });
     await store.append({ kind: "tutor_delta", delta: "Authoriz" });
     await store.append({ kind: "tutor_delta", delta: "ation: header-secret\nSafe" });
-    await store.append({ kind: "tool_activity", name: "Read", summary: "Bearer tool-secret" });
+    await store.append({
+      kind: "tool_activity",
+      name: "Read",
+      summary: "Bearer tool-secret",
+      detail: "Bearer detail-secret",
+    });
     await store.append({ kind: "turn_complete" });
 
     const raw = await readFile(store.artifactPath, "utf8");
-    for (const secret of ["hunter2", "sk-abcdefgh", "env-secret", "header-secret", "tool-secret"]) {
+    for (const secret of [
+      "hunter2",
+      "sk-abcdefgh",
+      "env-secret",
+      "header-secret",
+      "tool-secret",
+      "detail-secret",
+    ]) {
       expect(raw).not.toContain(secret);
     }
     expect(raw).toContain("[credential redacted]");
