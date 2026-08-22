@@ -53,8 +53,10 @@ relevant records in [`docs/DECISIONS/`](docs/DECISIONS/). Read
 - Merging a PR does not produce a release. Releases are deliberate, batched, and manual: a focused
   version-bump PR that adds `distribution/releases/v<version>.md`, an annotated `v<version>` tag on
   that merge commit, then the `desktop-release-candidate` workflow and downloaded-byte acceptance
-  described in `distribution/RELEASE-OPERATIONS.md`. There is no running changelog; notes are
-  drafted at release time from `git log --first-parent <previous-tag>..main`.
+  described in `distribution/RELEASE-OPERATIONS.md`. A maintainer request to "release a fresh
+  version" authorizes that full operation, including publishing the accepted draft; it does not
+  waive any acceptance gate. There is no running changelog; notes are drafted at release time from
+  `git log --first-parent <previous-tag>..main`.
 
 ## Common commands
 

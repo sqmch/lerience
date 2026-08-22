@@ -102,6 +102,32 @@ source checksums, and approved corresponding-source files. GitHub displays the t
 as the release description and automatically adds its own source snapshots; those are not duplicate
 prepared assets. `SHA256SUMS` covers the other six prepared assets.
 
+## Authorized autonomous release
+
+When the authenticated maintainer asks an agent to "release a fresh version", or gives an
+equivalent end-to-end release instruction, use the next patch version after the latest published
+stable release unless the maintainer names another version. Do not infer a major or minor bump.
+
+That instruction authorizes the agent to complete the normal release operation without pausing for
+another confirmation: create and push the focused version-and-notes branch, open the pull request,
+wait for required checks, merge using an allowed protected-branch method, create and push the
+annotated tag, dispatch `desktop-release-candidate` with `create_draft: true`, cross the protected
+signing and publishing environments, download and accept the candidate bytes, and publish the
+accepted draft as the latest stable release. The agent must verify `releases/latest` after
+publication. The private signing key stays inside the protected environment.
+
+The draft is a short-lived acceptance boundary, not a maintainer handoff. It lets acceptance inspect
+the same bytes that will become public. Once every required acceptance check passes, the authorized
+agent publishes it with `gh release edit <tag> --draft=false --latest` and confirms that the seven
+assets, signed manifest, release tag, and latest-channel URLs are public. Do not ask the maintainer
+to undraft an accepted release.
+
+Autonomy does not turn failed or missing evidence into acceptance. Leave the release drafted and
+report the exact blocker if a required native check cannot be performed, a protected environment
+requires an unavailable approval, GitHub rejects the merge or publication, or any candidate byte
+does not match the signed records. Never bypass branch protection, reuse a failed version, replace
+accepted assets, or expose protected key material.
+
 ## Promotion
 
 1. Start from a clean, reviewed `main` commit with required checks green.
@@ -125,7 +151,8 @@ prepared assets. `SHA256SUMS` covers the other six prepared assets.
    the signed manifest and recorded build evidence. Record the two Mac architectures separately;
    the Intel DMG must pass Gatekeeper and the learner path on a physical Intel Mac.
 9. Publish only when the acceptance record names the tag, commit, manifest digest, and exact artifact
-   digests. Keep the accepted release immutable.
+   digests. The maintainer or an agent acting under an authorized autonomous release request may
+   publish the accepted draft. Keep the accepted release immutable.
 
 The repository's manual desktop distribution workflow is a non-promotable rehearsal. It builds
 Windows x64, macOS arm64, and macOS x64 with the preview identity, compiles the repository-derived
@@ -135,8 +162,8 @@ seven days. Its output cannot be promoted.
 The production candidate workflow is also non-publishing by default. It requires an annotated tag,
 reviewed version-specific notes, the repository-owned Lerience identity, and the `release-signing` environment's
 private key. Enabling `create_draft` additionally crosses the protected `release-publishing`
-environment and uses the job-scoped same-repository token. A human publishes an accepted draft
-through GitHub only after the downloaded-byte acceptance record is complete.
+environment and uses the job-scoped same-repository token. The maintainer or an authorized release
+agent publishes an accepted draft through GitHub only after downloaded-byte acceptance is complete.
 
 ## Failed release and rollback
 
