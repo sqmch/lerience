@@ -44,6 +44,14 @@ export type AgentEvent =
       toolName: string;
       summary: string;
       editWithinCourse: boolean;
+      /** For a command approval: the command itself, so the card can state the
+       *  actual action (a permission prompt is a trust moment and never hides
+       *  a command — DESIGN.md). The live activity line still never shows it. */
+      command?: string;
+      /** Where that command runs, when the provider says: course-relative
+       *  inside the course folder, absolute outside it. Absent when it is the
+       *  course folder itself or unknown. */
+      cwd?: string;
     }
   /** Cumulative session cost in USD, when the provider reports it. */
   | { type: "usage_update"; totalCostUsd: number }

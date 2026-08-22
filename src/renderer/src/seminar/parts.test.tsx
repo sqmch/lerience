@@ -3,7 +3,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { ConversationTranscript } from "./parts";
+import { ApprovalCard, ConversationTranscript } from "./parts";
 import { createSeminarState } from "./seminar-state";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -99,5 +99,57 @@ describe("ConversationTranscript", () => {
 
     act(() => show?.click());
     expect(host.textContent).toContain("Previous session finished.");
+  });
+});
+
+describe("ApprovalCard", () => {
+  const approval = {
+    requestId: "codex:7",
+    toolName: "Shell",
+    summary: "Codex wants to run a command",
+    editWithinCourse: false,
+  };
+
+  it("states a command approval as the command and where it runs", () => {
+    const host = document.createElement("div");
+    root = createRoot(host);
+    act(() => {
+      root?.render(
+        <ApprovalCard
+          approval={{ ...approval, command: "pnpm install", cwd: "curriculum/00-x/scaffold" }}
+          answering={false}
+          onAnswer={() => undefined}
+        />,
+      );
+    });
+    expect(host.querySelector("pre")?.textContent).toBe("pnpm install");
+    expect(host.textContent).toContain("in curriculum/00-x/scaffold");
+  });
+
+  it("names an absolute working directory as outside the course, and none as the course", () => {
+    const host = document.createElement("div");
+    root = createRoot(host);
+    act(() => {
+      root?.render(
+        <ApprovalCard
+          approval={{ ...approval, command: "type auth.json", cwd: "D:\\tools\\codex" }}
+          answering={false}
+          onAnswer={() => undefined}
+        />,
+      );
+    });
+    expect(host.textContent).toContain("outside your course, in D:\\tools\\codex");
+
+    act(() => {
+      root?.render(
+        <ApprovalCard
+          approval={{ ...approval, command: "pnpm test", cwd: null }}
+          answering={false}
+          onAnswer={() => undefined}
+        />,
+      );
+    });
+    expect(host.textContent).toContain("in your course folder");
+    expect(host.textContent).not.toContain("outside");
   });
 });

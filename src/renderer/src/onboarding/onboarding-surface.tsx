@@ -13,13 +13,15 @@
  * a course with nothing in it has no rail to sit beside and no material to
  * read. */
 
-import { useEffect, useState, type ReactNode } from "react";
-import { PRIMARY, QUIET } from "../components/controls";
-import { CheckGlyph } from "../components/glyphs";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { LINKISH, PRIMARY, QUIET } from "../components/controls";
+import { CheckGlyph, ChevronDownGlyph } from "../components/glyphs";
 import { AppShell } from "../shell/app-shell";
 import { BackToCourses, TitleRule } from "../shell/surface-head";
 import { CourseMarkdown } from "../components/markdown-view";
 import type { CourseSnapshot } from "../../../shared/ipc";
+import type { CourseModule } from "../../../shared/course-data";
+import { MODULE_PARTS, groupWritten, isWriteNoise, moduleParts } from "./build-parts";
 import {
   ApprovalCard,
   Composer,
@@ -73,9 +75,10 @@ function useSettled(condition: boolean, ms: number): boolean {
   return settled;
 }
 
-/** Enough to show the shape of what is being built without turning the
- *  conversation into a file log. */
-const WRITTEN_FILE_LIMIT = 8;
+/** A bound on memory, not on what is shown: the readout needs every landed
+ *  path to say which parts of the module exist, and the list itself sits
+ *  behind a closed disclosure. A build is a few dozen files. */
+const WRITTEN_FILE_LIMIT = 400;
 
 /** Ticks the elapsed clock on the build screen. A multi-minute wait with no
  *  moving number is where people start wondering whether it has hung. */
@@ -343,10 +346,10 @@ function ConnectedOnboardingSurface({
         // already filters to the lens's own inputs, so a path arriving here is
         // by definition worth showing. A rewritten file moves to the end rather
         // than repeating: the list is "what has landed", not a log.
-        /* Atomic-write temporaries are plumbing, not course files. They land
-           beside every real write ("quiz.md.tmp.22568.1cd3b28fdf5e") and made
-           the list read as noise. */
-        const real = paths.filter((path) => !/\.tmp\.[\w.]+$/.test(path));
+        /* Write plumbing is not a course file: atomic-write twins, pnpm's
+           install temporaries, dependency trees. They land beside every real
+           write and made the list read as noise. */
+        const real = paths.filter((path) => !isWriteNoise(path));
         const next = seen.filter((path) => !real.includes(path));
         next.push(...real);
         return next.slice(-WRITTEN_FILE_LIMIT);
@@ -454,6 +457,7 @@ function ConnectedOnboardingSurface({
                   ready={stage === "ready"}
                   elapsed={elapsed}
                   written={written}
+                  modules={data.modules}
                   activity={state.toolActivity}
                 >
                   <BuildConversation
@@ -639,16 +643,54 @@ function BuildConversation({
   const { state } = seminar;
   const latest = [...state.items.slice(since)].reverse().find((item) => item.role === "tutor");
 
+  /* The clamp has a second door. Whether the words are actually cut off is
+     measured, not assumed, so the control appears only when there is more to
+     show — and is re-asked as the text streams in. A new turn starts closed. */
+  const [expanded, setExpanded] = useState(false);
+  const [clipped, setClipped] = useState(false);
+  const proseRef = useRef<HTMLDivElement | null>(null);
+  const latestId = latest?.id ?? null;
+  const latestContent = latest?.content ?? "";
+  useEffect(() => {
+    setExpanded(false);
+  }, [latestId]);
+  useLayoutEffect(() => {
+    const node = proseRef.current;
+    setClipped(node !== null && node.scrollHeight > node.clientHeight + 1);
+  }, [latestContent, expanded]);
+
   return (
     <>
       {/* The tutor's latest words stay put until the next ones replace them,
           but CLAMPED: this is a status line, not reading material. The closing
           summary runs over a page, and a page of prose arriving under a
           progress bar is unreadable in the seconds before the handover — it is
-          worth reading in the course view, where it stays. */}
+          worth reading in the course view, where it stays. The clamp fades
+          rather than cuts, and opens in place for whoever wants the rest now. */}
       {latest === undefined ? null : (
-        <div className="line-clamp-3 overflow-hidden">
-          <TutorTurn content={latest.content} streaming={latest.streaming} />
+        <div>
+          <div
+            ref={proseRef}
+            className={
+              expanded
+                ? undefined
+                : "line-clamp-3 overflow-hidden [mask-image:linear-gradient(to_bottom,var(--ink)_60%,transparent)]"
+            }
+          >
+            <TutorTurn content={latest.content} streaming={latest.streaming} />
+          </div>
+          {clipped || expanded ? (
+            <button
+              type="button"
+              className={`${LINKISH} mt-1.5 text-xs`}
+              aria-expanded={expanded}
+              onClick={() => {
+                setExpanded((value) => !value);
+              }}
+            >
+              {expanded ? "Show less" : "Show all"}
+            </button>
+          ) : null}
         </div>
       )}
 
@@ -696,6 +738,7 @@ function BuildStage({
   ready,
   elapsed,
   written,
+  modules,
   activity,
   children,
 }: {
@@ -704,6 +747,7 @@ function BuildStage({
   ready: boolean;
   elapsed: string | null;
   written: string[];
+  modules: CourseModule[];
   activity: ToolActivity | null;
   /** The live conversation — questions, approvals, the composer. */
   children: ReactNode;
@@ -720,7 +764,11 @@ function BuildStage({
         <p className="text-ink-dim mt-2.5 text-md leading-normal text-pretty">
           {ready
             ? "Opening it now — this conversation moves with you, into the seminar column."
-            : "Your tutor is writing the lesson, a scaffold with the load-bearing parts left for you, and the checks that grade them. This usually takes a few minutes; you can leave it running."}
+            : /* No duration: there is no number to give — the build is many
+                 turns, and a tutor that has to sort out tooling on the way
+                 takes as long as that takes. The second sentence is the one
+                 promise the app can keep. */
+              "This takes a while. Leave it running; your tutor will ask if it needs you."}
         </p>
 
         {/* The signal. Indeterminate while working, complete when done — the
@@ -758,19 +806,110 @@ function BuildStage({
         </div>
       </div>
 
-      {written.length === 0 ? null : (
-        <div className="border-line flex flex-col gap-2 border-l pl-4">
-          <p className="text-ink-dim text-xs">In your course folder</p>
-          {written.map((path) => (
-            <p key={path} className="text-ink-dim font-data flex items-start gap-2 text-2xs">
-              <CheckGlyph className="text-ok mt-px size-3 shrink-0" />
-              <span className="break-all">{path}</span>
-            </p>
-          ))}
-        </div>
-      )}
+      <ModuleReadout written={written} modules={modules} activity={ready ? null : activity} />
 
       {children}
+    </div>
+  );
+}
+
+/**
+ * What has landed, as the shape of a module rather than a log of paths.
+ *
+ * A module's parts are fixed (the engine's FORMAT.md), so the same watch that
+ * used to scroll file names can say which of them exist yet — progress a
+ * learner can read, still made only of files the app saw appear. The paths
+ * themselves stay available behind a closed disclosure, grouped under their
+ * directory so they stop wrapping. Until the module directory exists there is
+ * nothing to report, and the bar and live line carry the wait alone.
+ */
+function ModuleReadout({
+  written,
+  modules,
+  activity,
+}: {
+  written: string[];
+  modules: CourseModule[];
+  activity: ToolActivity | null;
+}): React.JSX.Element | null {
+  const parts = moduleParts(written, activity?.detail ?? null);
+  if (parts === null) return null;
+  const moduleTitle = modules.find((module) => module.id === parts.moduleId)?.title ?? null;
+  const number = /^(\d+)/.exec(parts.moduleId)?.[1] ?? null;
+  const groups = groupWritten(written);
+  const count = groups.reduce((total, group) => total + group.files.length, 0);
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="text-ink-dim flex items-baseline justify-between gap-3 text-xs">
+        <span className="min-w-0 truncate">
+          {number === null ? "This module" : `Module ${number}`}
+          {moduleTitle === null ? null : ` · ${moduleTitle}`}
+        </span>
+        <span className="text-ink-faint shrink-0 tabular-nums">
+          {parts.landed.size} of {MODULE_PARTS.length} parts landed
+        </span>
+      </div>
+
+      <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0" aria-label="Parts of the module">
+        {MODULE_PARTS.map((part) => {
+          const landed = parts.landed.has(part.key);
+          const now = !landed && parts.now === part.key;
+          return (
+            <li
+              key={part.key}
+              className={`flex items-center gap-1.5 rounded-pill border px-2.5 py-1 text-xs font-medium ${
+                landed
+                  ? "bg-surface-raised border-line text-ink"
+                  : now
+                    ? "border-line-strong text-hi"
+                    : "border-line text-ink-faint border-dashed"
+              }`}
+            >
+              {landed ? (
+                <CheckGlyph className="text-ok size-3 shrink-0" />
+              ) : now ? (
+                <span className="bg-attention size-1.5 shrink-0 rounded-pill" aria-hidden="true" />
+              ) : null}
+              {part.label}
+              {/* The mark carries the state for sighted readers; the words do
+                  the same job for everyone else. */}
+              <span className="sr-only">
+                {landed ? ", landed" : now ? ", being written" : ", not yet"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      {count === 0 ? null : (
+        <details className="group text-ink-faint text-xs">
+          <summary className="hover:text-hi flex w-fit cursor-pointer list-none items-center gap-1.5 transition-colors">
+            <ChevronDownGlyph className="size-3 shrink-0 -rotate-90 transition-transform group-open:rotate-0" />
+            {count === 1 ? "1 file" : `${String(count)} files`} in your course folder
+          </summary>
+          <div className="border-line mt-2 ml-1.5 flex flex-col gap-1.5 border-l pl-3">
+            {groups.map((group) => (
+              <Fragment key={group.head}>
+                {group.head === "" ? null : (
+                  <p className="text-ink-faint font-data text-2xs not-first:mt-1">{group.head}</p>
+                )}
+                {group.files.map((file) => (
+                  <p
+                    key={file}
+                    className={`text-ink-dim font-data flex min-w-0 items-center gap-2 text-2xs ${
+                      group.head === "" ? "" : "pl-3"
+                    }`}
+                  >
+                    <CheckGlyph className="text-ok size-3 shrink-0" />
+                    <span className="truncate">{file}</span>
+                  </p>
+                ))}
+              </Fragment>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

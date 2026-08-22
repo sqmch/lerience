@@ -268,6 +268,42 @@ describe("ClaudeTutorAgent", () => {
     await closeSession(session, sdkQuery);
   });
 
+  it("puts the command on a Bash approval so the card can state the actual action", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    let canUseTool: CanUseTool | undefined;
+    const session = new ClaudeTutorAgent((options) => {
+      canUseTool = options.options?.canUseTool;
+      return sdkQuery;
+    }).startSession({ courseDir: "C:/course" });
+    const events = session.events[Symbol.asyncIterator]();
+    const input = {
+      command: "pnpm install --frozen-lockfile",
+      description: "Install the scaffold's dependencies",
+    };
+
+    const permission = canUseTool?.("Bash", input, {
+      signal: new AbortController().signal,
+      toolUseID: "tool-18",
+      requestId: "request-10",
+    });
+    expect(permission).toBeDefined();
+    await expect(events.next()).resolves.toEqual({
+      done: false,
+      value: {
+        type: "approval_request",
+        requestId: "tool-18",
+        toolName: "Bash",
+        summary: "Install the scaffold's dependencies",
+        editWithinCourse: false,
+        command: "pnpm install --frozen-lockfile",
+      },
+    });
+
+    session.respondToApproval("tool-18", false);
+    await expect(permission).resolves.toMatchObject({ behavior: "deny" });
+    await closeSession(session, sdkQuery);
+  });
+
   it("interrupts through the SDK and closes a turn even when no result frame arrives", async () => {
     const sdkQuery = new FakeClaudeQuery();
     const session = new ClaudeTutorAgent(() => sdkQuery, 10).startSession({

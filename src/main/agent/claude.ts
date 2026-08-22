@@ -593,6 +593,9 @@ class ClaudeAgentSession implements AgentSession {
 
       this.pendingApprovals.set(options.toolUseID, { settle });
       options.signal.addEventListener("abort", onAbort, { once: true });
+      // A command approval states the command (DESIGN.md: never hide one in a
+      // broad label). Bash runs in the course folder, so no cwd is reported.
+      const command = toolName === "Bash" && isRecord(input) ? nonEmptyString(input.command) : null;
       this.output.push({
         type: "approval_request",
         requestId: options.toolUseID,
@@ -603,6 +606,7 @@ class ClaudeAgentSession implements AgentSession {
           nonEmptyString(options.displayName) ??
           summarizeClaudeTool(toolName, input),
         editWithinCourse: isEditWithinCourse(toolName, input, this.courseDir),
+        ...(command === null ? {} : { command }),
       });
     });
   }

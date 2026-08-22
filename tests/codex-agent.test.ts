@@ -1,7 +1,10 @@
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   CodexAgentSession,
   codexFileEditWithinCourse,
+  commandCwd,
+  commandText,
   normalizeCodexError,
   summarizeCodexItem,
 } from "../src/main/agent/codex";
@@ -227,7 +230,7 @@ describe("CodexAgentSession", () => {
     await session.end();
   });
 
-  it("surfaces and answers command approvals without rendering the command", async () => {
+  it("surfaces command approvals with the command and where it runs, then answers them", async () => {
     const { connection, session } = setup();
     const iterator = session.events[Symbol.asyncIterator]();
     connection.ask(7, "item/commandExecution/requestApproval", {
@@ -235,17 +238,22 @@ describe("CodexAgentSession", () => {
       turnId: "turn-1",
       itemId: "command-1",
       command: "type C:\\Users\\learner\\.codex\\auth.json",
+      cwd: "C:\\Users\\learner\\.codex",
       reason: "provider secret",
     });
 
+    // The card states the actual action: the command itself, and a working
+    // directory outside the course shown as the absolute path it is.
     await expect(iterator.next()).resolves.toEqual({
       done: false,
       value: {
         type: "approval_request",
         requestId: "codex:7",
         toolName: "Shell",
-        summary: "Codex wants to run a shell command",
+        summary: "Codex wants to run a command",
         editWithinCourse: false,
+        command: "type C:\\Users\\learner\\.codex\\auth.json",
+        cwd: path.resolve("C:\\Users\\learner\\.codex"),
       },
     });
     session.respondToApproval("codex:7", true);
@@ -341,6 +349,21 @@ describe("Codex adapter normalization", () => {
         changes: [{ path: "secret.txt", diff: "+token=secret" }],
       }),
     ).toEqual({ type: "tool_activity", name: "Files", summary: "Changing course files" });
+    expect(commandText("pnpm install")).toBe("pnpm install");
+    expect(commandText(["pnpm", "install", "--frozen-lockfile"])).toBe(
+      "pnpm install --frozen-lockfile",
+    );
+    expect(commandText({ argv: ["rm"] })).toBeNull();
+    expect(commandText("   ")).toBeNull();
+
+    const course = path.resolve("course");
+    expect(commandCwd(null, course)).toBeNull();
+    expect(commandCwd(course, course)).toBeNull();
+    expect(commandCwd(path.join(course, "curriculum", "00-x", "scaffold"), course)).toBe(
+      "curriculum/00-x/scaffold",
+    );
+    expect(commandCwd(path.resolve("elsewhere"), course)).toBe(path.resolve("elsewhere"));
+
     expect(summarizeCodexItem({ type: "commandExecution", command: "echo token=secret" })).toEqual({
       type: "tool_activity",
       name: "Shell",
