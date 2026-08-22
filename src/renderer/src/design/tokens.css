@@ -324,6 +324,12 @@
      sized before any renderer exists; the two must not drift. */
   --titlebar-h: 38px;
   --statusbar-h: 26px;
+  /* The update notice: one measure for its toast and its dialog, so the thing
+     that announces and the thing that explains read as the same object. The
+     toast sits one gutter above the status bar, whose item holds the same
+     fact once the toast is dismissed. */
+  --notice-w: 22rem;
+  --notice-bottom: calc(var(--statusbar-h) + var(--space-3));
   /* Fallback for browsers without the Window Controls Overlay environment
      variables. On Electron/Windows the measured end inset resolves to this
      same three-button strip; on macOS the reported start inset clears the

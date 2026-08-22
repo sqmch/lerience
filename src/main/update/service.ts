@@ -17,6 +17,7 @@ export interface UpdateReleaseConfig {
   manifestUrl: string;
   signatureUrl: string;
   artifactRootUrl: string;
+  releasePageRootUrl: string;
   publicKeyPem: string;
 }
 
@@ -49,6 +50,15 @@ export class UpdateService {
 
   current(): UpdateStatus {
     return { ...this.status };
+  }
+
+  /** The selected candidate's release page, for the learner to read its notes in
+   * a browser. Main composes it from the compiled channel root and the signed
+   * version, so the renderer never handles a URL. Null while no update stands. */
+  releasePageUrl(): string | null {
+    const candidate = this.candidate;
+    if (candidate === null || this.options.config === null) return null;
+    return new URL(`v${candidate.version}`, this.options.config.releasePageRootUrl).toString();
   }
 
   checkForUpdate(): Promise<UpdateStatus> {

@@ -64,6 +64,8 @@ export const UPDATE_STATUS_GET_CHANNEL = "praxeum:update-status-get";
 export const UPDATE_CHECK_CHANNEL = "praxeum:update-check";
 export const UPDATE_DOWNLOAD_CHANNEL = "praxeum:update-download";
 export const UPDATE_HANDOFF_CHANNEL = "praxeum:update-handoff";
+/** Open the selected update's GitHub release page in the browser; main owns the URL. */
+export const UPDATE_RELEASE_PAGE_CHANNEL = "praxeum:update-release-page";
 /** main → renderer push: safe update state, never manifest authority or paths. */
 export const UPDATE_STATUS_CHANGED_CHANNEL = "praxeum:update-status-changed";
 
@@ -217,6 +219,8 @@ export interface PraxeumApi {
   checkForUpdate(): Promise<UpdateStatus>;
   downloadUpdate(): Promise<UpdateStatus>;
   handoffUpdate(): Promise<UpdateStatus>;
+  /** Open the offered version's release page in the browser. No-op without an offer. */
+  openUpdateReleasePage(): Promise<void>;
   onUpdateStatusChanged(listener: (status: UpdateStatus) => void): () => void;
   /** Start a fresh tutor session in the open course and send its conducted opener. */
   startSeminar(currentModuleId: string | null): Promise<StartSeminarReply>;

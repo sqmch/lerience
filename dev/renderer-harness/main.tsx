@@ -4,11 +4,12 @@
    prose in this harness is purpose-authored synthetic data. Nothing was copied
    from a learner course, provider transcript, or development session. */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { AgentEvent, SessionControlPatch, SessionControls } from "../../src/shared/seminar";
 import type { SeminarSnapshot } from "../../src/shared/session";
-import type { CourseSnapshot } from "../../src/shared/ipc";
+import type { CourseSnapshot, PraxeumApi } from "../../src/shared/ipc";
+import type { UpdateStatus } from "../../src/shared/update";
 import type { ProviderCatalog } from "../../src/shared/provider";
 import type { EditorCatalog, EditorId } from "../../src/shared/editor";
 import { CourseDashboard } from "../../src/renderer/src/components/course-dashboard";
@@ -184,11 +185,108 @@ const WORKING: { events: AgentEvent[]; busy: boolean } = {
   busy: true,
 };
 
+/** The update notice's fixtures. `available` runs the whole Windows flow from
+ *  the offer: Download animates to a verified download, Restart to update
+ *  waits for the turn and then — since the harness cannot quit — ends in the
+ *  recoverable failure, so that state is inspectable too. `package` is the
+ *  same offer on a platform that opens the downloaded package instead. */
+type UpdateFixture = "none" | "available" | "package" | "check-error";
+const UPDATE_FIXTURES: UpdateFixture[] = ["none", "available", "package", "check-error"];
+
+/* Module-level, not per bridge: the bridge is rebuilt on every harness render,
+   but the shell subscribed to the one it mounted against, so the status has to
+   outlive any single bridge object for a Download click to reach it. */
+const updateListeners = new Set<(status: UpdateStatus) => void>();
+let updateStatus: UpdateStatus = { phase: "current" };
+const UPDATE_VERSION = "0.1.0";
+const UPDATE_NOTES = "Fixture release notes.";
+function emitUpdate(status: UpdateStatus): void {
+  updateStatus = status;
+  for (const listener of updateListeners) listener(status);
+}
+/** Called from an effect, never during render: emitting sets state in the
+ *  mounted shell, which React rightly refuses mid-render. */
+function applyUpdateFixture(fixture: UpdateFixture): void {
+  emitUpdate(
+    fixture === "none"
+      ? { phase: "current" }
+      : fixture === "check-error"
+        ? {
+            phase: "error",
+            operation: "check",
+            detail: "Updates could not be checked right now. Lerience will keep working normally.",
+          }
+        : { phase: "available", version: UPDATE_VERSION, releaseNotes: UPDATE_NOTES },
+  );
+}
+function updateBridge(
+  fixture: UpdateFixture,
+): Pick<
+  PraxeumApi,
+  | "getUpdateStatus"
+  | "checkForUpdate"
+  | "downloadUpdate"
+  | "handoffUpdate"
+  | "openUpdateReleasePage"
+  | "onUpdateStatusChanged"
+> {
+  const version = UPDATE_VERSION;
+  const releaseNotes = UPDATE_NOTES;
+  const ready = (): Extract<UpdateStatus, { phase: "ready" }> => ({
+    phase: "ready",
+    version,
+    releaseNotes,
+    action: fixture === "package" ? "open-package" : "install-restart",
+  });
+  return {
+    /* Read after a tick: the shell asks during its mount effect, and the
+       harness's own effect — which applies the fixture — runs right after. */
+    getUpdateStatus: () => Promise.resolve().then(() => updateStatus),
+    checkForUpdate: () => Promise.resolve(updateStatus),
+    downloadUpdate: () =>
+      new Promise((resolve) => {
+        const totalBytes = 128_000_000;
+        let receivedBytes = 0;
+        const tick = (): void => {
+          receivedBytes = Math.min(totalBytes, receivedBytes + totalBytes / 24);
+          if (receivedBytes < totalBytes) {
+            emitUpdate({ phase: "downloading", version, releaseNotes, receivedBytes, totalBytes });
+            setTimeout(tick, 160);
+          } else {
+            emitUpdate(ready());
+            resolve(updateStatus);
+          }
+        };
+        tick();
+      }),
+    handoffUpdate: () =>
+      new Promise((resolve) => {
+        emitUpdate({ ...ready(), phase: "preparing" });
+        setTimeout(() => {
+          emitUpdate({
+            phase: "error",
+            operation: "handoff",
+            detail: "The verified update could not be opened. Your current app is unchanged.",
+          });
+          resolve(updateStatus);
+        }, 1600);
+      }),
+    openUpdateReleasePage: () => Promise.resolve(),
+    onUpdateStatusChanged: (listener) => {
+      updateListeners.add(listener);
+      return () => {
+        updateListeners.delete(listener);
+      };
+    },
+  };
+}
+
 function installBridge(
   stage: Stage,
   connected: boolean,
   rejectControlChanges: boolean,
   working = false,
+  update: UpdateFixture = "none",
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -264,6 +362,7 @@ function installBridge(
 
   // @ts-expect-error — the harness supplies only what this surface touches.
   window.praxeum = {
+    ...updateBridge(update),
     listTutorProviders: () => Promise.resolve(providerCatalog),
     selectTutorProvider: () => Promise.resolve(providerCatalog),
     loginTutorProvider: () => new Promise(() => undefined),
@@ -404,13 +503,18 @@ const SCREENS: Screen[] = [
 
 function Harness(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>("course");
+  const [update, setUpdate] = useState<UpdateFixture>("none");
   const [bar, setBar] = useState(true);
+  useEffect(() => {
+    applyUpdateFixture(update);
+  }, [update]);
   const stage = (STAGES as string[]).includes(screen) ? (screen as Stage) : "interview";
   installBridge(
     stage,
     screen !== "connect" && screen !== "choose-tutor",
     screen === "control-error",
     screen === "working",
+    update,
   );
 
   if (!bar) {
@@ -436,7 +540,7 @@ function Harness(): React.JSX.Element {
           it under another full-height box squeezes the real title bar. Pinned
           to the BOTTOM so it covers the 26px status bar rather than the 38px
           title bar, and dismissible so both can be seen unobstructed. */}
-      <div className="bg-surface-deep border-line fixed right-0 bottom-0 left-0 z-10 flex gap-1 border-t px-4 py-2">
+      <div className="bg-surface-deep border-line fixed right-0 bottom-0 left-0 z-10 flex flex-wrap gap-1 border-t px-4 py-2">
         {SCREENS.map((candidate) => (
           <button
             key={candidate}
@@ -451,6 +555,24 @@ function Harness(): React.JSX.Element {
             }}
           >
             {candidate}
+          </button>
+        ))}
+        <span className="bg-line mx-1 w-px self-stretch" aria-hidden="true" />
+        {/* The update notice is orthogonal to the surface: any fixture on any screen. */}
+        {UPDATE_FIXTURES.map((candidate) => (
+          <button
+            key={candidate}
+            type="button"
+            className={
+              candidate === update
+                ? "bg-accent text-accent-ink rounded-pill px-3 py-1 text-sm"
+                : "text-ink-dim hover:bg-accent-wash rounded-pill px-3 py-1 text-sm"
+            }
+            onClick={() => {
+              setUpdate(candidate);
+            }}
+          >
+            update: {candidate}
           </button>
         ))}
         <button

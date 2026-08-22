@@ -411,9 +411,10 @@ function installBridge(initialTheme: ThemePreference): void {
     readDoc: (path: string) => Promise.resolve(readShowcaseDoc(path)),
     revealCourse: () => Promise.resolve(),
     closeCourse: () => Promise.resolve(),
-    /* Up to date, so the shell draws no update banner over the showcase. */
+    /* Up to date, so the shell draws no update notice over the showcase. */
     getUpdateStatus: () => Promise.resolve({ phase: "current" as const }),
     onUpdateStatusChanged: () => () => undefined,
+    openUpdateReleasePage: () => Promise.resolve(),
     listEditors: () => Promise.resolve(editorCatalog),
     selectEditor: (editorId: EditorId) => {
       editorCatalog = { ...editorCatalog, selectedEditorId: editorId, chosen: true };

@@ -14,8 +14,9 @@ Windows x64 is the first distribution target. It receives an unsigned per-user N
 and may additionally receive a portable archive. The app checks the stable release feed without
 user intervention, but downloading and installing are learner-approved actions:
 
-1. A non-blocking in-app banner announces an available version and shows its release notes.
-2. The learner chooses **Download update**; progress and recoverable failure stay in the app.
+1. A non-blocking in-app notice announces an available version, the status bar keeps it
+   visible, and the learner can open the version's GitHub release page to read its notes.
+2. The learner chooses **Download**; progress and recoverable failure stay in the app.
 3. Lerience verifies the release manifest and downloaded artifact.
 4. The learner chooses **Restart to update**. Lerience waits for the current tutor turn to
    settle, releases the provider, and persists trailing transcript events before stopping the
@@ -30,7 +31,7 @@ same verified notification and download experience, then offers **Open downloade
 portable executable cannot replace itself through the NSIS updater.
 
 The update channel does not rely on an unsigned-code fail-open. Release metadata, including the
-plain-text release notes shown in the app, is signed with an application-owned Ed25519 release key
+plain-text release notes it carries, is signed with an application-owned Ed25519 release key
 and each artifact is bound by a filename, byte size, and SHA-256 digest. The app binds that signed
 filename to its configured release repository/version directory rather than trusting an arbitrary
 manifest URL. The
@@ -38,7 +39,7 @@ verification public key ships in the app; the private key remains outside the so
 and is available only to the protected release process. A missing, malformed, untrusted, or
 wrong-channel manifest fails closed without affecting the installed app.
 
-On macOS, the app may provide the same check, release-note, download, and verification flow, then
+On macOS, the app may provide the same check, notice, download, and verification flow, then
 open the downloaded package. While the app is unsigned and unnotarized, installation still
 requires the learner to complete the normal Finder/Gatekeeper override. Lerience does not claim a
 seamless self-replacing macOS update until Developer ID signing and notarization exist.

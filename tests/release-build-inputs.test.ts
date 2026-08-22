@@ -27,6 +27,7 @@ describe("release build inputs", () => {
       signatureUrl:
         "https://github.com/example/praxeum-releases/releases/latest/download/release-manifest.sig",
       artifactRootUrl: "https://github.com/example/praxeum-releases/releases/download/",
+      releasePageRootUrl: "https://github.com/example/praxeum-releases/releases/tag/",
     });
     expect(inputs?.publicKeyPem).toContain("BEGIN PUBLIC KEY");
   });

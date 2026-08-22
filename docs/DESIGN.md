@@ -88,6 +88,12 @@ Every main surface lives inside one `AppShell` and shares one window frame.
   reserved rather than filled with app controls.
 - The title bar carries window identity and navigation. Do not add a second course toolbar below it.
 - The thin, full-bleed status bar carries ambient facts, not marketing or privacy slogans.
+- An available update is one of those facts, not a banner over the workspace. The status bar
+  carries it for as long as it stands (version offered, download progress, ready to install) as
+  an item that opens a small update dialog with the action, what it will do, and a way to the
+  version's release page in the browser. A dismissible notice above the status bar announces each
+  moment that deserves a glance — an offer, a verified download, a failed action — once per run;
+  a failed automatic check only shows in the bar. Release notes are never rendered inside the app.
 - Theme changes update both renderer tokens and the native title-bar overlay.
 - Scrollbars are quiet chrome: thin, trackless, and subordinate to actual pane seams.
 
