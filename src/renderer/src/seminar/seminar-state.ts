@@ -23,6 +23,12 @@ export interface PreviousSessionTranscript {
   recoveryStartIndex: number | null;
 }
 
+/** What the tutor is doing right now, as the waiting state's live line. */
+export interface ToolActivity {
+  summary: string;
+  detail: string | null;
+}
+
 export interface SeminarApproval {
   requestId: string;
   toolName: string;
@@ -41,7 +47,7 @@ export interface SeminarState {
   previousSession: PreviousSessionTranscript | null;
   recoveryStartIndex: number | null;
   recoveryHandoff: RecoveryHandoff;
-  toolActivity: string | null;
+  toolActivity: ToolActivity | null;
   approval: SeminarApproval | null;
   totalCostUsd: number;
   limitWarning: Extract<AgentEvent, { type: "limit_warning" }> | null;
@@ -157,7 +163,7 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
       ...state,
       phase: "tool-activity",
       items: finalizeStreamingTutor(state.items),
-      toolActivity: event.summary,
+      toolActivity: { summary: event.summary, detail: event.detail ?? null },
       failure: null,
       turnProducedContent: true,
     };
@@ -168,7 +174,9 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
       ...state,
       phase: "tool-activity",
       items: finalizeStreamingTutor(state.items),
-      toolActivity: event.summary,
+      // The card below carries the request itself; the live line says what
+      // the turn is actually doing, which is waiting on the learner.
+      toolActivity: { summary: "Waiting for your answer", detail: null },
       turnProducedContent: true,
       approval: {
         requestId: event.requestId,

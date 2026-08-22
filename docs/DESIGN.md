@@ -197,6 +197,12 @@ their behavior.
 - Recovery keeps the previous conversation and its closing reply readable while the fresh session
   opens below a labeled boundary. The learner may collapse the previous session; the app never
   hides it automatically during the handoff.
+- The waiting state's live line is whatever is actually happening: the current tool work in the
+  present progressive ("Reading a file", with its target underneath), "Thinking" only when no tool
+  is in flight, and "Waiting for your answer" behind an approval card. The words breathe with the
+  dots, and elapsed time appears once a step passes ten seconds. Activity copy never addresses the
+  learner in the imperative, and a command never appears; the model's own one-line description of
+  it stands in when there is one.
 - Silent or failed provider turns get honest retryable states. Do not leave permanent thinking
   indicators after a turn completed without visible content.
 - Permission prompts are trust moments. State the actual action and scope; never hide a command or

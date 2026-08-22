@@ -100,25 +100,35 @@ export function normalizeCodexError(value: unknown): NormalizedError {
   };
 }
 
+/** The waiting state's live line for a Codex item: present progressive, with
+ *  the target as a second line only where it is safe to show. A command never
+ *  appears; Codex items carry no display description for one. */
 export function summarizeCodexItem(item: unknown): AgentEvent | null {
   if (!isRecord(item) || typeof item.type !== "string") return null;
   switch (item.type) {
     case "commandExecution":
-      return { type: "tool_activity", name: "Shell", summary: "Run a shell command" };
+      return { type: "tool_activity", name: "Shell", summary: "Running a command" };
     case "fileChange":
-      return { type: "tool_activity", name: "Files", summary: "Change course files" };
-    case "webSearch":
-      return { type: "tool_activity", name: "Web", summary: "Search the web" };
+      return { type: "tool_activity", name: "Files", summary: "Changing course files" };
+    case "webSearch": {
+      const search = nonEmptyString(item.query);
+      return {
+        type: "tool_activity",
+        name: "Web",
+        summary: "Searching the web",
+        ...(search === null ? {} : { detail: search }),
+      };
+    }
     case "imageView":
-      return { type: "tool_activity", name: "Image", summary: "View an image" };
+      return { type: "tool_activity", name: "Image", summary: "Viewing an image" };
     case "mcpToolCall":
     case "dynamicToolCall":
-      return { type: "tool_activity", name: "Tool", summary: "Use a connected tool" };
+      return { type: "tool_activity", name: "Tool", summary: "Using a connected tool" };
     case "collabAgentToolCall":
     case "subAgentActivity":
-      return { type: "tool_activity", name: "Agent", summary: "Delegate a task" };
+      return { type: "tool_activity", name: "Agent", summary: "Delegating a task" };
     case "contextCompaction":
-      return { type: "tool_activity", name: "Context", summary: "Organize session context" };
+      return { type: "tool_activity", name: "Context", summary: "Organizing session context" };
     default:
       return null;
   }

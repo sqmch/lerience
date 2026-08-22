@@ -17,7 +17,12 @@ import type {
 import { CourseMarkdown } from "../components/markdown-view";
 import { Menu } from "../components/menu";
 import { PRIMARY, QUIET } from "../components/controls";
-import type { SeminarApproval, SeminarFailureKind, SeminarState } from "./seminar-state";
+import type {
+  SeminarApproval,
+  SeminarFailureKind,
+  SeminarState,
+  ToolActivity,
+} from "./seminar-state";
 import { useSmoothedText } from "./use-smoothed-text";
 
 /* No speaker labels: the tutor speaks Literata on the ground, the learner
@@ -182,19 +187,46 @@ export function conversationThinkingLabel(state: SeminarState): string {
   }
   if (state.recoveryHandoff === "opening-next") return "Opening your new session";
   if (state.phase === "opening") return "Opening this session";
-  return "Your tutor is thinking";
+  return "Thinking";
 }
 
-/** Waiting, said quietly, with the current tool work as an aligned second line
- *  when there is any. The dots breathe on the token duration; base.css
- *  neutralizes the whole thing under prefers-reduced-motion. */
+/** Seconds since `key` last changed, shown only once a wait has gone on long
+ *  enough to be worth counting. A number that moves is the cheapest honest
+ *  proof that a long step has not hung. */
+const ELAPSED_AFTER_SECONDS = 10;
+
+function useElapsedLabel(key: string): string | null {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    setSeconds(0);
+    const started = Date.now();
+    const timer = setInterval(() => {
+      setSeconds(Math.round((Date.now() - started) / 1000));
+    }, 1000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [key]);
+  if (seconds < ELAPSED_AFTER_SECONDS) return null;
+  const minutes = Math.floor(seconds / 60);
+  return minutes === 0 ? `${String(seconds)}s` : `${String(minutes)}m ${String(seconds % 60)}s`;
+}
+
+/** Waiting, said quietly. The live line is whatever is actually happening:
+ *  the current tool work when there is any ("Reading a file", with its target
+ *  underneath), otherwise the caller's label ("Thinking"). The words breathe
+ *  with the dots, and elapsed time appears once a step runs long. base.css
+ *  neutralizes all of the motion under prefers-reduced-motion. */
 export function Thinking({
   label,
-  detail,
+  activity,
 }: {
   label: string;
-  detail?: string | null;
+  activity?: ToolActivity | null;
 }): React.JSX.Element {
+  const live = activity?.summary ?? label;
+  const detail = activity?.detail ?? null;
+  const elapsed = useElapsedLabel(`${live}\n${detail ?? ""}`);
   return (
     <div className="text-ink-dim flex items-start gap-2.5 text-sm" aria-live="polite">
       {/* The dots sit on the label's first line: `items-baseline` aligned the
@@ -204,12 +236,15 @@ export function Thinking({
         <i className="bg-ink-faint animate-dot size-1 rounded-pill [animation-delay:var(--dur-fast)]" />
         <i className="bg-ink-faint animate-dot size-1 rounded-pill [animation-delay:calc(var(--dur-fast)*2)]" />
       </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span>{label}</span>
-        {detail === undefined || detail === null ? null : (
-          <span className="text-ink-faint font-data truncate text-2xs">{detail}</span>
+      <span className="animate-breathe flex min-w-0 flex-1 flex-col gap-0.5">
+        <span>{live}</span>
+        {detail === null ? null : (
+          <span className="text-ink-faint font-data truncate text-xs">{detail}</span>
         )}
       </span>
+      {elapsed === null ? null : (
+        <span className="text-ink-faint font-data shrink-0 text-xs tabular-nums">{elapsed}</span>
+      )}
     </div>
   );
 }

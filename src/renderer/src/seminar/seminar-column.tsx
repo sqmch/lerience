@@ -130,7 +130,7 @@ export function SeminarColumn({
           <ConversationTranscript state={state} />
 
           {busy ? (
-            <Thinking label={conversationThinkingLabel(state)} detail={state.toolActivity} />
+            <Thinking label={conversationThinkingLabel(state)} activity={state.toolActivity} />
           ) : null}
 
           {state.approval === null ? null : (

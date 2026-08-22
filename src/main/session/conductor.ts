@@ -674,7 +674,12 @@ function closeVerdict(inspection: CourseContextInspection): { clean: boolean; de
 function transcriptEntry(event: AgentEvent): TranscriptEntryInput | null {
   if (event.type === "message_delta") return { kind: "tutor_delta", delta: event.delta };
   if (event.type === "tool_activity") {
-    return { kind: "tool_activity", name: event.name, summary: event.summary };
+    return {
+      kind: "tool_activity",
+      name: event.name,
+      summary: event.summary,
+      ...(event.detail === undefined ? {} : { detail: event.detail }),
+    };
   }
   if (event.type === "approval_request") {
     return {

@@ -121,7 +121,7 @@ describe("CodexAgentSession", () => {
 
     expect(await events(iterator, 3)).toEqual([
       { type: "message_delta", delta: "Welcome" },
-      { type: "tool_activity", name: "Shell", summary: "Run a shell command" },
+      { type: "tool_activity", name: "Shell", summary: "Running a command" },
       { type: "turn_complete" },
     ]);
     await session.end();
@@ -298,7 +298,18 @@ describe("Codex adapter normalization", () => {
         type: "fileChange",
         changes: [{ path: "secret.txt", diff: "+token=secret" }],
       }),
-    ).toEqual({ type: "tool_activity", name: "Files", summary: "Change course files" });
+    ).toEqual({ type: "tool_activity", name: "Files", summary: "Changing course files" });
+    expect(summarizeCodexItem({ type: "commandExecution", command: "echo token=secret" })).toEqual({
+      type: "tool_activity",
+      name: "Shell",
+      summary: "Running a command",
+    });
+    expect(summarizeCodexItem({ type: "webSearch", query: "zero vector hypot" })).toEqual({
+      type: "tool_activity",
+      name: "Web",
+      summary: "Searching the web",
+      detail: "zero vector hypot",
+    });
     expect(normalizeCodexError({ message: "token=secret", codexErrorInfo: "other" })).toEqual({
       code: "turn-failed",
       message: "Codex could not complete this turn. Please try again.",

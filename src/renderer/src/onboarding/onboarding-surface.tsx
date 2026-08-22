@@ -32,6 +32,7 @@ import {
   conversationThinkingLabel,
   useFollowBottom,
 } from "../seminar/parts";
+import type { ToolActivity } from "../seminar/seminar-state";
 import { useSeminar } from "../seminar/use-seminar";
 import { TutorConnectionGate } from "../tutor/tutor-connection";
 import { useTutorConnection } from "../tutor/use-tutor-connection";
@@ -521,9 +522,9 @@ function ConnectedOnboardingSurface({
                             ? seminar.recoveryPending
                               ? "Picking up where you left off"
                               : "Your tutor is preparing your interview"
-                            : "Your tutor is thinking"
+                            : "Thinking"
                       }
-                      detail={state.toolActivity}
+                      activity={state.toolActivity}
                     />
                   ) : null}
 
@@ -703,7 +704,7 @@ function BuildStage({
   ready: boolean;
   elapsed: string | null;
   written: string[];
-  activity: string | null;
+  activity: ToolActivity | null;
   /** The live conversation — questions, approvals, the composer. */
   children: ReactNode;
 }): React.JSX.Element {
@@ -747,7 +748,12 @@ function BuildStage({
             </span>
           )}
           {activity === null || ready ? null : (
-            <span className="text-ink-faint min-w-0 truncate">{activity}</span>
+            <span className="text-ink-faint min-w-0 truncate">
+              {activity.summary}
+              {activity.detail === null ? null : (
+                <span className="font-data"> {activity.detail}</span>
+              )}
+            </span>
           )}
         </div>
       </div>

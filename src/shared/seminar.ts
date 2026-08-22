@@ -22,9 +22,12 @@ export type AgentErrorCode =
 export type AgentEvent =
   /** A chunk of the tutor's streaming reply text. */
   | { type: "message_delta"; delta: string }
-  /** The tutor is doing tool work. Rendered as a quiet activity row — never
-   *  raw JSON. `summary` is already human-shaped by the adapter. */
-  | { type: "tool_activity"; name: string; summary: string }
+  /** The tutor is doing tool work. Rendered as the live line of the waiting
+   *  state — never raw JSON. `summary` is what is happening, in the present
+   *  progressive ("Reading a file"); `detail` is the specific target when one
+   *  can be shown safely (a course path, a search term, the model's own
+   *  one-line description of a command — never the command itself). */
+  | { type: "tool_activity"; name: string; summary: string; detail?: string }
   /** The agent surface asked permission for an action. The app renders an
    *  honest generic card (ADR-011: never an automatic refusal) and answers
    *  via `AgentSession.respondToApproval`. The turn is blocked until then.

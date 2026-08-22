@@ -164,7 +164,32 @@ function scriptFor(stage: Stage): { events: AgentEvent[]; busy: boolean } {
   };
 }
 
-function installBridge(stage: Stage, connected: boolean, rejectControlChanges: boolean): void {
+/** A course-view turn caught mid-tool: the waiting state's live line with a
+ *  target underneath, and nothing to end the turn, so the elapsed counter
+ *  eventually appears too. The command itself is never part of the event. */
+const WORKING: { events: AgentEvent[]; busy: boolean } = {
+  events: [
+    {
+      type: "message_delta",
+      delta:
+        "Your last check run was 3 of 5. Before you touch the code, let me see exactly what the zero-vector cases return.",
+    },
+    {
+      type: "tool_activity",
+      name: "Bash",
+      summary: "Running a command",
+      detail: "Run the module checks",
+    },
+  ],
+  busy: true,
+};
+
+function installBridge(
+  stage: Stage,
+  connected: boolean,
+  rejectControlChanges: boolean,
+  working = false,
+): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
   let editorCatalog: EditorCatalog = {
@@ -175,7 +200,7 @@ function installBridge(stage: Stage, connected: boolean, rejectControlChanges: b
       { id: "zed", label: "Zed" },
     ],
   };
-  const script = scriptFor(stage);
+  const script = working ? WORKING : scriptFor(stage);
 
   const snapshot: SeminarSnapshot = {
     lifecycle: "open",
@@ -358,12 +383,20 @@ const STAGES: Stage[] = ["opening", "interview", "arc", "building", "ready", "si
  *  Both are here because the two differ only in the way out they draw, and
  *  that is exactly the sort of difference a screenshot settles. */
 type Screen =
-  Stage | "choose-tutor" | "first-run" | "courses" | "course" | "control-error" | "connect";
+  | Stage
+  | "choose-tutor"
+  | "first-run"
+  | "courses"
+  | "course"
+  | "working"
+  | "control-error"
+  | "connect";
 const SCREENS: Screen[] = [
   "choose-tutor",
   "first-run",
   "courses",
   "course",
+  "working",
   "control-error",
   "connect",
   ...STAGES,
@@ -377,6 +410,7 @@ function Harness(): React.JSX.Element {
     stage,
     screen !== "connect" && screen !== "choose-tutor",
     screen === "control-error",
+    screen === "working",
   );
 
   if (!bar) {
@@ -459,7 +493,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
 
   /* The course view brings its OWN AppShell — it is a surface that owns its
      frame contents (ADR-019), not a child of someone else's. */
-  if (screen === "course" || screen === "control-error") {
+  if (screen === "course" || screen === "working" || screen === "control-error") {
     return (
       <CourseView
         key={`${COURSE_ROOT}:${screen}`}
