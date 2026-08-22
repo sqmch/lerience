@@ -1,6 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { PRODUCT_NAME, PRODUCT_WORDMARK } from "../../../shared/product";
-import type { UpdateStatus } from "../../../shared/update";
+import type { ReactNode } from "react";
+import { PRODUCT_WORDMARK } from "../../../shared/product";
+import {
+  UpdateNotice,
+  UpdateStatusItem,
+  useUpdateNotice,
+  type UpdateNoticeModel,
+} from "./update-notice";
 import { useTheme } from "./use-theme";
 
 /** A half-filled disc: the conventional "appearance" mark, and simple enough
@@ -40,13 +45,23 @@ function TitleBar({ children }: { children?: ReactNode }): React.JSX.Element {
   );
 }
 
-function StatusBar({ children }: { children?: ReactNode }): React.JSX.Element {
+/** The update item sits with the theme switch rather than in the surface's
+ *  slot: it is the shell's fact, the same on every surface, and the left slot
+ *  belongs to whatever the surface is showing (update-notice.tsx). */
+function StatusBar({
+  update,
+  children,
+}: {
+  update: UpdateNoticeModel;
+  children?: ReactNode;
+}): React.JSX.Element {
   const theme = useTheme();
   return (
     <footer className="bg-chrome border-line text-ink-dim font-data flex h-(--statusbar-h) shrink-0 items-center justify-between gap-4 border-t px-3 text-2xs">
       {/* flex-1 so a surface can push part of its status line to the right
           without leaving the status line. */}
       <div className="flex min-w-0 flex-1 items-center gap-3">{children}</div>
+      <UpdateStatusItem model={update} />
       <button
         type="button"
         onClick={theme.cycle}
@@ -57,116 +72,6 @@ function StatusBar({ children }: { children?: ReactNode }): React.JSX.Element {
         <span>{theme.preference}</span>
       </button>
     </footer>
-  );
-}
-
-function UpdateBanner(): React.JSX.Element | null {
-  const [status, setStatus] = useState<UpdateStatus | null>(null);
-
-  useEffect(() => {
-    const api = window.praxeum;
-    // The visual harness can intentionally expose a narrower bridge fixture.
-    if (typeof api?.getUpdateStatus !== "function") return;
-    let active = true;
-    void api.getUpdateStatus().then((next) => {
-      if (active) setStatus(next);
-    });
-    const unsubscribe = api.onUpdateStatusChanged((next) => {
-      if (active) setStatus(next);
-    });
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, []);
-
-  if (
-    status === null ||
-    status.phase === "unavailable" ||
-    status.phase === "checking" ||
-    status.phase === "current"
-  ) {
-    return null;
-  }
-
-  const invoke = (): void => {
-    const api = window.praxeum;
-    let operation: Promise<UpdateStatus>;
-    let failureOperation: "check" | "download" | "handoff";
-    if (status.phase === "available") {
-      operation = api.downloadUpdate();
-      failureOperation = "download";
-    } else if (status.phase === "ready") {
-      operation = api.handoffUpdate();
-      failureOperation = "handoff";
-    } else if (status.phase === "error" && status.operation === "download") {
-      operation = api.downloadUpdate();
-      failureOperation = "download";
-    } else if (status.phase === "error" && status.operation === "handoff") {
-      operation = api.handoffUpdate();
-      failureOperation = "handoff";
-    } else if (status.phase === "error" && status.operation === "check") {
-      operation = api.checkForUpdate();
-      failureOperation = "check";
-    } else return;
-    void operation.then(setStatus).catch(() => {
-      setStatus({
-        phase: "error",
-        operation: failureOperation,
-        detail: "The update action could not be completed. Your current app is unchanged.",
-      });
-    });
-  };
-
-  const busy = status.phase === "downloading" || status.phase === "preparing";
-  const action =
-    status.phase === "available"
-      ? "Download update"
-      : status.phase === "ready"
-        ? status.action === "install-restart"
-          ? "Restart to update"
-          : "Open downloaded package"
-        : status.phase === "error"
-          ? "Try again"
-          : null;
-  const copy =
-    status.phase === "available"
-      ? `${PRODUCT_NAME} ${status.version} is available.`
-      : status.phase === "downloading"
-        ? `Downloading ${PRODUCT_NAME} ${status.version} — ${Math.floor((status.receivedBytes / status.totalBytes) * 100)}%`
-        : status.phase === "ready"
-          ? `${PRODUCT_NAME} ${status.version} is downloaded and verified.`
-          : status.phase === "preparing"
-            ? "Waiting for the current tutor turn to finish…"
-            : status.detail;
-
-  return (
-    <section
-      aria-live="polite"
-      className="bg-accent-wash border-line text-ink flex shrink-0 items-center gap-3 border-b px-3 py-2 text-xs"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="font-medium">{copy}</p>
-        {"releaseNotes" in status && status.releaseNotes !== "" ? (
-          <details className="text-ink-dim mt-0.5">
-            <summary className="hover:text-ink cursor-pointer select-none">What changed</summary>
-            <p className="mt-1 max-h-20 max-w-3xl overflow-auto whitespace-pre-wrap">
-              {status.releaseNotes}
-            </p>
-          </details>
-        ) : null}
-      </div>
-      {action === null ? null : (
-        <button
-          type="button"
-          onClick={invoke}
-          disabled={busy}
-          className="border-line bg-surface hover:border-ink-faint hover:text-hi focus-visible:outline-focus shrink-0 rounded-pill border px-3 py-1 font-medium transition-colors focus-visible:outline-2 disabled:cursor-wait disabled:opacity-60"
-        >
-          {action}
-        </button>
-      )}
-    </section>
   );
 }
 
@@ -181,12 +86,13 @@ export function AppShell({
   status?: ReactNode;
   children: ReactNode;
 }): React.JSX.Element {
+  const update = useUpdateNotice();
   return (
     <div className="bg-surface text-ink flex h-dvh flex-col overflow-hidden">
       <TitleBar>{title}</TitleBar>
-      <UpdateBanner />
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">{children}</div>
-      <StatusBar>{status}</StatusBar>
+      <StatusBar update={update}>{status}</StatusBar>
+      <UpdateNotice model={update} />
     </div>
   );
 }

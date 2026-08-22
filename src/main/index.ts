@@ -37,6 +37,7 @@ import {
   UPDATE_CHECK_CHANNEL,
   UPDATE_DOWNLOAD_CHANNEL,
   UPDATE_HANDOFF_CHANNEL,
+  UPDATE_RELEASE_PAGE_CHANNEL,
   UPDATE_STATUS_CHANGED_CHANNEL,
   UPDATE_STATUS_GET_CHANNEL,
   SEMINAR_ALLOW_EDITS_CHANNEL,
@@ -629,6 +630,10 @@ void app.whenReady().then(async () => {
   ipcMain.handle(UPDATE_HANDOFF_CHANNEL, async (): Promise<UpdateStatus> =>
     updateService().handoffUpdate(),
   );
+  ipcMain.handle(UPDATE_RELEASE_PAGE_CHANNEL, async (): Promise<void> => {
+    const url = updateService().releasePageUrl();
+    if (url !== null) await shell.openExternal(url);
+  });
 
   ipcMain.handle(COURSE_OPEN_CHANNEL, async (): Promise<OpenCourseReply> => {
     const picked = await dialog.showOpenDialog({

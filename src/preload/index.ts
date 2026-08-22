@@ -44,6 +44,7 @@ import {
   UPDATE_CHECK_CHANNEL,
   UPDATE_DOWNLOAD_CHANNEL,
   UPDATE_HANDOFF_CHANNEL,
+  UPDATE_RELEASE_PAGE_CHANNEL,
   UPDATE_STATUS_CHANGED_CHANNEL,
   UPDATE_STATUS_GET_CHANNEL,
   type ChooseCourseParentReply,
@@ -134,6 +135,7 @@ const api: PraxeumApi = {
     ipcRenderer.invoke(UPDATE_DOWNLOAD_CHANNEL) as ReturnType<PraxeumApi["downloadUpdate"]>,
   handoffUpdate: () =>
     ipcRenderer.invoke(UPDATE_HANDOFF_CHANNEL) as ReturnType<PraxeumApi["handoffUpdate"]>,
+  openUpdateReleasePage: () => ipcRenderer.invoke(UPDATE_RELEASE_PAGE_CHANNEL) as Promise<void>,
   onUpdateStatusChanged: (listener) => {
     const wrapped = (_event: unknown, status: Parameters<typeof listener>[0]): void => {
       listener(status);

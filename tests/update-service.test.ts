@@ -13,6 +13,7 @@ const config: UpdateReleaseConfig = {
   signatureUrl:
     "https://github.com/example/praxeum-releases/releases/latest/download/release-manifest.sig",
   artifactRootUrl: "https://github.com/example/praxeum-releases/releases/download/",
+  releasePageRootUrl: "https://github.com/example/praxeum-releases/releases/tag/",
   publicKeyPem: "",
 };
 
@@ -115,10 +116,14 @@ describe("update service", () => {
 
   it("checks signed metadata, verifies exact download bytes, and hands off only after prepare", async () => {
     const value = fixture();
+    expect(value.service.releasePageUrl()).toBeNull();
     await expect(value.service.checkForUpdate()).resolves.toMatchObject({
       phase: "available",
       version: "0.0.2",
     });
+    expect(value.service.releasePageUrl()).toBe(
+      "https://github.com/example/praxeum-releases/releases/tag/v0.0.2",
+    );
     await expect(value.service.downloadUpdate()).resolves.toMatchObject({
       phase: "ready",
       action: "install-restart",

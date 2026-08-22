@@ -6,6 +6,8 @@ export interface ReleaseBuildInputs {
   manifestUrl: string;
   signatureUrl: string;
   artifactRootUrl: string;
+  /** Where a version's human-readable release page lives: `tag/v<version>`. */
+  releasePageRootUrl: string;
   publicKeyPem: string;
 }
 
@@ -47,6 +49,7 @@ export function readReleaseBuildInputs(
     manifestUrl: new URL("latest/download/release-manifest.json", repository).toString(),
     signatureUrl: new URL("latest/download/release-manifest.sig", repository).toString(),
     artifactRootUrl: new URL("download/", repository).toString(),
+    releasePageRootUrl: new URL("tag/", repository).toString(),
     publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString(),
   };
 }
