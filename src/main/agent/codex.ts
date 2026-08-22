@@ -327,13 +327,16 @@ export class CodexAgentSession implements AgentSession {
     await this.client.initialize();
     const response = await this.client.request("thread/start", {
       cwd: this.courseDir,
+      sandbox: "workspace-write",
       ephemeral: true,
       developerInstructions: this.protocol,
     });
     if (
       !isRecord(response) ||
       !isRecord(response.thread) ||
-      typeof response.thread.id !== "string"
+      typeof response.thread.id !== "string" ||
+      !isRecord(response.sandbox) ||
+      response.sandbox.type !== "workspaceWrite"
     ) {
       throw new Error("Codex returned an invalid session.");
     }
