@@ -48,9 +48,17 @@ function setup(): { connection: FakeConnection; session: CodexAgentSession } {
   const connection = new FakeConnection();
   connection.responses.set("thread/start", {
     thread: { id: "thread-1" },
+    cwd: "C:/course",
     model: "gpt-5.6-codex",
     reasoningEffort: "high",
     approvalPolicy: "on-request",
+    sandbox: {
+      type: "workspaceWrite",
+      writableRoots: [],
+      networkAccess: false,
+      excludeTmpdirEnvVar: false,
+      excludeSlashTmp: false,
+    },
   });
   connection.responses.set("turn/start", {
     turn: { id: "turn-1", status: "inProgress", error: null },
@@ -71,7 +79,7 @@ async function events(iterator: AsyncIterator<AgentEvent>, count: number): Promi
 }
 
 describe("CodexAgentSession", () => {
-  it("starts an ephemeral thread with the course protocol and no capability overrides", async () => {
+  it("starts an ephemeral thread with course-scoped write access", async () => {
     const { connection, session } = setup();
     await session.describeControls();
 
@@ -79,15 +87,41 @@ describe("CodexAgentSession", () => {
       method: "thread/start",
       params: {
         cwd: "C:/course",
+        sandbox: "workspace-write",
         ephemeral: true,
         developerInstructions: "# Tutor protocol",
       },
     });
     expect(connection.calls[0]?.params).not.toHaveProperty("model");
     expect(connection.calls[0]?.params).not.toHaveProperty("approvalPolicy");
-    expect(connection.calls[0]?.params).not.toHaveProperty("sandbox");
     expect(connection.calls[0]?.params).not.toHaveProperty("config");
     await session.end();
+  });
+
+  it("fails closed when Codex does not grant course-scoped write access", async () => {
+    const connection = new FakeConnection();
+    connection.responses.set("thread/start", {
+      thread: { id: "thread-1" },
+      cwd: "C:/course",
+      model: "gpt-5.6-codex",
+      reasoningEffort: "high",
+      approvalPolicy: "on-request",
+      sandbox: { type: "readOnly", networkAccess: false },
+    });
+    const session = new CodexAgentSession("C:/course", "# Tutor protocol", () => connection);
+    const iterator = session.events[Symbol.asyncIterator]();
+
+    await session.describeControls();
+
+    expect(await events(iterator, 2)).toEqual([
+      {
+        type: "error",
+        code: "turn-failed",
+        message: "Codex could not complete this turn. Please try again.",
+      },
+      { type: "session_ended", reason: "died" },
+    ]);
+    expect(connection.calls.some((call) => call.method === "turn/start")).toBe(false);
   });
 
   it("streams text and only safe, human-shaped activity into the shared seam", async () => {
@@ -149,9 +183,17 @@ describe("CodexAgentSession", () => {
     const connection = new FakeConnection();
     connection.responses.set("thread/start", {
       thread: { id: "thread-1" },
+      cwd: "C:/course",
       model: "gpt-5.6-codex",
       reasoningEffort: "high",
       approvalPolicy: "on-request",
+      sandbox: {
+        type: "workspaceWrite",
+        writableRoots: [],
+        networkAccess: false,
+        excludeTmpdirEnvVar: false,
+        excludeSlashTmp: false,
+      },
     });
     const deferred: { release?: (value: unknown) => void } = {};
     connection.request = vi.fn(async (method: string, params: unknown) => {
