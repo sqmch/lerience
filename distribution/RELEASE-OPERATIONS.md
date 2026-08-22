@@ -122,11 +122,19 @@ agent publishes it with `gh release edit <tag> --draft=false --latest` and confi
 assets, signed manifest, release tag, and latest-channel URLs are public. Do not ask the maintainer
 to undraft an accepted release.
 
+For the current unsigned community previews, the maintainer may explicitly accept physical
+installed-path checks as post-publication debt. An end-to-end release instruction does so when all
+three native workflow jobs and downloaded-byte integrity pass, unless the release changes native
+packaging, manifest signing or selection, the update installation handoff, runtime or provider
+compatibility, or a versioned candidate record names a specific native check as blocking. Record
+every skipped physical check and never describe it as passed. A candidate that changes one of those
+boundaries stays drafted until its named native checks pass.
+
 Autonomy does not turn failed or missing evidence into acceptance. Leave the release drafted and
-report the exact blocker if a required native check cannot be performed, a protected environment
-requires an unavailable approval, GitHub rejects the merge or publication, or any candidate byte
-does not match the signed records. Never bypass branch protection, reuse a failed version, replace
-accepted assets, or expose protected key material.
+report the exact blocker if a release-specific required native check cannot be performed, a
+protected environment requires an unavailable approval, GitHub rejects the merge or publication,
+or any candidate byte does not match the signed records. Never bypass branch protection, reuse a
+failed version, replace accepted assets, or expose protected key material.
 
 ## Promotion
 
@@ -149,7 +157,9 @@ accepted assets, or expose protected key material.
    cannot publish the release. Do not replace accepted bytes in place.
 8. Perform target acceptance against the draft's downloaded bytes. Compare the downloaded hashes to
    the signed manifest and recorded build evidence. Record the two Mac architectures separately;
-   the Intel DMG must pass Gatekeeper and the learner path on a physical Intel Mac.
+   the Intel DMG requires its own physical Intel Mac result when the release changes a native
+   boundary or the candidate record names that result as a blocker. The authorized unsigned-preview
+   debt rule above applies to routine releases.
 9. Publish only when the acceptance record names the tag, commit, manifest digest, and exact artifact
    digests. The maintainer or an agent acting under an authorized autonomous release request may
    publish the accepted draft. Keep the accepted release immutable.

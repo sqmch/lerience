@@ -1,8 +1,9 @@
 # Release evidence
 
 This directory holds exact release-candidate evidence, not a chronological development
-log. A record may distinguish package acceptance from learner-path acceptance; publication
-still requires every release-blocking check named by that record to pass.
+log. A record may distinguish package acceptance from learner-path acceptance. Publication
+requires every release-blocking check named by that record to pass, subject to the explicit
+unsigned-preview acceptance-debt rule in `distribution/RELEASE-OPERATIONS.md`.
 
 ## Candidate record requirements
 
@@ -29,5 +30,7 @@ Do not record credentials, signing-key material, personal filesystem paths, lear
 private session/task traces, or disposable local setup details. Record release-key custody as a
 verified fact and public-key fingerprint only.
 
-The workflow may create a draft but never publishes it. A maintainer publishes only after the
-candidate record is complete and every required check passes.
+The workflow may create a draft but never publishes it. The maintainer or an authorized release
+agent publishes after candidate integrity acceptance. An explicitly authorized community preview
+may publish with physical installed-path checks outstanding only under the runbook's acceptance-debt
+rule. The record must name that debt and must not report an unperformed check as passed.
