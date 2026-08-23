@@ -132,8 +132,16 @@ the same gate still stands where onboarding needs a live tutor.
 Provider readiness earns colour under the ADR-015 rule and nothing more. Amber marks a state the
 learner has to repair: no tutor chosen, signed out, not installed, update needed. A card is given
 the app's emphasis only when it is both chosen and connected, so an unusable provider is never the
-loudest thing on the screen. Usage meters are readouts, not actions, and are drawn in ink rather
-than in the action colour.
+loudest thing on the screen.
+
+Every provider card has one shape in every state: the tutor's name and one sentence about it, then
+where it stands and the one action that moves it, with those two aligned across the cards. Standing
+is a single line of words — the account and plan that would teach, or the state to repair — rather
+than a status dot, a corner label, and an account line saying it three times over. The sentence
+describes the tutor, and gives way to the provider's own words only where the card's own action
+cannot repair the state. A provider's spent allowance is a readout, not part of choosing who
+teaches: the gate does not draw usage meters, and the tutor menu reports the share as a line of
+text.
 
 ### Onboarding
 
@@ -304,6 +312,8 @@ screenshot.
 These ideas do not reopen the accepted baseline on their own:
 
 - a broader Settings surface, until enough durable preferences earn one;
+- a place where provider usage is reported, so an allowance is read where readouts are gathered
+  rather than on the surface that asks which tutor teaches;
 - a custom arc-drafting state, until the engine/provider exposes a truthful signal;
 - generated-file rows that open an external editor;
 - workspace layout presets or additional panes;

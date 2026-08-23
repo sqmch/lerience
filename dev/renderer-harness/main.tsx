@@ -292,6 +292,11 @@ function installBridge(
   rejectControlChanges: boolean,
   working = false,
   update: UpdateFixture = "none",
+  /** The gate's repair states: a tutor whose runtime cannot run at all, which
+   *  is the only place that surface spends colour (ADR-015). Synthetic, like
+   *  every other value here — no machine on this repository is required to
+   *  have or lack a provider for the screen to be inspectable. */
+  providerFault = false,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -315,20 +320,34 @@ function installBridge(
   const providerCatalog: ProviderCatalog = {
     selectedProviderId: connected ? "codex" : "claude",
     providers: [
-      {
-        id: "claude",
-        label: "Claude Code",
-        description: "Use the Claude subscription already connected to Claude Code.",
-        runtime: { state: "ready", version: null },
-        connection: connected ? "connected" : "signed-out",
-        accountLabel: connected ? "fixture@example.invalid" : null,
-        planLabel: connected ? "Fixture plan" : null,
-        usage: null,
-        canLogin: true,
-        detail: connected
-          ? null
-          : "Sign in with your Claude subscription to start a tutor session.",
-      },
+      providerFault
+        ? {
+            id: "claude",
+            label: "Claude Code",
+            description: "Use the Claude subscription already connected to Claude Code.",
+            runtime: { state: "not-installed", version: null },
+            connection: "unavailable",
+            accountLabel: null,
+            planLabel: null,
+            usage: null,
+            canLogin: false,
+            detail:
+              "Claude Code is not installed yet. Open the official setup guide, then check again.",
+          }
+        : {
+            id: "claude",
+            label: "Claude Code",
+            description: "Use the Claude subscription already connected to Claude Code.",
+            runtime: { state: "ready", version: null },
+            connection: connected ? "connected" : "signed-out",
+            accountLabel: connected ? "fixture@example.invalid" : null,
+            planLabel: connected ? "Fixture plan" : null,
+            usage: null,
+            canLogin: true,
+            detail: connected
+              ? null
+              : "Sign in with your Claude subscription to start a tutor session.",
+          },
       {
         id: "codex",
         label: "Codex",
@@ -504,10 +523,13 @@ const STAGES: Stage[] = ["opening", "interview", "arc", "building", "ready", "si
  *  `choose-tutor` is the app's OPENING surface on a fresh install with nothing
  *  connected; `connect` is the same gate reached mid-course, from onboarding.
  *  Both are here because the two differ only in the way out they draw, and
- *  that is exactly the sort of difference a screenshot settles. */
+ *  that is exactly the sort of difference a screenshot settles.
+ *  `tutor-repair` is the same opening gate with a tutor whose runtime cannot
+ *  run — the one state on that surface that earns colour. */
 type Screen =
   | Stage
   | "choose-tutor"
+  | "tutor-repair"
   | "first-run"
   | "courses"
   | "course"
@@ -516,6 +538,7 @@ type Screen =
   | "connect";
 const SCREENS: Screen[] = [
   "choose-tutor",
+  "tutor-repair",
   "first-run",
   "courses",
   "course",
@@ -535,10 +558,11 @@ function Harness(): React.JSX.Element {
   const stage = (STAGES as string[]).includes(screen) ? (screen as Stage) : "interview";
   installBridge(
     stage,
-    screen !== "connect" && screen !== "choose-tutor",
+    screen !== "connect" && screen !== "choose-tutor" && screen !== "tutor-repair",
     screen === "control-error",
     screen === "working",
     update,
+    screen === "tutor-repair",
   );
 
   if (!bar) {
@@ -654,7 +678,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
      bars, which is a harness artefact rather than anything the app does. */
   /* First run, before anything is connected: the gate IS the app's opening
      surface, so it draws no way back — only the quiet way past. */
-  if (screen === "choose-tutor" && !deferred) {
+  if ((screen === "choose-tutor" || screen === "tutor-repair") && !deferred) {
     return (
       <AppShell status={<span className="truncate">{ROOT}</span>}>
         <TutorConnectionGate
@@ -666,7 +690,12 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
       </AppShell>
     );
   }
-  if (screen !== "first-run" && screen !== "courses" && screen !== "choose-tutor") {
+  if (
+    screen !== "first-run" &&
+    screen !== "courses" &&
+    screen !== "choose-tutor" &&
+    screen !== "tutor-repair"
+  ) {
     return (
       <OnboardingSurface
         key={stage}

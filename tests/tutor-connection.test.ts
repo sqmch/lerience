@@ -3,8 +3,10 @@ import { selectedReadiness } from "../src/renderer/src/tutor/use-tutor-connectio
 import {
   isReady,
   needsRepair,
+  providerLine,
   providerPrimaryAction,
   providerSecondaryAction,
+  providerStanding,
   statusLabel,
 } from "../src/renderer/src/tutor/provider-presentation";
 import type { ProviderCatalog, ProviderReadiness } from "../src/shared/provider";
@@ -74,6 +76,59 @@ describe("provider readiness actions", () => {
     expect(providerPrimaryAction(newer)).toEqual({ kind: "refresh", label: "Check again" });
     expect(providerSecondaryAction(newer)).toBeNull();
     expect(statusLabel(newer)).toBe("Compatibility issue");
+  });
+});
+
+/* The gate gives a provider one line for where it stands and one for what it
+   is. Both were assembled at the call site out of four optional fields, which
+   is how a signed-out card came to print the same subscription sentence twice
+   and a connected one to state its account in two places. */
+describe("what a provider card says about itself", () => {
+  const connected = catalog.providers[0]!;
+
+  it("names the account and plan when there is one, and the state when there is not", () => {
+    expect(
+      providerStanding({
+        ...connected,
+        accountLabel: "learner@example.invalid",
+        planLabel: "Claude Max",
+      }),
+    ).toBe("learner@example.invalid · Claude Max");
+    expect(providerStanding(connected)).toBe("Connected");
+    expect(providerStanding({ ...connected, planLabel: "Claude Pro" })).toBe("Claude Pro");
+    expect(providerStanding(catalog.providers[1]!)).toBe("Not signed in");
+  });
+
+  /* A status is a state, not a control. "Sign in" and "Try again" sat beside
+     buttons that did exactly those things, which read as a second control. */
+  it("states a status rather than instructing", () => {
+    expect(statusLabel(catalog.providers[1]!)).toBe("Not signed in");
+    expect(
+      statusLabel({ ...connected, runtime: { state: "temporarily-unavailable", version: null } }),
+    ).toBe("Unavailable");
+  });
+
+  /* The paragraph is the tutor's description everywhere the card's own button
+     repairs the state — otherwise the card says "not installed" in the
+     standing, in the sentence and on the button. It gives the paragraph up to
+     the provider's own words only where checking again is all that is on
+     offer, which is the state no button on this card can fix. */
+  it("describes the tutor unless its action cannot repair the state", () => {
+    expect(providerLine(catalog.providers[1]!)).toBe("Codex");
+    expect(
+      providerLine({
+        ...connected,
+        runtime: { state: "not-installed", version: null },
+        detail: "Claude Code is not installed yet.",
+      }),
+    ).toBe("Claude");
+    expect(
+      providerLine({
+        ...connected,
+        runtime: { state: "praxeum-update-required", version: "3.0.0" },
+        detail: "Claude Code 3.0.0 is not compatible with this build.",
+      }),
+    ).toBe("Claude Code 3.0.0 is not compatible with this build.");
   });
 });
 
