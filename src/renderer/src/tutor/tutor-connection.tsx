@@ -7,8 +7,10 @@ import { MENU_PANEL, MENU_ROW, MENU_TICK } from "../components/menu";
 import {
   isReady,
   needsRepair,
+  providerLine,
   providerPrimaryAction,
   providerSecondaryAction,
+  providerStanding,
   statusLabel,
 } from "./provider-presentation";
 import type { TutorConnectionController } from "./use-tutor-connection";
@@ -30,67 +32,6 @@ function StatusDot({ provider }: { provider: ProviderReadiness }): React.JSX.Ele
             : "bg-ink-faint block size-1.5 shrink-0 rounded-pill"
       }
     />
-  );
-}
-
-function resetLabel(resetsAt: number | null): string | null {
-  if (resetsAt === null) return null;
-  const reset = new Date(resetsAt * 1_000);
-  if (!Number.isFinite(reset.getTime())) return null;
-  const now = new Date();
-  const sameDay =
-    reset.getFullYear() === now.getFullYear() &&
-    reset.getMonth() === now.getMonth() &&
-    reset.getDate() === now.getDate();
-  const formatted = new Intl.DateTimeFormat(undefined, {
-    ...(sameDay ? {} : { weekday: "short" }),
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(reset);
-  return `Resets ${sameDay ? "at " : ""}${formatted}`;
-}
-
-function UsageWindows({ provider }: { provider: ProviderReadiness }): React.JSX.Element | null {
-  if (provider.usage === null || provider.usage.windows.length === 0) return null;
-  return (
-    <div
-      className="border-line mt-4 space-y-3 border-t pt-3.5"
-      aria-label={`${provider.label} usage`}
-    >
-      {provider.usage.windows.map((window) => {
-        const percent = Math.round(window.usedPercent);
-        return (
-          <div key={window.label}>
-            <div className="text-ink-faint flex items-baseline gap-2 text-2xs">
-              <span>{window.label}</span>
-              <span className="font-data ml-auto">{percent}% used</span>
-            </div>
-            {/* The track has to be VISIBLE or the meter is not a meter: at
-                --line-soft it sat two points off the card's own ground, so a
-                36% bar read as a stray underline under the label rather than
-                as a third of something. The fill is --ink-dim, not --accent:
-                a spent allowance is a readout, and ADR-015 keeps the action
-                colour from doubling as a status. */}
-            <div
-              className="bg-line-strong mt-1.5 h-1 overflow-hidden rounded-pill"
-              role="progressbar"
-              aria-label={window.label}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={percent}
-            >
-              <span
-                className="bg-ink-dim block h-full rounded-pill"
-                style={{ width: `${String(percent)}%` }}
-              />
-            </div>
-            {resetLabel(window.resetsAt) === null ? null : (
-              <p className="text-ink-faint mt-1 text-2xs">{resetLabel(window.resetsAt)}</p>
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -196,8 +137,7 @@ export function TutorConnectionGate({
         </div>
       ) : (
         <div className="mx-auto w-full max-w-(--container-converse) text-center">
-          <p className="text-ink-faint text-sm">One quick choice before the conversation starts</p>
-          <h1 className="text-hi mt-1.5 text-3xl font-bold tracking-tight text-balance">
+          <h1 className="text-hi text-3xl font-bold tracking-tight text-balance">
             Choose your tutor
           </h1>
           {/* The explicit space is load-bearing. JSX keeps the newline between
@@ -261,6 +201,17 @@ export function TutorConnectionGate({
   );
 }
 
+/* One shape, whatever state the tutor is in: who it is and what it is at the
+   top, where it stands and the one thing to do about it at the bottom. The
+   space between them is what stretches, so a two-line description and a
+   one-line description still put both cards' actions on the same line.
+
+   What used to be here was a status dot beside the name, a status word in the
+   opposite corner, an account line, a provider sentence, and a stack of usage
+   meters — five ways of saying "signed in as this account", and the meters
+   made the pair of cards as tall as whichever one had an allowance to report.
+   Usage is a readout and belongs wherever readouts are gathered; it is not
+   part of choosing who teaches. */
 function ProviderCard({
   provider,
   selected,
@@ -285,68 +236,56 @@ function ProviderCard({
      which, on a fresh install with nothing signed in, meant the loudest card
      on the screen was the one that could not run anything. */
   const chosen = selected && connected;
+  const standing = providerStanding(provider);
   return (
     <article
       className={
         chosen
-          ? "bg-surface-raised border-hi flex min-h-48 flex-col rounded-lg border p-5 transition-colors"
-          : "bg-surface-panel border-line hover:border-line-strong flex min-h-48 flex-col rounded-lg border p-5 transition-colors"
+          ? "bg-surface-raised border-hi flex flex-col rounded-lg border p-5 transition-colors"
+          : "bg-surface-panel border-line hover:border-line-strong flex flex-col rounded-lg border p-5 transition-colors"
       }
     >
-      <div className="flex items-center gap-2">
-        <StatusDot provider={provider} />
-        <h2 className="text-hi text-lg font-bold tracking-tight">{provider.label}</h2>
-        {/* Peripheral ink is for rules and placeholders. "Sign in" is neither:
-            it is the one fact on the card the learner has to act on, and it was
-            set two steps quieter than the plan label beside it. */}
-        <span
-          className={
-            needsRepair(provider) ? "text-warn ml-auto text-xs" : "text-ink-faint ml-auto text-xs"
-          }
-        >
-          {statusLabel(provider)}
-        </span>
-      </div>
-      <p className="text-ink-dim mt-3 text-sm leading-normal text-pretty">{provider.description}</p>
-      {provider.accountLabel === null ? null : (
+      <h2 className="text-hi text-lg font-bold tracking-tight">{provider.label}</h2>
+      <p className="text-ink-dim mt-2 text-sm leading-normal text-pretty">
+        {providerLine(provider)}
+      </p>
+
+      {/* The wrapper is what carries the gap. `mt-auto` on the footer's first
+          child pins it to the bottom and leaves NO room above it, so the
+          padding has to sit on a box that is not the one being pushed. */}
+      <div className="mt-auto pt-6">
+        {/* Where the card stands, in one line and in words. Colour still marks
+            a state the learner has to repair (ADR-015) and the word says which
+            one; a connected tutor names the account it would teach with. */}
         <p
-          className="text-ink-faint font-data mt-3 truncate text-2xs"
-          title={provider.accountLabel}
+          className={needsRepair(provider) ? "text-warn text-xs" : "text-ink-dim truncate text-xs"}
+          title={standing}
         >
-          {provider.accountLabel}
+          {standing}
         </p>
-      )}
-      {provider.detail === null ? null : (
-        <p className="text-ink-faint mt-3 text-xs leading-normal text-pretty">{provider.detail}</p>
-      )}
-      <UsageWindows provider={provider} />
-      {/* The wrapper is what carries the gap. `mt-auto` on the button itself
-          pins it to the bottom and leaves NO room above it — which on a card
-          whose usage block runs the full height put "Use Codex" flush against
-          "Resets Sat 10:00 AM". An auto margin cannot also be a minimum, so
-          the padding has to sit on a box that is not the one being pushed. */}
-      <div className="mt-auto flex items-center gap-2 pt-5">
-        <button
-          type="button"
-          className={`${connected ? PRIMARY : QUIET} text-sm`}
-          onClick={() => {
-            if (action.kind === "select") onSelect(provider.id);
-            else if (action.kind === "login") onLogin(provider.id);
-            else if (action.kind === "guide") onGuide(provider.id);
-            else onRefresh(provider.id);
-          }}
-        >
-          {action.kind === "select" && selected ? "Selected" : action.label}
-        </button>
-        {secondaryAction === null ? null : (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className={`${GHOST} text-sm`}
-            onClick={() => onRefresh(provider.id)}
+            className={`${connected ? PRIMARY : QUIET} text-sm`}
+            onClick={() => {
+              if (action.kind === "select") onSelect(provider.id);
+              else if (action.kind === "login") onLogin(provider.id);
+              else if (action.kind === "guide") onGuide(provider.id);
+              else onRefresh(provider.id);
+            }}
           >
-            {secondaryAction.label}
+            {action.kind === "select" && selected ? "Selected" : action.label}
           </button>
-        )}
+          {secondaryAction === null ? null : (
+            <button
+              type="button"
+              className={`${GHOST} text-sm`}
+              onClick={() => onRefresh(provider.id)}
+            >
+              {secondaryAction.label}
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );
