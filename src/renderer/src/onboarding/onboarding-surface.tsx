@@ -643,21 +643,31 @@ function BuildConversation({
   const { state } = seminar;
   const latest = [...state.items.slice(since)].reverse().find((item) => item.role === "tutor");
 
-  /* The clamp has a second door. Whether the words are actually cut off is
-     measured, not assumed, so the control appears only when there is more to
-     show — and is re-asked as the text streams in. A new turn starts closed. */
+  /* Measure rendered overflow: TutorTurn reveals text after provider content
+     arrives, and resizing can change the line count. A new turn starts closed. */
   const [expanded, setExpanded] = useState(false);
   const [clipped, setClipped] = useState(false);
   const proseRef = useRef<HTMLDivElement | null>(null);
   const latestId = latest?.id ?? null;
-  const latestContent = latest?.content ?? "";
   useEffect(() => {
     setExpanded(false);
   }, [latestId]);
   useLayoutEffect(() => {
     const node = proseRef.current;
-    setClipped(node !== null && node.scrollHeight > node.clientHeight + 1);
-  }, [latestContent, expanded]);
+    if (node === null) return;
+    const measure = (): void => {
+      setClipped(node.scrollHeight > node.clientHeight + 1);
+    };
+    measure();
+    const resize = new ResizeObserver(measure);
+    const content = new MutationObserver(measure);
+    resize.observe(node);
+    content.observe(node, { childList: true, characterData: true, subtree: true });
+    return () => {
+      resize.disconnect();
+      content.disconnect();
+    };
+  }, [latestId, expanded]);
 
   return (
     <>
@@ -665,18 +675,11 @@ function BuildConversation({
           but CLAMPED: this is a status line, not reading material. The closing
           summary runs over a page, and a page of prose arriving under a
           progress bar is unreadable in the seconds before the handover — it is
-          worth reading in the course view, where it stays. The clamp fades
-          rather than cuts, and opens in place for whoever wants the rest now. */}
+          worth reading in the course view, where it stays. The preview opens
+          in place for whoever wants the rest now. */}
       {latest === undefined ? null : (
         <div>
-          <div
-            ref={proseRef}
-            className={
-              expanded
-                ? undefined
-                : "line-clamp-3 overflow-hidden [mask-image:linear-gradient(to_bottom,var(--ink)_60%,transparent)]"
-            }
-          >
+          <div ref={proseRef} className={expanded ? undefined : "line-clamp-3 overflow-hidden"}>
             <TutorTurn content={latest.content} streaming={latest.streaming} />
           </div>
           {clipped || expanded ? (

@@ -127,7 +127,9 @@ function scriptFor(stage: Stage): { events: AgentEvent[]; busy: boolean } {
         {
           type: "message_delta",
           delta:
-            "Building module 00 now: a short lesson, a reading parser scaffold, and checks for missing units and timestamps.",
+            // Long enough to overflow the build preview after the animated
+            // reveal, so its disclosure must follow rendered text too.
+            "Building module 00 now: a short lesson, a reading parser scaffold, and checks for missing units and timestamps. The lesson follows one fictional sensor reading from its source through parsing and validation. The scaffold keeps each step visible so you can inspect the original value, explain each transformation, and decide what to do when a required field is absent. I am also adding examples that distinguish a missing measurement from a measured zero, with checks for both cases.",
         },
         {
           type: "tool_activity",
@@ -417,7 +419,18 @@ function installBridge(
         }
       }, 30);
       setTimeout(() => {
-        for (const event of script.events) listener(event);
+        for (const event of script.events) {
+          // Let the build's prose animate before tool activity ends the
+          // message. A single React batch hides stale overflow measurements.
+          if (
+            stage === "building" &&
+            (event.type === "tool_activity" || event.type === "approval_request")
+          ) {
+            setTimeout(() => listener(event), 2000);
+          } else {
+            listener(event);
+          }
+        }
         if (stage === "building") {
           for (const path of [
             "COURSE.md",
