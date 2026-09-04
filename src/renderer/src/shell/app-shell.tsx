@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { PRODUCT_WORDMARK } from "../../../shared/product";
+import { MarkGlyph } from "../components/glyphs";
 import {
   UpdateNotice,
   UpdateStatusItem,
@@ -32,10 +33,7 @@ function TitleBar({ children }: { children?: ReactNode }): React.JSX.Element {
     <header className="drag-region bg-chrome border-line flex h-(--titlebar-h) shrink-0 items-center gap-2 overflow-hidden border-b pl-(--titlebar-inset-start) pr-(--titlebar-inset-end)">
       {children ?? (
         <>
-          <span
-            className="border-ink-faint size-2.5 shrink-0 rounded-xs border-(length:--stroke)"
-            aria-hidden="true"
-          />
+          <MarkGlyph className="text-ink h-2.5 w-auto shrink-0" />
           <span className="text-ink-dim text-sm font-medium tracking-tight">
             {PRODUCT_WORDMARK}
           </span>

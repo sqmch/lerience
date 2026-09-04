@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
   <title id="title">Lerience application icon</title>
+  <!-- Stem and base. The unit u is 28px on this 1024 canvas.
+       Tile: 896 square inset 64, corner radius 224 (a quarter of the tile).
+       Mark: stroke 4u (112), gap 2u (56), stem and base both 14u (392): equal legs.
+       Box 392 x 560, centred on 512, so its origin is (316, 232).
+       The 24-unit mark in src/renderer/src/components/glyphs.tsx is the same shape at u = 1;
+       scripts/render-icon.mjs rasterises this geometry into icon.png and icon.ico. -->
   <rect x="64" y="64" width="896" height="896" rx="224" fill="#0b0b0b" />
-  <path d="M326 248h148v388h288v148H326z" fill="#fafafa" />
-  <circle cx="746" cy="278" r="58" fill="#e3a33c" />
+  <path d="M316 232H428V624H316Z" fill="#fafafa" />
+  <path d="M316 680H708V792H316Z" fill="#fafafa" />
 </svg>
