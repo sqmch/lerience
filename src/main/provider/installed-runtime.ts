@@ -12,6 +12,8 @@ export interface DiscoverInstalledProviderOptions {
   platform?: NodeJS.Platform;
   environment?: NodeJS.ProcessEnv;
   isFile?: (candidate: string) => boolean;
+  /** Child directory names, newest installed first. */
+  directories?: (root: string) => string[];
 }
 
 /** Discover a provider-owned native client without invoking a shell or reading
@@ -24,12 +26,36 @@ export function discoverInstalledProviderRuntime(
   const platform = options.platform ?? process.platform;
   const environment = options.environment ?? process.env;
   const isFile = options.isFile ?? ordinaryFile;
+  const usable = (candidate: string): boolean => {
+    if (!isFile(candidate)) return false;
+    if (providerId !== "codex" || platform !== "win32") return true;
+    const directory = path.win32.dirname(candidate);
+    // Codex may keep these beside the executable or in codex-resources.
+    // A version/handshake-only check accepts a copied, unusable codex.exe.
+    return ["codex-command-runner.exe", "codex-windows-sandbox-setup.exe"].every((helper) =>
+      [directory, path.win32.join(directory, "codex-resources")].some((root) =>
+        isFile(path.win32.join(root, helper)),
+      ),
+    );
+  };
 
-  for (const candidate of wellKnownCandidates(providerId, platform, environment)) {
-    if (isFile(candidate)) return { providerId, executablePath: candidate, source: "well-known" };
+  const desktopRoot = environment.LOCALAPPDATA
+    ? path.win32.join(environment.LOCALAPPDATA, "OpenAI", "Codex", "bin")
+    : null;
+  const desktopCandidates =
+    providerId === "codex" && platform === "win32" && desktopRoot !== null
+      ? (options.directories ?? installedDirectories)(desktopRoot)
+          .filter((name) => /^[a-f0-9]{16,64}$/iu.test(name))
+          .map((name) => path.win32.join(desktopRoot, name, "codex.exe"))
+      : [];
+  for (const candidate of [
+    ...wellKnownCandidates(providerId, platform, environment),
+    ...desktopCandidates,
+  ]) {
+    if (usable(candidate)) return { providerId, executablePath: candidate, source: "well-known" };
   }
   for (const candidate of pathCandidates(providerId, platform, environment)) {
-    if (isFile(candidate)) return { providerId, executablePath: candidate, source: "path" };
+    if (usable(candidate)) return { providerId, executablePath: candidate, source: "path" };
   }
   return { providerId, executablePath: null, source: null };
 }
@@ -104,6 +130,25 @@ function ordinaryFile(candidate: string): boolean {
     return fs.statSync(candidate).isFile();
   } catch {
     return false;
+  }
+}
+
+/** The Windows desktop app extracts its native runtimes into content-addressed
+ * directories. Explorer's PATH need not contain them. Inspect only that
+ * provider-owned location, without following directory links or copying files. */
+function installedDirectories(root: string): string[] {
+  try {
+    return fs
+      .readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => ({
+        name: entry.name,
+        modified: fs.statSync(path.join(root, entry.name)).mtimeMs,
+      }))
+      .sort((left, right) => right.modified - left.modified || left.name.localeCompare(right.name))
+      .map((entry) => entry.name);
+  } catch {
+    return [];
   }
 }
 

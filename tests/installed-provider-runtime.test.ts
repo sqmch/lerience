@@ -3,6 +3,54 @@ import { describe, expect, it } from "vitest";
 import { discoverInstalledProviderRuntime } from "../src/main/provider/installed-runtime";
 
 describe("installed provider runtime discovery", () => {
+  it("finds a complete desktop runtime without Codex's injected PATH", () => {
+    const root = "C:\\Local\\OpenAI\\Codex\\bin";
+    const complete = path.win32.join(root, "0123456789abcdef");
+    const files = new Set(
+      ["codex.exe", "codex-command-runner.exe", "codex-windows-sandbox-setup.exe"].map((name) =>
+        path.win32.join(complete, name),
+      ),
+    );
+    expect(
+      discoverInstalledProviderRuntime("codex", {
+        platform: "win32",
+        environment: { LOCALAPPDATA: "C:\\Local", Path: "C:\\Windows" },
+        directories: (candidate) =>
+          candidate === root ? ["abcdef0123456789", "0123456789abcdef", "../untrusted"] : [],
+        isFile: (candidate) => files.has(candidate),
+      }),
+    ).toEqual({
+      providerId: "codex",
+      executablePath: path.win32.join(complete, "codex.exe"),
+      source: "well-known",
+    });
+  });
+  it("reports an incomplete Windows Codex installation as unavailable", () => {
+    expect(
+      discoverInstalledProviderRuntime("codex", {
+        platform: "win32",
+        environment: { Path: "C:\\incomplete" },
+        isFile: (candidate) => candidate === "C:\\incomplete\\codex.exe",
+      }),
+    ).toMatchObject({ executablePath: null });
+  });
+  it("skips an incomplete Windows Codex install in favor of a complete PATH install", () => {
+    const stale = "C:\\old\\codex.exe";
+    const complete = "C:\\current\\codex.exe";
+    const files = new Set([
+      stale,
+      complete,
+      "C:\\current\\codex-command-runner.exe",
+      "C:\\current\\codex-windows-sandbox-setup.exe",
+    ]);
+    expect(
+      discoverInstalledProviderRuntime("codex", {
+        platform: "win32",
+        environment: { Path: "C:\\old;C:\\current" },
+        isFile: (candidate) => files.has(candidate),
+      }),
+    ).toMatchObject({ executablePath: complete });
+  });
   it("finds official Windows install locations without requiring terminal PATH", () => {
     const expected = path.win32.join(
       "C:/Users/learner/AppData/Local",
@@ -20,7 +68,12 @@ describe("installed provider runtime discovery", () => {
           USERPROFILE: "C:/Users/learner",
           Path: "",
         },
-        isFile: (candidate) => candidate === expected,
+        isFile: (candidate) =>
+          [expected, "codex-command-runner.exe", "codex-windows-sandbox-setup.exe"].some(
+            (file) =>
+              candidate === file ||
+              candidate === path.win32.join(path.win32.dirname(expected), file),
+          ),
       }),
     ).toEqual({ providerId: "codex", executablePath: expected, source: "well-known" });
   });

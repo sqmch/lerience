@@ -18,6 +18,11 @@ import {
   type CodexAppServerFactory,
 } from "../provider/codex-app-server";
 import { AsyncQueue } from "./async-queue";
+import {
+  CODEX_COURSE_SANDBOX_CONFIG,
+  CodexCourseWriteFailure,
+  verifyCodexCourseWrite,
+} from "../provider/codex-course-write";
 
 const PROTOCOL_LIMIT = 512 * 1024;
 const INTERRUPT_FALLBACK_MS = 5_000;
@@ -75,6 +80,9 @@ function knownAutonomy(value: unknown): string | null {
 }
 
 export function normalizeCodexError(value: unknown): NormalizedError {
+  if (value instanceof CodexCourseWriteFailure) {
+    return { code: "turn-failed", message: value.message };
+  }
   const info = isRecord(value) && "codexErrorInfo" in value ? value.codexErrorInfo : value;
   if (info === "unauthorized") {
     return {
@@ -238,7 +246,7 @@ export class CodexAgentSession implements AgentSession {
     private readonly protocol: string,
     appServer: CodexAppServerFactory,
   ) {
-    this.client = appServer();
+    this.client = appServer(courseDir);
     this.client.onNotification((method, params) => this.handleNotification(method, params));
     this.client.onRequest((id, method, params) => this.handleRequest(id, method, params));
     this.client.onExit((failure) => {
@@ -350,6 +358,7 @@ export class CodexAgentSession implements AgentSession {
     this.turnInFlight = false;
     this.pendingApprovals.clear();
     this.client.close();
+    await this.ready;
     this.output.push({ type: "session_ended", reason: "ended" });
     this.output.end();
   }
@@ -359,6 +368,7 @@ export class CodexAgentSession implements AgentSession {
     const response = await this.client.request("thread/start", {
       cwd: this.courseDir,
       sandbox: "workspace-write",
+      config: CODEX_COURSE_SANDBOX_CONFIG,
       ephemeral: true,
       developerInstructions: this.protocol,
     });
@@ -366,11 +376,11 @@ export class CodexAgentSession implements AgentSession {
       !isRecord(response) ||
       !isRecord(response.thread) ||
       typeof response.thread.id !== "string" ||
-      !isRecord(response.sandbox) ||
-      response.sandbox.type !== "workspaceWrite"
+      !isRecord(response.sandbox)
     ) {
       throw new Error("Codex returned an invalid session.");
     }
+    await verifyCodexCourseWrite(this.client, this.courseDir, response);
     this.threadId = response.thread.id;
     this.currentModel = nonEmptyString(response.model);
     this.currentEffort = knownEffort(response.reasoningEffort);

@@ -1,5 +1,9 @@
+import { execFile } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { promisify } from "node:util";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CodexAgentSession,
   codexFileEditWithinCourse,
@@ -10,6 +14,13 @@ import {
 } from "../src/main/agent/codex";
 import type { CodexAppServerConnection } from "../src/main/provider/codex-app-server";
 import type { AgentEvent } from "../src/shared/seminar";
+import { CODEX_COURSE_SANDBOX_CONFIG } from "../src/main/provider/codex-course-write";
+
+let courseDir: string;
+beforeEach(() => {
+  courseDir = fs.mkdtempSync(path.join(os.tmpdir(), "lerience-codex-test-"));
+});
+afterEach(() => fs.promises.rm(courseDir, { recursive: true, force: true, maxRetries: 5 }));
 
 class FakeConnection implements CodexAppServerConnection {
   readonly calls: Array<{ method: string; params: unknown }> = [];
@@ -21,6 +32,11 @@ class FakeConnection implements CodexAppServerConnection {
   async initialize(): Promise<void> {}
   async request(method: string, params: unknown): Promise<unknown> {
     this.calls.push({ method, params });
+    if (method === "command/exec" && !this.responses.has(method)) {
+      const { command, cwd } = params as { command: string[]; cwd: string };
+      const result = await promisify(execFile)(command[0]!, command.slice(1), { cwd });
+      return { exitCode: 0, ...result };
+    }
     return this.responses.get(method);
   }
   notify(): void {}
@@ -51,7 +67,7 @@ function setup(): { connection: FakeConnection; session: CodexAgentSession } {
   const connection = new FakeConnection();
   connection.responses.set("thread/start", {
     thread: { id: "thread-1" },
-    cwd: "C:/course",
+    cwd: courseDir,
     model: "gpt-5.6-codex",
     reasoningEffort: "high",
     approvalPolicy: "on-request",
@@ -59,8 +75,8 @@ function setup(): { connection: FakeConnection; session: CodexAgentSession } {
       type: "workspaceWrite",
       writableRoots: [],
       networkAccess: false,
-      excludeTmpdirEnvVar: false,
-      excludeSlashTmp: false,
+      excludeTmpdirEnvVar: true,
+      excludeSlashTmp: true,
     },
   });
   connection.responses.set("turn/start", {
@@ -68,7 +84,7 @@ function setup(): { connection: FakeConnection; session: CodexAgentSession } {
   });
   return {
     connection,
-    session: new CodexAgentSession("C:/course", "# Tutor protocol", () => connection),
+    session: new CodexAgentSession(courseDir, "# Tutor protocol", () => connection),
   };
 }
 
@@ -82,6 +98,49 @@ async function events(iterator: AsyncIterator<AgentEvent>, count: number): Promi
 }
 
 describe("CodexAgentSession", () => {
+  it("rejects writable metadata when a provider sandbox write cannot run", async () => {
+    const { connection, session } = setup();
+    connection.responses.set("command/exec", {
+      exitCode: 1,
+      stdout: "",
+      stderr: "private failure",
+    });
+    session.send("Begin the interview");
+    const iterator = session.events[Symbol.asyncIterator]();
+    await session.describeControls();
+    expect(connection.calls.some((call) => call.method === "command/exec")).toBe(true);
+    expect(connection.calls.some((call) => call.method === "turn/start")).toBe(false);
+    expect(await events(iterator, 2)).toEqual([
+      { type: "error", code: "turn-failed", message: expect.stringContaining("cannot write") },
+      { type: "session_ended", reason: "died" },
+    ]);
+  });
+
+  it("rejects a successful command response that did not create the marker", async () => {
+    const { connection, session } = setup();
+    connection.responses.set("command/exec", { exitCode: 0, stdout: "success", stderr: "" });
+    session.send("Begin the interview");
+    await session.describeControls();
+    expect(connection.calls.some((call) => call.method === "turn/start")).toBe(false);
+    expect(await session.events[Symbol.asyncIterator]().next()).toMatchObject({
+      value: { type: "error", message: expect.stringContaining("cannot write") },
+    });
+    expect(fs.readdirSync(courseDir)).toEqual([]);
+  });
+
+  it.each(["cwd", "root"])("rejects an effective %s outside the course", async (kind) => {
+    const { connection, session } = setup();
+    const response = connection.responses.get("thread/start") as {
+      cwd: string;
+      sandbox: { writableRoots: string[] };
+    };
+    if (kind === "cwd") response.cwd = path.dirname(courseDir);
+    else response.sandbox.writableRoots = [path.dirname(courseDir)];
+    session.send("Begin the interview");
+    await session.describeControls();
+    expect(connection.calls.some((call) => call.method === "command/exec")).toBe(false);
+    expect(connection.calls.some((call) => call.method === "turn/start")).toBe(false);
+  });
   it("starts an ephemeral thread with course-scoped write access", async () => {
     const { connection, session } = setup();
     await session.describeControls();
@@ -89,15 +148,16 @@ describe("CodexAgentSession", () => {
     expect(connection.calls[0]).toEqual({
       method: "thread/start",
       params: {
-        cwd: "C:/course",
+        cwd: courseDir,
         sandbox: "workspace-write",
+        config: CODEX_COURSE_SANDBOX_CONFIG,
         ephemeral: true,
         developerInstructions: "# Tutor protocol",
       },
     });
     expect(connection.calls[0]?.params).not.toHaveProperty("model");
     expect(connection.calls[0]?.params).not.toHaveProperty("approvalPolicy");
-    expect(connection.calls[0]?.params).not.toHaveProperty("config");
+    expect(fs.readdirSync(courseDir)).toEqual([]);
     await session.end();
   });
 
@@ -105,13 +165,13 @@ describe("CodexAgentSession", () => {
     const connection = new FakeConnection();
     connection.responses.set("thread/start", {
       thread: { id: "thread-1" },
-      cwd: "C:/course",
+      cwd: courseDir,
       model: "gpt-5.6-codex",
       reasoningEffort: "high",
       approvalPolicy: "on-request",
       sandbox: { type: "readOnly", networkAccess: false },
     });
-    const session = new CodexAgentSession("C:/course", "# Tutor protocol", () => connection);
+    const session = new CodexAgentSession(courseDir, "# Tutor protocol", () => connection);
     const iterator = session.events[Symbol.asyncIterator]();
 
     await session.describeControls();
@@ -120,7 +180,7 @@ describe("CodexAgentSession", () => {
       {
         type: "error",
         code: "turn-failed",
-        message: "Codex could not complete this turn. Please try again.",
+        message: expect.stringContaining("cannot write"),
       },
       { type: "session_ended", reason: "died" },
     ]);
@@ -131,6 +191,7 @@ describe("CodexAgentSession", () => {
     const { connection, session } = setup();
     const iterator = session.events[Symbol.asyncIterator]();
     session.send("start session");
+    await session.describeControls();
     await vi.waitFor(() =>
       expect(connection.calls.some((call) => call.method === "turn/start")).toBe(true),
     );
@@ -186,7 +247,7 @@ describe("CodexAgentSession", () => {
     const connection = new FakeConnection();
     connection.responses.set("thread/start", {
       thread: { id: "thread-1" },
-      cwd: "C:/course",
+      cwd: courseDir,
       model: "gpt-5.6-codex",
       reasoningEffort: "high",
       approvalPolicy: "on-request",
@@ -194,24 +255,25 @@ describe("CodexAgentSession", () => {
         type: "workspaceWrite",
         writableRoots: [],
         networkAccess: false,
-        excludeTmpdirEnvVar: false,
-        excludeSlashTmp: false,
+        excludeTmpdirEnvVar: true,
+        excludeSlashTmp: true,
       },
     });
     const deferred: { release?: (value: unknown) => void } = {};
+    const request = connection.request.bind(connection);
     connection.request = vi.fn(async (method: string, params: unknown) => {
-      connection.calls.push({ method, params });
-      if (method === "thread/start") return connection.responses.get(method);
       if (method === "turn/start") {
+        connection.calls.push({ method, params });
         return await new Promise((resolve) => {
           deferred.release = resolve;
         });
       }
-      return connection.responses.get(method);
+      return request(method, params);
     });
-    const session = new CodexAgentSession("C:/course", "# Tutor protocol", () => connection);
+    const session = new CodexAgentSession(courseDir, "# Tutor protocol", () => connection);
     const iterator = session.events[Symbol.asyncIterator]();
     session.send("start session");
+    await session.describeControls();
     await vi.waitFor(() =>
       expect(connection.calls.some((call) => call.method === "turn/start")).toBe(true),
     );
