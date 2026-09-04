@@ -206,14 +206,17 @@ export function isEditWithinCourse(toolName: string, input: unknown, courseDir: 
 /**
  * The autonomy ladder the app offers, least to most.
  *
- * Deliberately a SUBSET of the provider's modes. `bypassPermissions` is not
- * offered at all (it needs an explicit dangerous-skip flag, and a tutor with
- * full-capability tool access running unattended in the learner's filesystem
- * is not a setting this app hands over in a dropdown). `plan` executes no
+ * Deliberately a SUBSET of the provider's modes. `bypassPermissions` is an
+ * explicit learner choice enabled under ADR-018. `plan` executes no
  * tools, which would silently break course generation, and `dontAsk` denies
  * anything not pre-approved, which reads as the tutor mysteriously failing.
  */
-const AUTONOMY: { id: PermissionMode; label: string; description: string }[] = [
+const AUTONOMY: {
+  id: PermissionMode;
+  label: string;
+  description: string;
+  skipsApprovalPrompts?: boolean;
+}[] = [
   {
     id: "default",
     label: "Ask every time",
@@ -232,6 +235,7 @@ const AUTONOMY: { id: PermissionMode; label: string; description: string }[] = [
   {
     id: "bypassPermissions",
     label: "Never ask",
+    skipsApprovalPrompts: true,
     description:
       "Full access to this course folder and your shell. Fastest, and nothing is checked with you first.",
   },
@@ -528,6 +532,7 @@ class ClaudeAgentSession implements AgentSession {
 
   async applyControls(patch: SessionControlPatch): Promise<SessionControls> {
     if (this.endRequested || this.terminal) throw new Error("The tutor session has ended.");
+    if (patch.access !== undefined) throw new Error("That access setting is not available.");
 
     if (patch.model !== undefined) {
       await this.sdkQuery.setModel?.(patch.model ?? undefined);

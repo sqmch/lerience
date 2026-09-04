@@ -1,16 +1,166 @@
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { assembleRuntime, copyNpmTree } from "../scripts/assemble-runtime.mjs";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+  assembleRuntime,
+  copyNpmTree,
+  writeJavaScriptToolShims,
+} from "../scripts/assemble-runtime.mjs";
+import { createRuntimeEnvironment } from "../src/main/runtime-layout";
+import { loadAssembledRuntime } from "./helpers/assembled-runtime";
 
 const temporaryRoots: string[] = [];
+const require = createRequire(import.meta.url);
+let electron: string;
+
+beforeAll(() => {
+  // A fresh dependency install downloads Electron on first require. Keep that
+  // setup separate from the bounded native launcher checks.
+  if (process.platform === "win32") electron = require("electron") as string;
+}, 120_000);
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
 describe("runtime input normalization", () => {
+  it.skipIf(process.platform !== "win32")(
+    "runs packaged npm and npx from PowerShell without host Node",
+    async () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum npm launch test "));
+      temporaryRoots.push(root);
+      const assembled = process.env.PRAXEUM_RUNTIME_ROOT ? loadAssembledRuntime() : undefined;
+      const npmRoot = assembled
+        ? path.join(assembled.root, "tools", "npm")
+        : path.join(root, "npm");
+      if (!assembled) {
+        await copyNpmTree(path.dirname(require.resolve("npm/package.json")), npmRoot);
+        await writeJavaScriptToolShims(npmRoot, "win32");
+      }
+      // Keep the Windows system/profile environment used by the application.
+      // Remove every PATH spelling and Node injection before excluding host Node.
+      const inheritedEnvironment = { ...process.env };
+      for (const key of Object.keys(inheritedEnvironment)) {
+        if (/^(path|node_path|node_options)$/i.test(key)) delete inheritedEnvironment[key];
+      }
+      const environment = createRuntimeEnvironment(
+        [path.join(npmRoot, "bin")],
+        {
+          ...inheritedEnvironment,
+          SystemRoot: process.env.SystemRoot,
+          TEMP: root,
+          TMP: root,
+          PATHEXT: ".COM;.EXE;.BAT;.CMD",
+          PATH: path.join(process.env.SystemRoot!, "System32"),
+        },
+        "win32",
+        electron,
+      );
+      fs.writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({
+          name: "offline-launch-fixture",
+          version: "1.0.0",
+          private: true,
+          scripts: { fixture: "node fixture.cjs", stdin: "node stdin.cjs" },
+        }),
+      );
+      fs.writeFileSync(
+        path.join(root, "fixture.cjs"),
+        'console.log("runtime=" + process.execPath); console.log(JSON.stringify(process.argv.slice(2))); process.exitCode = Number(process.env.FIXTURE_EXIT || 0);',
+      );
+      fs.writeFileSync(
+        path.join(root, "stdin.cjs"),
+        'console.log("received=" + require("node:fs").readFileSync(0, "utf8").trim());',
+      );
+      const powershell = path.join(
+        process.env.SystemRoot!,
+        "System32",
+        "WindowsPowerShell",
+        "v1.0",
+        "powershell.exe",
+      );
+      const run = (command: string, env = environment) =>
+        spawnSync(
+          powershell,
+          ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command],
+          { cwd: root, env, encoding: "utf8", timeout: 30000 },
+        );
+      for (const command of [
+        "npm.cmd --version",
+        "npx.cmd --version",
+        "npm --version",
+        "npx --version",
+      ]) {
+        const result = run(command);
+        expect(result.stderr).toBe("");
+        expect(result.status, JSON.stringify({ command, ...result })).toBe(0);
+        expect(result.stdout.trim()).toBe(require("npm/package.json").version);
+      }
+      const script = run("npm run fixture -- 'argument with spaces'; exit $LASTEXITCODE");
+      expect(script.status).toBe(0);
+      expect(script.stdout).toContain(`runtime=${electron}`);
+      expect(script.stdout).toContain('["argument with spaces"]');
+      const failedScript = run("npm run fixture; exit $LASTEXITCODE", {
+        ...environment,
+        FIXTURE_EXIT: "7",
+      });
+      expect(failedScript, JSON.stringify(failedScript)).toHaveProperty("status", 7);
+      for (const command of ["npm run stdin", 'npx --offline -c "node stdin.cjs"']) {
+        const piped = run(`'piped input with spaces' | ${command}; exit $LASTEXITCODE`);
+        expect(piped.stderr).toBe("");
+        expect(piped.status).toBe(0);
+        expect(piped.stdout).toContain("received=piped input with spaces");
+      }
+      const dependency = path.join(root, "local-dependency");
+      fs.mkdirSync(dependency);
+      fs.writeFileSync(
+        path.join(dependency, "package.json"),
+        JSON.stringify({ name: "local-dependency", version: "1.0.0" }),
+      );
+      const install = run(
+        "npm install --offline --ignore-scripts --no-audit --no-fund ./local-dependency; exit $LASTEXITCODE",
+      );
+      expect(install.stderr).toBe("");
+      expect(install.status).toBe(0);
+      expect(
+        fs.existsSync(path.join(root, "node_modules", "local-dependency", "package.json")),
+      ).toBe(true);
+      const shell = path.join(
+        assembled
+          ? path.join(assembled.root, "tools", "git")
+          : path.join(path.dirname(require.resolve("dugite/package.json")), "git"),
+        "usr",
+        "bin",
+        "sh.exe",
+      );
+      for (const command of ["npm", "npx"]) {
+        const result = spawnSync(shell, ["-c", `${command} --version`], {
+          cwd: root,
+          env: environment,
+          encoding: "utf8",
+          timeout: 30000,
+        });
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+        expect(result.stdout.trim()).toBe(require("npm/package.json").version);
+      }
+      for (const command of ["npm", "npx", "npm.cmd", "npx.cmd"]) {
+        expect(
+          run(`${command} --version; exit $LASTEXITCODE`, {
+            ...environment,
+            PRAXEUM_ELECTRON_EXECUTABLE: "",
+          }).status,
+        ).toBe(1);
+      }
+    },
+    // Fifteen native shell launches share this test; each still has a 30s cap.
+    120000,
+  );
+
   it("excludes package-manager shims nested inside the npm package", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum-npm-copy-test-"));
     temporaryRoots.push(root);

@@ -8,3 +8,4 @@ export function assembleRuntime(options: {
 }): Promise<void>;
 
 export function copyNpmTree(source: string, destination: string): Promise<void>;
+export function writeJavaScriptToolShims(npmRoot: string, platform: string): Promise<void>;

@@ -16,8 +16,12 @@ describe("isWriteNoise", () => {
 });
 
 describe("moduleParts", () => {
-  it("reports nothing until a module directory exists", () => {
-    expect(moduleParts(["COURSE.md", "tutor/journal.md"], null)).toBeNull();
+  it("reports zero before a module directory exists", () => {
+    expect(moduleParts(["COURSE.md", "tutor/journal.md"], null)).toEqual({
+      moduleId: null,
+      landed: new Set(),
+      now: null,
+    });
   });
 
   it("marks a part landed when a file under it has appeared", () => {

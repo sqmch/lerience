@@ -59,12 +59,16 @@ actual marker write, and patches inside and outside the course with approval pol
 `LERIENCE_CODEX_ACCEPTANCE_EXECUTABLE` optionally selects an exact provider for diagnosis. This is
 separate from ordinary deterministic source tests and from the visible learner-path acceptance.
 
+ADR-037 adds a separate, explicit session-scoped Full access choice after this startup check.
+Never ask remains approval-only. Returning to Course folder restores the validated startup policy;
+a new session always starts with this course-scoped check.
+
 ## Rejected
 
 - Keep omitting the sandbox field. This deterministically starts a read-only tutor on the minimum
   supported Codex version when no sandbox mode is configured.
-- Request `danger-full-access`. Course operation does not require silent writes outside the course
-  root, and broader actions can use Codex's approval flow.
+- Request `danger-full-access` at startup. ADR-037 permits it only as a deliberate learner choice
+  for the running session.
 - Ask learners to edit Codex configuration. Lerience's ordinary learner path cannot depend on a
   terminal or provider configuration file.
 

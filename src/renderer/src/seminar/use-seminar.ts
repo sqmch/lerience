@@ -16,7 +16,7 @@ export interface SeminarController {
   /** What the learner may change about this session; null when unavailable. */
   controls: SessionControls | null;
   /** Change model, effort, or autonomy for this session only. */
-  setControls: (patch: SessionControlPatch) => Promise<void>;
+  setControls: (patch: SessionControlPatch) => Promise<boolean>;
   /** A message typed during a turn, waiting for it to finish. */
   queued: string | null;
   /** Drop the queued message before it is sent. */
@@ -218,6 +218,7 @@ export function useSeminar({
      provider reports the resolved model on its init frame, which lands after
      the surface has already mounted. */
   const sessionOpen = state.phase !== "closed";
+  const turnIdle = state.phase === "idle";
   useEffect(() => {
     if (!sessionOpen) {
       setControlsState(null);
@@ -233,20 +234,23 @@ export function useSeminar({
     return () => {
       cancelled = true;
     };
-  }, [sessionOpen, state.items.length]);
+  }, [sessionOpen, state.items.length, turnIdle]);
 
-  const setControls = useCallback(async (patch: SessionControlPatch): Promise<void> => {
+  const setControls = useCallback(async (patch: SessionControlPatch): Promise<boolean> => {
     dispatch({ type: "control_change_started" });
     try {
       const next = await window.praxeum.setSeminarControls(patch);
-      if (next !== null) setControlsState(next);
+      if (next === null) throw new Error("Session controls are unavailable.");
+      setControlsState(next);
       dispatch({ type: "control_change_succeeded" });
+      return true;
     } catch {
       dispatch({
         type: "control_change_failed",
         message:
           "That change didn't apply. Your tutor is still connected, and your previous settings are still active.",
       });
+      return false;
     }
   }, []);
 

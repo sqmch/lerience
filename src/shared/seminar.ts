@@ -91,6 +91,15 @@ export interface SessionModelOption {
 /** How much the tutor may do without asking. Ids are the provider's own; the
  *  app never invents a mode or reorders the risk ladder. */
 export interface SessionAutonomyOption {
+  /** This offered mode runs without approval prompts; sandbox scope is unchanged. */
+  skipsApprovalPrompts?: boolean;
+  id: string;
+  label: string;
+  description: string;
+}
+
+/** Provider-owned filesystem/network scope, separate from approval prompts. */
+export interface SessionAccessOption {
   id: string;
   label: string;
   description: string;
@@ -108,6 +117,7 @@ export interface SessionAutonomyOption {
 export interface SessionControls {
   models: SessionModelOption[];
   autonomy: SessionAutonomyOption[];
+  access?: SessionAccessOption[];
   /** Learner-selected values that this provider can only apply when the next
    *  turn starts. `current` remains the provider-confirmed state until then. */
   pending?: SessionControlPatch;
@@ -115,6 +125,7 @@ export interface SessionControls {
     model: string | null;
     effort: SessionEffort | null;
     autonomy: string | null;
+    access?: string | null;
   };
 }
 
@@ -123,6 +134,7 @@ export interface SessionControlPatch {
   model?: string | null;
   effort?: SessionEffort | null;
   autonomy?: string;
+  access?: string;
 }
 
 export interface AgentSession {

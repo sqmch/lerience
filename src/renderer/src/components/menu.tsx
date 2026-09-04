@@ -54,6 +54,7 @@ export function Menu<T extends string>({
   onChange,
   align = "start",
   trigger,
+  disabled = false,
 }: {
   /** Names the control for assistive tech; never drawn. */
   label: string;
@@ -63,6 +64,7 @@ export function Menu<T extends string>({
   align?: "start" | "end";
   /** What the closed control shows. Defaults to the selected option's label. */
   trigger?: ReactNode;
+  disabled?: boolean;
 }): React.JSX.Element {
   const selected = options.find((option) => option.value === value);
 
@@ -70,6 +72,7 @@ export function Menu<T extends string>({
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
         aria-label={label}
+        disabled={disabled}
         className="text-ink-dim hover:text-hi hover:bg-accent-wash data-[state=open]:bg-accent-wash data-[state=open]:text-hi focus-visible:focus-frame focus-visible:text-hi flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1.5 text-2xs transition-colors"
       >
         <span className="max-w-40 truncate">{trigger ?? selected?.label ?? label}</span>

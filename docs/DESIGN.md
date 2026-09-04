@@ -169,9 +169,10 @@ Onboarding is protocol-owned and file-derived:
 The build is a dedicated wait surface, not a transcript with a tiny activity row. It shows the
 course identity, a plain-language expectation that promises no duration, indeterminate then
 complete progress, elapsed time, current tool activity, and which parts of the module have landed.
-The parts are the module's fixed shape from the engine's format; a part is marked only when a file
-under it has appeared, and nothing is claimed about order or what is still to come. The landed
-paths stay available behind a closed disclosure, grouped by directory. Write plumbing — atomic-write
+The parts are the module's fixed shape from the engine's format; the counter starts at zero and a
+part is marked only when a file under it exists in the refreshed disk inventory. Nothing is claimed
+about order or what is still to come. The landed paths stay available behind a closed disclosure,
+grouped by directory. Write plumbing — atomic-write
 twins, package-manager temporaries, dependency trees — is noise and stays filtered.
 
 The live edge of conversation remains available for real questions and approvals, but earlier

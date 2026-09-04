@@ -54,30 +54,40 @@ Four hours per week, aiming for a desk-sized demo.
 
 type Stage = "opening" | "interview" | "arc" | "building" | "ready" | "silent";
 
-function courseFor(stage: Stage): CourseSnapshot {
-  const modules =
-    stage === "ready"
-      ? [
-          {
-            id: "00-one-reading",
-            title: "One reading, named well",
-            phase: 0,
-            phaseName: "Make readings trustworthy",
-            runtime: "node",
-            estimatedHours: 2,
-            status: "not-started" as const,
-            bossCheck: false,
-            hasVisual: false,
-            hasChecks: true,
-            hasScaffold: true,
-            checkAttempts: 0,
-            hintsUsed: [],
-            lessonPath: null,
-            briefPath: null,
-            quizPath: null,
-          },
-        ]
-      : [];
+const MODULE_FILES = [
+  "module.json",
+  "LESSON.md",
+  "BRIEF.md",
+  "quiz.md",
+  "scaffold/package.json",
+  "scaffold/src/reading.ts",
+  "checks/reading.test.ts",
+  "hints/01.md",
+].map((file) => `curriculum/00-one-reading/${file}`);
+
+function courseFor(stage: Stage, published = stage === "ready"): CourseSnapshot {
+  const modules = published
+    ? [
+        {
+          id: "00-one-reading",
+          title: "One reading, named well",
+          phase: 0,
+          phaseName: "Make readings trustworthy",
+          runtime: "node",
+          estimatedHours: 2,
+          status: "not-started" as const,
+          bossCheck: false,
+          hasVisual: false,
+          hasChecks: true,
+          hasScaffold: true,
+          checkAttempts: 0,
+          hintsUsed: [],
+          lessonPath: "curriculum/00-one-reading/LESSON.md",
+          briefPath: "curriculum/00-one-reading/BRIEF.md",
+          quizPath: "curriculum/00-one-reading/quiz.md",
+        },
+      ]
+    : [];
   const courseDoc = stage === "arc" || stage === "building" || stage === "ready" ? ARC : null;
   return {
     rootPath: ROOT,
@@ -93,7 +103,13 @@ function courseFor(stage: Stage): CourseSnapshot {
       labClaims: [],
       courseDoc,
       title: courseDoc === null ? null : "A small weather display",
-      files: [],
+      files: [
+        ...(courseDoc === null ? [] : ["COURSE.md"]),
+        // A real but uncounted module note enters the build stage before the
+        // staged lesson is published. None of the seven parts exists yet.
+        ...(stage === "building" ? ["curriculum/00-one-reading/README.md"] : []),
+        ...(published ? MODULE_FILES : []),
+      ],
     },
   };
 }
@@ -127,7 +143,9 @@ function scriptFor(stage: Stage): { events: AgentEvent[]; busy: boolean } {
         {
           type: "message_delta",
           delta:
-            "Building module 00 now: a short lesson, a reading parser scaffold, and checks for missing units and timestamps.",
+            // Long enough to overflow the build preview after the animated
+            // reveal, so its disclosure must follow rendered text too.
+            "Building module 00 now: a short lesson, a reading parser scaffold, and checks for missing units and timestamps. The lesson follows one fictional sensor reading from its source through parsing and validation. The scaffold keeps each step visible so you can inspect the original value, explain each transformation, and decide what to do when a required field is absent. I am also adding examples that distinguish a missing measurement from a measured zero, with checks for both cases.",
         },
         {
           type: "tool_activity",
@@ -300,6 +318,7 @@ function installBridge(
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
+  let courseSnapshot = courseFor(stage);
   let editorCatalog: EditorCatalog = {
     selectedEditorId: "vscode",
     chosen: false,
@@ -379,9 +398,32 @@ function installBridge(
     autonomy: [
       { id: "untrusted", label: "Ask every time", description: "asks" },
       { id: "on-request", label: "Decide for me", description: "judges each request" },
-      { id: "never", label: "Never ask", description: "does not pause for approval" },
+      {
+        id: "never",
+        label: "Never ask",
+        description: "does not pause for approval",
+        skipsApprovalPrompts: true,
+      },
     ],
-    current: { model: "fixture-model", effort: "xhigh", autonomy: "on-request" },
+    access: [
+      {
+        id: "workspace-write",
+        label: "Course folder",
+        description: "Writes stay in this course folder. Codex's sandbox restrictions apply.",
+      },
+      {
+        id: "danger-full-access",
+        label: "Full access",
+        description:
+          "Your tutor can write outside this course folder and use the network. For this session only.",
+      },
+    ],
+    current: {
+      model: "fixture-model",
+      effort: "xhigh",
+      autonomy: "on-request",
+      access: "workspace-write",
+    },
   };
 
   // @ts-expect-error — the harness supplies only what this surface touches.
@@ -393,6 +435,7 @@ function installBridge(
     cancelTutorProviderLogin: () => Promise.resolve(),
     startSeminar: () => Promise.resolve({ ok: true }),
     currentSeminar: () => Promise.resolve(snapshot),
+    currentCourse: () => Promise.resolve(courseSnapshot),
     sendSeminarMessage: () => Promise.resolve(),
     retrySeminarTurn: () => Promise.resolve(),
     respondToSeminarApproval: () => Promise.resolve(),
@@ -406,48 +449,39 @@ function installBridge(
     endSeminar: () => Promise.resolve(),
     onSeminarEvent: (listener: (event: AgentEvent) => void) => {
       eventListeners.push(listener);
-      // Replay after mount, the way a live session's stream arrives. A build
-      // lands its first file BEFORE the tutor's build turn is replayed, in a
-      // tick of its own: the build screen starts its conversation at the first
-      // message after building began, and a fixture that delivers the words
-      // first would file them under the interview and show nothing.
+      // Replay after the initial zero-part snapshot enters the build stage,
+      // so the streaming prose belongs to the build rather than the interview.
       setTimeout(() => {
-        if (stage === "building") {
-          for (const notify of changeListeners) notify(["curriculum/00-one-reading/module.json"]);
-        }
-      }, 30);
-      setTimeout(() => {
-        for (const event of script.events) listener(event);
-        if (stage === "building") {
-          for (const path of [
-            "COURSE.md",
-            "tutor/progress.json",
-            "tutor/journal.md",
-            // Write plumbing lands beside every real write — the app's own
-            // temp twins, pnpm's install temporaries, the dependency tree —
-            // and the surface must filter it rather than show it.
-            "curriculum/00-one-reading/LESSON.md.tmp.99999.deadbeef",
-            "curriculum/00-one-reading/module.json",
-            "curriculum/00-one-reading/LESSON.md",
-            "curriculum/00-one-reading/BRIEF.md",
-            "curriculum/00-one-reading/quiz.md",
-            "curriculum/00-one-reading/scaffold",
-            "curriculum/00-one-reading/scaffold/package.json",
-            "curriculum/00-one-reading/scaffold/_tmp_16784_c7253531e0a568beb29c27dd637c7960",
-            "curriculum/00-one-reading/scaffold/node_modules",
-            "curriculum/00-one-reading/scaffold/src/reading.ts",
-          ]) {
-            // The real watch pushes course-relative, forward-slash paths.
-            for (const notify of changeListeners) notify([path]);
+        for (const event of script.events) {
+          // Let the build's prose animate before tool activity ends the
+          // message. A single React batch hides stale overflow measurements.
+          if (
+            stage === "building" &&
+            (event.type === "tool_activity" || event.type === "approval_request")
+          ) {
+            setTimeout(() => listener(event), 2000);
+          } else {
+            listener(event);
           }
         }
       }, 60);
+      if (stage === "building") {
+        setTimeout(() => {
+          courseSnapshot = courseFor(stage, true);
+          // A populated directory move can emit only one notification. The
+          // surface must count the refreshed inventory, not this event path.
+          for (const notify of changeListeners) notify(["curriculum/00-one-reading"]);
+        }, 5000);
+      }
       return () => undefined;
     },
     onSeminarSnapshot: () => () => undefined,
     onCourseChanged: (listener: (paths: string[]) => void) => {
       changeListeners.push(listener);
-      return () => undefined;
+      return () => {
+        const index = changeListeners.indexOf(listener);
+        if (index !== -1) changeListeners.splice(index, 1);
+      };
     },
     getTheme: () => Promise.resolve({ preference: "dark", dark: true }),
     setTheme: (preference: string) => Promise.resolve({ preference, dark: preference !== "light" }),
@@ -660,6 +694,15 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
    *  "you'll choose a tutor" line can be seen. Reset by the `key` on this
    *  component whenever the screen changes. */
   const [deferred, setDeferred] = useState(false);
+  const [course, setCourse] = useState(() => courseFor(stage));
+  useEffect(() => {
+    // Mirror App's watch-triggered snapshot refresh for production onboarding.
+    return window.praxeum.onCourseChanged(() => {
+      void window.praxeum.currentCourse().then((snapshot) => {
+        if (snapshot !== null) setCourse(snapshot);
+      });
+    });
+  }, []);
 
   /* The course view brings its OWN AppShell — it is a surface that owns its
      frame contents (ADR-019), not a child of someone else's. */
@@ -699,7 +742,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
     return (
       <OnboardingSurface
         key={stage}
-        course={courseFor(stage)}
+        course={course}
         justCreated={stage === "opening"}
         onLeaveCourse={() => undefined}
         onEnterCourse={() => undefined}

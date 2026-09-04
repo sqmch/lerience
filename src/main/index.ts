@@ -942,6 +942,7 @@ void app.whenReady().then(async () => {
         checked.effort = raw.effort as SessionControlPatch["effort"];
       }
       if (typeof raw.autonomy === "string") checked.autonomy = raw.autonomy;
+      if (typeof raw.access === "string") checked.access = raw.access;
       return await sessionConductor().applySessionControls(checked);
     },
   );

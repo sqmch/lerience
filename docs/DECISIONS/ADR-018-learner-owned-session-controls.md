@@ -48,6 +48,14 @@ The invariants that make this safe, all mechanized in the adapter:
    provider-confirmed values, keeps the composer usable, and explains beside the controls that
    the tutor is still connected. It never enters the conversation's fatal failure state.
 
+The arc-review build action uses the adapter's explicitly marked no-approval option, including
+its provider-owned description. It waits for that option to apply or stage before sending assent.
+If the request fails, the arc stays visible with a local error and no build message is sent.
+Providers without such an option have no checkbox. Codex's `never` approval policy leaves the
+course-scoped sandbox in ADR-036 intact; it does not grant unrestricted filesystem or network access.
+ADR-037 adds a separate explicit Codex access choice, with its own current and pending values and
+the same next-turn boundary. Approval policy and filesystem/network scope remain separate controls.
+
 ## Why
 
 ADR-004 says the app must not set `model`, `tools`, or `permissionMode`, because the learner's

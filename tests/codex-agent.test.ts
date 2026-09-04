@@ -98,6 +98,55 @@ async function events(iterator: AsyncIterator<AgentEvent>, count: number): Promi
 }
 
 describe("CodexAgentSession", () => {
+  it("stages explicit access separately and restores the verified course policy", async () => {
+    const { connection, session } = setup();
+    connection.responses.set("turn/start", { turn: { id: "access-turn", status: "completed" } });
+    const initial = await session.describeControls();
+    expect(initial.current.access).toBe("workspace-write");
+    await expect(session.applyControls({ access: "arbitrary" })).rejects.toThrow(/not available/);
+    const staged = await session.applyControls({ access: "danger-full-access", autonomy: "never" });
+    expect(staged.current.access).toBe("workspace-write");
+    expect(staged.pending).toEqual({ access: "danger-full-access", autonomy: "never" });
+    expect(connection.calls.filter((call) => call.method === "turn/start")).toEqual([]);
+    session.send("Build");
+    await vi.waitFor(() => expect(session.busy).toBe(false));
+    expect(
+      connection.calls.filter((call) => call.method === "turn/start").at(-1)?.params,
+    ).toMatchObject({ approvalPolicy: "never", sandboxPolicy: { type: "dangerFullAccess" } });
+    expect((await session.describeControls()).current.access).toBe("danger-full-access");
+    await session.applyControls({ access: "workspace-write" });
+    session.send("Continue in the course");
+    await vi.waitFor(() => expect(session.busy).toBe(false));
+    expect(
+      connection.calls.filter((call) => call.method === "turn/start").at(-1)?.params,
+    ).toMatchObject({
+      sandboxPolicy: {
+        type: "workspaceWrite",
+        writableRoots: [],
+        networkAccess: false,
+        excludeTmpdirEnvVar: true,
+        excludeSlashTmp: true,
+      },
+    });
+    expect((await session.describeControls()).current.access).toBe("workspace-write");
+    await session.end();
+    // The startup write proof runs real PowerShell on Windows; a cold CI
+    // process can exceed Vitest's default 5s before the control assertions.
+  }, 30_000);
+
+  it("does not report a requested access policy as active when turn/start fails", async () => {
+    const { connection, session } = setup();
+    await session.applyControls({ access: "danger-full-access" });
+    connection.responses.set("turn/start", null);
+    session.send("Build");
+    await vi.waitFor(() => expect(session.busy).toBe(false));
+    expect(await session.describeControls()).toMatchObject({
+      current: { access: "workspace-write" },
+      pending: { access: "danger-full-access" },
+    });
+    await session.end();
+  });
+
   it("rejects writable metadata when a provider sandbox write cannot run", async () => {
     const { connection, session } = setup();
     connection.responses.set("command/exec", {
@@ -351,12 +400,25 @@ describe("CodexAgentSession", () => {
           efforts: ["high", "xhigh"],
         },
       ],
-      autonomy: expect.arrayContaining([expect.objectContaining({ id: "never" })]),
-      current: { model: "gpt-5.6-codex", effort: "high", autonomy: "on-request" },
+      autonomy: expect.arrayContaining([
+        expect.objectContaining({ id: "never", skipsApprovalPrompts: true }),
+      ]),
+      access: expect.arrayContaining([expect.objectContaining({ id: "danger-full-access" })]),
+      current: {
+        model: "gpt-5.6-codex",
+        effort: "high",
+        autonomy: "on-request",
+        access: "workspace-write",
+      },
     });
     await expect(session.applyControls({ effort: "xhigh", autonomy: "never" })).resolves.toEqual(
       expect.objectContaining({
-        current: { model: "gpt-5.6-codex", effort: "high", autonomy: "on-request" },
+        current: {
+          model: "gpt-5.6-codex",
+          effort: "high",
+          autonomy: "on-request",
+          access: "workspace-write",
+        },
         pending: { effort: "xhigh", autonomy: "never" },
       }),
     );
@@ -381,6 +443,7 @@ describe("CodexAgentSession", () => {
         model: "gpt-5.6-codex",
         effort: "xhigh",
         autonomy: "never",
+        access: "workspace-write",
       });
       expect(applied).not.toHaveProperty("pending");
     });

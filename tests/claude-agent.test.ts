@@ -534,6 +534,9 @@ describe("Claude adapter normalization", () => {
     // Least to most autonomy; "Never ask" is offered because the learner asked
     // for it, and is labelled as what it is (ADR-018).
     expect(ids).toEqual(["default", "acceptEdits", "auto", "bypassPermissions"]);
+    expect(
+      controls.autonomy.filter((mode) => mode.skipsApprovalPrompts).map((mode) => mode.id),
+    ).toEqual(["bypassPermissions"]);
     // The modes that would read as the tutor failing are still not offered.
     expect(ids).not.toContain("plan");
     expect(ids).not.toContain("dontAsk");

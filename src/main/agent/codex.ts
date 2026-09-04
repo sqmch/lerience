@@ -5,6 +5,7 @@ import type {
   AgentEvent,
   AgentSession,
   SessionAutonomyOption,
+  SessionAccessOption,
   SessionControlPatch,
   SessionControls,
   SessionEffort,
@@ -42,9 +43,31 @@ const AUTONOMY: SessionAutonomyOption[] = [
   {
     id: "never",
     label: "Never ask",
+    skipsApprovalPrompts: true,
     description: "Codex will not pause for approval. Its configured sandbox still applies.",
   },
 ];
+
+const ACCESS: SessionAccessOption[] = [
+  {
+    id: "workspace-write",
+    label: "Course folder",
+    description: "Writes stay in this course folder. Codex's sandbox restrictions apply.",
+  },
+  {
+    id: "danger-full-access",
+    label: "Full access",
+    description:
+      "Your tutor can write outside this course folder and use the network. For this session only.",
+  },
+];
+
+function knownAccess(policy: unknown): string | null {
+  if (!isRecord(policy)) return null;
+  if (policy.type === "workspaceWrite") return "workspace-write";
+  if (policy.type === "dangerFullAccess") return "danger-full-access";
+  return null;
+}
 
 interface NormalizedError {
   code: AgentErrorCode;
@@ -231,6 +254,8 @@ export class CodexAgentSession implements AgentSession {
   private currentModel: string | null = null;
   private currentEffort: SessionEffort | null = null;
   private currentAutonomy: string | null = null;
+  private currentAccess: string | null = null;
+  private courseSandbox: Record<string, unknown> | null = null;
   /** App Server has no thread-settings mutation request. Learner choices are
    *  therefore staged here and sent as overrides on the next real turn. */
   private pendingControls: SessionControlPatch = {};
@@ -287,6 +312,9 @@ export class CodexAgentSession implements AgentSession {
     if (!(await this.ready) || this.threadId === null) throw new Error("Codex is unavailable.");
     const models = await this.loadModels();
     const next: SessionControlPatch = { ...this.pendingControls, ...patch };
+    if (patch.access !== undefined && !ACCESS.some((option) => option.id === patch.access)) {
+      throw new Error("That access setting is not available in this session.");
+    }
 
     if (patch.model !== undefined) {
       if (patch.model !== null && !models.some((model) => model.id === patch.model)) {
@@ -381,6 +409,8 @@ export class CodexAgentSession implements AgentSession {
       throw new Error("Codex returned an invalid session.");
     }
     await verifyCodexCourseWrite(this.client, this.courseDir, response);
+    this.courseSandbox = structuredClone(response.sandbox);
+    this.currentAccess = knownAccess(response.sandbox);
     this.threadId = response.thread.id;
     this.currentModel = nonEmptyString(response.model);
     this.currentEffort = knownEffort(response.reasoningEffort);
@@ -404,6 +434,12 @@ export class CodexAgentSession implements AgentSession {
       }
       if (pending.effort !== undefined) params.effort = pending.effort;
       if (pending.autonomy !== undefined) params.approvalPolicy = pending.autonomy;
+      if (pending.access !== undefined) {
+        params.sandboxPolicy =
+          pending.access === "danger-full-access"
+            ? { type: "dangerFullAccess" }
+            : structuredClone(this.courseSandbox);
+      }
 
       const response = await this.client.request("turn/start", params);
       if (!isRecord(response) || !isRecord(response.turn) || typeof response.turn.id !== "string") {
@@ -456,6 +492,9 @@ export class CodexAgentSession implements AgentSession {
       this.currentModel = nonEmptyString(params.threadSettings.model);
       this.currentEffort = knownEffort(params.threadSettings.effort);
       this.currentAutonomy = knownAutonomy(params.threadSettings.approvalPolicy);
+      if (params.threadSettings.sandboxPolicy !== undefined) {
+        this.currentAccess = knownAccess(params.threadSettings.sandboxPolicy);
+      }
       return;
     }
     if (method === "turn/completed" && isRecord(params.turn)) {
@@ -590,6 +629,7 @@ export class CodexAgentSession implements AgentSession {
         efforts: model.efforts,
       })),
       autonomy: AUTONOMY,
+      access: ACCESS,
       ...(Object.keys(this.pendingControls).length === 0
         ? {}
         : { pending: { ...this.pendingControls } }),
@@ -597,6 +637,7 @@ export class CodexAgentSession implements AgentSession {
         model: this.currentModel,
         effort: this.currentEffort,
         autonomy: this.currentAutonomy,
+        access: this.currentAccess,
       },
     };
   }
@@ -610,6 +651,8 @@ export class CodexAgentSession implements AgentSession {
     if (patch.autonomy !== undefined && patch.autonomy !== this.currentAutonomy) {
       changed.autonomy = patch.autonomy;
     }
+    if (patch.access !== undefined && patch.access !== this.currentAccess)
+      changed.access = patch.access;
     return changed;
   }
 
@@ -626,6 +669,10 @@ export class CodexAgentSession implements AgentSession {
     if (applied.autonomy !== undefined && remaining.autonomy === applied.autonomy) {
       this.currentAutonomy = applied.autonomy;
       delete remaining.autonomy;
+    }
+    if (applied.access !== undefined && remaining.access === applied.access) {
+      this.currentAccess = applied.access;
+      delete remaining.access;
     }
     this.pendingControls = remaining;
   }
