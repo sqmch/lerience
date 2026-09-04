@@ -18,3 +18,12 @@ Existing courses do not receive those changes with an app update. ADR-027's expl
 previews only provenance-bound engine paths, refuses learner edits/collisions, and applies a
 validated engine commit only from a future learner action. Increment `engineVersion` whenever a
 reviewed template delta should become such an offered update.
+
+Engine 0.1.1 clarifies orientation, work blocks, source verification, and independent learning
+evidence in the canonical tutor protocol. Course format 0, schemas, scripts, and record locations
+are unchanged. Existing courses retain their own protocol and materials; this patch adds no update
+UI or automatic migration. The updater core remains subject to ADR-027's explicit action boundary.
+
+The repository-owned [teaching protocol evaluation](evaluations/teaching-protocol.md) records the
+audit, worked cases, mechanical evidence, and limits of the qualitative review. It is development
+material and is not copied into courses.
