@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   assembleRuntime,
   copyNpmTree,
@@ -13,6 +13,14 @@ import { createRuntimeEnvironment } from "../src/main/runtime-layout";
 import { loadAssembledRuntime } from "./helpers/assembled-runtime";
 
 const temporaryRoots: string[] = [];
+const require = createRequire(import.meta.url);
+let electron: string;
+
+beforeAll(() => {
+  // A fresh dependency install downloads Electron on first require. Keep that
+  // setup separate from the bounded native launcher checks.
+  if (process.platform === "win32") electron = require("electron") as string;
+}, 120_000);
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
@@ -22,7 +30,6 @@ describe("runtime input normalization", () => {
   it.skipIf(process.platform !== "win32")(
     "runs packaged npm and npx from PowerShell without host Node",
     async () => {
-      const require = createRequire(import.meta.url);
       const root = fs.mkdtempSync(path.join(os.tmpdir(), "praxeum npm launch test "));
       temporaryRoots.push(root);
       const assembled = process.env.PRAXEUM_RUNTIME_ROOT ? loadAssembledRuntime() : undefined;
@@ -33,7 +40,6 @@ describe("runtime input normalization", () => {
         await copyNpmTree(path.dirname(require.resolve("npm/package.json")), npmRoot);
         await writeJavaScriptToolShims(npmRoot, "win32");
       }
-      const electron = require("electron") as string;
       const environment = createRuntimeEnvironment(
         [path.join(npmRoot, "bin")],
         {
@@ -74,7 +80,7 @@ describe("runtime input normalization", () => {
         spawnSync(
           powershell,
           ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command],
-          { cwd: root, env, encoding: "utf8", timeout: 15000 },
+          { cwd: root, env, encoding: "utf8", timeout: 30000 },
         );
       for (const command of [
         "npm --version",
@@ -84,7 +90,7 @@ describe("runtime input normalization", () => {
       ]) {
         const result = run(command);
         expect(result.stderr).toBe("");
-        expect(result.status).toBe(0);
+        expect(result.status, JSON.stringify({ command, ...result })).toBe(0);
         expect(result.stdout.trim()).toBe(require("npm/package.json").version);
       }
       const script = run("npm run fixture -- 'argument with spaces'; exit $LASTEXITCODE");
@@ -129,7 +135,7 @@ describe("runtime input normalization", () => {
           cwd: root,
           env: environment,
           encoding: "utf8",
-          timeout: 15000,
+          timeout: 30000,
         });
         expect(result.stderr).toBe("");
         expect(result.status).toBe(0);
@@ -144,8 +150,8 @@ describe("runtime input normalization", () => {
         ).toBe(1);
       }
     },
-    // Fifteen native shell launches share this test; each still has a 15s cap.
-    90000,
+    // Fifteen native shell launches share this test; each still has a 30s cap.
+    120000,
   );
 
   it("excludes package-manager shims nested inside the npm package", async () => {

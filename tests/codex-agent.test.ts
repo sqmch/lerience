@@ -130,7 +130,9 @@ describe("CodexAgentSession", () => {
     });
     expect((await session.describeControls()).current.access).toBe("workspace-write");
     await session.end();
-  });
+    // The startup write proof runs real PowerShell on Windows; a cold CI
+    // process can exceed Vitest's default 5s before the control assertions.
+  }, 30_000);
 
   it("does not report a requested access policy as active when turn/start fails", async () => {
     const { connection, session } = setup();
