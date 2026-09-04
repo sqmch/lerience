@@ -2,6 +2,20 @@
    dependency-light until the component layer lands). Size comes from the
    consuming CSS — these only carry geometry. */
 
+/** The application mark: a stem over a base, equal legs, a gap of half a stroke.
+ *  Same geometry as build/icon.svg at one unit per grid cell (stroke 4, gap 2,
+ *  legs 14 on a 24 canvas). The viewBox is the mark's own 14×20 box rather than
+ *  the canvas, so it aligns to neighbouring text without invisible padding and
+ *  lands on whole pixels at 10px tall. Size comes from the consuming CSS. */
+export function MarkGlyph({ className }: { className?: string }): React.JSX.Element {
+  return (
+    <svg className={className} viewBox="5 2 14 20" aria-hidden="true" focusable="false">
+      <path d="M5 2H9V16H5Z" fill="currentColor" />
+      <path d="M5 18H19V22H5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function DiamondGlyph({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg
