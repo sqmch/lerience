@@ -224,32 +224,11 @@
      Defining them there means one definition serving both `var(--text-md)` and
      the `text-md` utility, instead of two that can drift (ADR-017). */
 
-  /* measures — a reading product. Prose never exceeds --measure-read.
-
-     RE-CUT 2026-08-13, and it was a real bug rather than a taste change:
-     this was `68ch`, and `ch` is the width of the digit ZERO, not of an
-     average character. In Literata at 17px a "0" is 10.4px while real prose
-     averages 7.7px — so `68ch` was 710px, which is about NINETY-TWO characters
-     a line. The classic comfortable band is 60–75. Every reading surface in
-     the app has been running a third too wide since D2, measured in the DOM
-     rather than argued from the CSS.
-
-     40rem (640px) balances lesson prose and embedded technical material for
-     two reasons:
-
-     - 640px is ~83 characters of Literata at 17px. Above the classic 60–75
-       band, but that band is set for uninterrupted narrative prose; these
-       lessons are prose interleaved with code, tables and lists, which all
-       break the line-tracking that the narrow measure protects.
-     - It ALSO settles the code trade recorded in prose.css: 640px holds ~71
-       characters of 15px mono, so ordinary lesson code stops scrolling
-       horizontally. One number fixed both complaints.
-
-     Stated in rem, not ch, for the reason the overlay column already learned:
-     `ch` resolves against each element's OWN font, so a serif paragraph and a
-     sans caption asked for the same measure get different widths — and
-     therefore different left edges. */
-  --measure-read: 40rem;
+  /* Shared tutor and course reading measure. 48rem (768px) gives prose, code,
+     and tables 20% more room than the previous 40rem, with type sizes unchanged.
+     Keep this in rem: ch resolves against each element's font, giving serif
+     prose and sans captions different widths and left edges. */
+  --measure-read: 48rem;
   --measure-narrow: 34rem; /* auth forms, empty states, focused columns */
   --measure-page: 64rem; /* dashboard/app-shell max width */
 
@@ -263,14 +242,10 @@
   --rail-w: 288px; /* course track, default */
   --rail-w-min: 240px; /* below this the two-line module titles stop fitting */
   --rail-w-max: 420px;
-  --talk-w: 480px; /* the seminar column, default */
+  --talk-w: 568px; /* 528px of conversation plus 40px gutters, up from 440px */
   --talk-w-min: 360px; /* the brief's binding floor: chat usable at 360 */
-  /* 960px, not 720. The old cap was set against a laptop; on a wide display it
-     left the seminar at a quarter of the window while the reading pane sat
-     mostly empty around its 40rem measure — the learner could see room they
-     were not allowed to take. Two full defaults is the ceiling: past it the
-     tutor's lines outrun a comfortable measure, which is the wall the cap
-     should hit rather than one an arbitrary distance short of it. */
+  /* Allow a wider seminar on large displays. Tutor prose still respects the
+     shared reading measure when the learner expands the pane beyond it. */
   --talk-w-max: 960px;
   --page-w-min: 420px; /* reading pane floor: 68ch of Literata plus gutters */
   --seam-w: 9px; /* gutter hit area; the painted rule inside it is 1px */
@@ -345,11 +320,9 @@
   /* the first-run column: wide enough that its one explanatory line sets on a
      single line, which is the measure the copy was written against */
   --measure-start: 38rem;
-  /* onboarding's centred conversation. Wider than the reading measure because
-     it carries more than prose — the arc document, decision controls, and the
-     composer all sit in this column — while the prose inside it stays bound to
-     --measure-read and never runs the full width. */
-  --measure-converse: 43rem;
+  /* Onboarding's centred conversation includes 3rem of horizontal gutters,
+     leaving the full reading measure for the transcript, arc, and composer. */
+  --measure-converse: 51rem;
   /* (The material pane's narrow point for container queries lives in
      `index.css` as --container-pane, and has to be a literal there: Tailwind
      writes the @container rule at build time. See the note beside it.) */

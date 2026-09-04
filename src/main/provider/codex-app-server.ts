@@ -44,7 +44,7 @@ export interface CodexAppServerConnection {
   close(): void;
 }
 
-export type CodexAppServerFactory = () => CodexAppServerConnection;
+export type CodexAppServerFactory = (cwd?: string) => CodexAppServerConnection;
 
 export interface CodexAppServerFactoryOptions {
   executable: string;
@@ -208,10 +208,10 @@ export class CodexAppServerClient implements CodexAppServerConnection {
 export function createCodexAppServerFactory(
   options: CodexAppServerFactoryOptions,
 ): CodexAppServerFactory {
-  return () =>
+  return (cwd) =>
     new CodexAppServerClient(
       options.clientVersion,
-      createStdioTransport(options.executable, options.environment),
+      createStdioTransport(options.executable, options.environment, cwd),
     );
 }
 
@@ -221,11 +221,13 @@ export function createCodexAppServerFactory(
 export function createStdioTransport(
   executable = "codex",
   environment?: Readonly<Record<string, string>>,
+  cwd?: string,
 ): CodexAppServerTransport {
   const child = spawn(executable, ["app-server"], {
     shell: false,
     windowsHide: true,
     stdio: ["pipe", "pipe", "pipe"],
+    ...(cwd === undefined ? {} : { cwd }),
     ...(environment === undefined ? {} : { env: environment }),
   });
   const lines = new Set<(line: string) => void>();

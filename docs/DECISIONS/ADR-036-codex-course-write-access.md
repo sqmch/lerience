@@ -5,9 +5,23 @@ Date: 2026-08-22 · Status: accepted · Amends ADR-004
 ## Decision
 
 The Codex adapter explicitly requests `workspace-write` when it starts an App Server thread and
-checks the effective sandbox returned by Codex before the tutor can begin. The thread working
-directory is the course root, so this mode lets the tutor create and update course files without
-granting silent writes elsewhere.
+checks the effective sandbox returned by Codex before the tutor can begin. The App Server process
+and thread both start in the course root. Session-local sandbox configuration excludes additional
+writable roots and temporary directories, so unattended writes stay within the course.
+
+As amended on 2026-09-04, metadata alone is insufficient. Before the first `turn/start`, Lerience
+runs a fixed marker-write command through App Server's stable `command/exec` with the returned
+sandbox policy and working directory. Lerience checks the actual marker bytes, removes only that
+temporary marker, and then permits the interview. Missing bytes, a rejected command, a timeout, or
+an unexpected working directory or write scope fails startup with Codex repair/update guidance.
+This does not use a model turn or create course content.
+
+On Windows, provider discovery requires Codex's command-runner and sandbox-setup helpers alongside
+the executable or under `codex-resources`. It skips an incomplete candidate and continues through
+the ordinary discovered locations. These include complete runtimes in the Windows desktop app's
+content-addressed `%LOCALAPPDATA%/OpenAI/Codex/bin` directories, newest installed first. Explorer
+does not inherit the PATH additions used by the Codex desktop terminal. It never copies helpers, downloads a provider, changes its
+configuration, or falls back to unrestricted execution.
 
 Lerience still leaves the model and approval policy unset at session start. Those values continue
 to come from the learner's Codex configuration, and the learner may change the supported controls
@@ -26,6 +40,24 @@ tutor state, QA, and session-close persistence all depend on them. `workspace-wr
 narrowest App Server mode that satisfies that contract. The adapter also checks Codex's returned
 policy so a future provider default or protocol change fails at session startup instead of after a
 learner completes the onboarding interview.
+
+The second Windows incident showed why the reported policy is only a prerequisite. The selected
+Codex 0.144.6 executable completed the handshake and reported `workspaceWrite`, but its installation
+lacked the sandbox command runner. The sandbox log reported helper lookup failure and
+`CreateProcessWithLogonW failed: 2`. A minimal provider-sandbox write reproduced the failure;
+a complete installed provider passed with the same course path and package-owned tools.
+
+The capability check is per session and per course. An interrupted onboarding keeps the existing
+transcript and uses the conductor's recovery flow. Retry checks capability again before any tutor
+turn. A successful startup check cannot guarantee that later external changes to the provider,
+filesystem, or policy will remain writable.
+
+Native regression acceptance runs `tests/codex-course-write.integration.test.ts` with
+`LERIENCE_CODEX_ACCEPTANCE_RESOURCES` set to an unpacked package's `resources` directory. It uses a
+temporary synthetic course, the discovered installed Codex, the package's tool environment, an
+actual marker write, and patches inside and outside the course with approval policy `never`.
+`LERIENCE_CODEX_ACCEPTANCE_EXECUTABLE` optionally selects an exact provider for diagnosis. This is
+separate from ordinary deterministic source tests and from the visible learner-path acceptance.
 
 ## Rejected
 
