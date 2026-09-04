@@ -42,7 +42,7 @@ describe("canonical Course Engine JSON Schemas", () => {
   it("records the exact source import independently from the course format version", () => {
     expect(engineManifest).toMatchObject({
       schemaVersion: 1,
-      engineVersion: "0.1.0",
+      engineVersion: "0.1.1",
       courseFormatVersion: 0,
       templateDirectory: "template",
       source: {
