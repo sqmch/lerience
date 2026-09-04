@@ -27,30 +27,30 @@ afterEach(() => {
 });
 
 describe("useSeminar session controls", () => {
-  it("keeps an IPC rejection local and preserves the confirmed controls", async () => {
-    const setSeminarControls = vi.fn(async () => {
-      throw new Error("Error invoking remote method: Codex rejected the request.");
-    });
+  it("refreshes pending access after a tool-only turn completes", async () => {
+    let listener: ((event: AgentEvent) => void) | undefined;
+    let providerControls: SessionControls = {
+      ...controls,
+      current: { ...controls.current, access: "workspace-write" },
+      pending: { access: "danger-full-access" },
+    };
     const bridge = {
       currentSeminar: async () => ({
-        lifecycle: "open" as const,
-        sessionId: "session-1",
+        lifecycle: "open",
+        sessionId: "tools-only",
         messages: [],
         totalCostUsd: 0,
-        turnInProgress: false,
+        turnInProgress: true,
       }),
-      seminarControls: async () => controls,
-      setSeminarControls,
-      onSeminarEvent: () => () => undefined,
+      seminarControls: async () => providerControls,
+      onSeminarEvent: (next: (event: AgentEvent) => void) => {
+        listener = next;
+        return () => undefined;
+      },
       onSeminarSnapshot: () => () => undefined,
     } as unknown as PraxeumApi;
     Object.defineProperty(window, "praxeum", { configurable: true, value: bridge });
-
     const observed: { current: SeminarController | null } = { current: null };
-    const seminar = (): SeminarController => {
-      if (observed.current === null) throw new Error("Seminar hook has not rendered.");
-      return observed.current;
-    };
     function Probe(): null {
       const controller = useSeminar({ currentModuleId: null, autoStart: false });
       useEffect(() => {
@@ -58,28 +58,79 @@ describe("useSeminar session controls", () => {
       }, [controller]);
       return null;
     }
-
-    const host = document.createElement("div");
-    root = createRoot(host);
-    await act(async () => {
-      root?.render(<Probe />);
-    });
-    await vi.waitFor(() => expect(seminar().controls).toEqual(controls));
-
-    await act(async () => {
-      await seminar().setControls({ effort: "high" });
-    });
-
-    expect(setSeminarControls).toHaveBeenCalledWith({ effort: "high" });
-    expect(seminar().controls).toEqual(controls);
-    expect(seminar().state.failure).toBeNull();
-    expect(seminar().state.phase).toBe("idle");
-    expect(seminar().state.controlNotice).toEqual({
-      kind: "error",
-      message:
-        "That change didn't apply. Your tutor is still connected, and your previous settings are still active.",
-    });
+    root = createRoot(document.createElement("div"));
+    await act(async () => root?.render(<Probe />));
+    expect(observed.current?.controls?.pending?.access).toBe("danger-full-access");
+    await act(async () =>
+      listener?.({ type: "tool_activity", name: "Shell", summary: "Running a command" }),
+    );
+    providerControls = {
+      ...controls,
+      current: { ...controls.current, access: "danger-full-access" },
+    };
+    await act(async () => listener?.({ type: "turn_complete" }));
+    expect(observed.current?.state.items).toHaveLength(0);
+    expect(observed.current?.controls?.current.access).toBe("danger-full-access");
+    expect(observed.current?.controls?.pending).toBeUndefined();
   });
+
+  it.each(["rejected", "unavailable"])(
+    "keeps %s controls local and preserves the confirmed controls",
+    async (result) => {
+      const setSeminarControls = vi.fn(async () => {
+        if (result === "unavailable") return null;
+        throw new Error("Error invoking remote method: Codex rejected the request.");
+      });
+      const bridge = {
+        currentSeminar: async () => ({
+          lifecycle: "open" as const,
+          sessionId: "session-1",
+          messages: [],
+          totalCostUsd: 0,
+          turnInProgress: false,
+        }),
+        seminarControls: async () => controls,
+        setSeminarControls,
+        onSeminarEvent: () => () => undefined,
+        onSeminarSnapshot: () => () => undefined,
+      } as unknown as PraxeumApi;
+      Object.defineProperty(window, "praxeum", { configurable: true, value: bridge });
+
+      const observed: { current: SeminarController | null } = { current: null };
+      const seminar = (): SeminarController => {
+        if (observed.current === null) throw new Error("Seminar hook has not rendered.");
+        return observed.current;
+      };
+      function Probe(): null {
+        const controller = useSeminar({ currentModuleId: null, autoStart: false });
+        useEffect(() => {
+          observed.current = controller;
+        }, [controller]);
+        return null;
+      }
+
+      const host = document.createElement("div");
+      root = createRoot(host);
+      await act(async () => {
+        root?.render(<Probe />);
+      });
+      await vi.waitFor(() => expect(seminar().controls).toEqual(controls));
+
+      await act(async () => {
+        expect(await seminar().setControls({ effort: "high" })).toBe(false);
+      });
+
+      expect(setSeminarControls).toHaveBeenCalledWith({ effort: "high" });
+      expect(seminar().controls).toEqual(controls);
+      expect(seminar().state.failure).toBeNull();
+      expect(seminar().state.phase).toBe("idle");
+      expect(seminar().state.controlNotice).toEqual({
+        kind: "error",
+        message:
+          "That change didn't apply. Your tutor is still connected, and your previous settings are still active.",
+      });
+    },
+  );
 
   it("queues a message while recovery hands off to the fresh opener", async () => {
     let eventListener: ((event: AgentEvent) => void) | null = null;

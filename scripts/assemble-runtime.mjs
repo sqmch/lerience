@@ -237,14 +237,28 @@ async function materializeRuntime({ platform, architecture, targetKey, ledger, s
   };
 }
 
-async function writeJavaScriptToolShims(npmRoot, platform) {
+export async function writeJavaScriptToolShims(npmRoot, platform) {
   const bin = path.join(npmRoot, "bin");
   await mkdir(bin, { recursive: true });
   if (platform === "win32") {
-    await writeFile(
-      path.join(bin, "npm.cmd"),
-      '@echo off\r\nif "%PRAXEUM_ELECTRON_EXECUTABLE%"=="" exit /b 1\r\nset "ELECTRON_RUN_AS_NODE=1"\r\n"%PRAXEUM_ELECTRON_EXECUTABLE%" "%~dp0npm-cli.js" %*\r\n',
-    );
+    // npm's published launchers assume a Node installation layout. Replace every
+    // shell variant so PowerShell and Git Bash use the same packaged CLI as cmd.
+    for (const command of ["npm", "npx"]) {
+      await writeFile(
+        path.join(bin, `${command}.cmd`),
+        `@echo off\r\nif "%PRAXEUM_ELECTRON_EXECUTABLE%"=="" exit /b 1\r\nset "ELECTRON_RUN_AS_NODE=1"\r\n"%PRAXEUM_ELECTRON_EXECUTABLE%" "%~dp0${command}-cli.js" %*\r\n`,
+      );
+      // Electron is a GUI executable on Windows. A pipeline makes PowerShell
+      // wait for it before reading LASTEXITCODE, while preserving stdout.
+      await writeFile(
+        path.join(bin, `${command}.ps1`),
+        `if (-not $env:PRAXEUM_ELECTRON_EXECUTABLE) { exit 1 }\r\n$previousNodeMode = $env:ELECTRON_RUN_AS_NODE\r\ntry {\r\n  $env:ELECTRON_RUN_AS_NODE = '1'\r\n  if ($MyInvocation.ExpectingInput) {\r\n    $input | & $env:PRAXEUM_ELECTRON_EXECUTABLE "$PSScriptRoot/${command}-cli.js" @args | Write-Output\r\n  } else {\r\n    & $env:PRAXEUM_ELECTRON_EXECUTABLE "$PSScriptRoot/${command}-cli.js" @args | Write-Output\r\n  }\r\n  $code = $LASTEXITCODE\r\n} finally {\r\n  $env:ELECTRON_RUN_AS_NODE = $previousNodeMode\r\n}\r\nexit $code\r\n`,
+      );
+      await writeFile(
+        path.join(bin, command),
+        `#!/bin/sh\nif [ -z "$PRAXEUM_ELECTRON_EXECUTABLE" ]; then exit 1; fi\nSCRIPT_DIR="$(CDPATH= cd -- "\${0%/*}" && pwd)"\nELECTRON_RUN_AS_NODE=1 exec "$PRAXEUM_ELECTRON_EXECUTABLE" "$SCRIPT_DIR/${command}-cli.js" "$@"\n`,
+      );
+    }
     await writeFile(
       path.join(bin, "node.cmd"),
       '@echo off\r\nif "%PRAXEUM_ELECTRON_EXECUTABLE%"=="" exit /b 1\r\nset "ELECTRON_RUN_AS_NODE=1"\r\n"%PRAXEUM_ELECTRON_EXECUTABLE%" %*\r\n',

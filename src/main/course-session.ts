@@ -13,6 +13,7 @@ const WATCH_DEBOUNCE_MS = 300;
 
 let currentRoot: string | null = null;
 let watcher: fs.FSWatcher | null = null;
+let watchTimer: NodeJS.Timeout | null = null;
 
 /** Consume M1's remembered-course path: the registry is the course index now,
  *  and a surviving lastCoursePath would resurrect a course the learner removed
@@ -57,20 +58,23 @@ export { looksLikeCourse };
 export function watchCourse(root: string, onChange: (paths: string[]) => void): void {
   unwatchCourse();
   const pending = new Set<string>();
-  let timer: NodeJS.Timeout | null = null;
 
   try {
     watcher = fs.watch(root, { recursive: true }, (_event, filename) => {
-      if (filename === null) return;
-      const rel = filename.split(path.sep).join("/");
+      const rel = filename?.replaceAll("\\", "/") ?? null;
       // Only the lens's inputs matter; scaffold node_modules and .git churn
       // constantly. The directory entry itself is dropped along with its
       // contents — it is the same install, not a course file.
-      if (/(^|\/)node_modules(\/|$)/.test(rel) || rel.startsWith(".git")) return;
-      if (!/^(COURSE\.md|CLAUDE\.md|AGENTS\.md|tutor\/|curriculum\/)/.test(rel)) return;
-      pending.add(rel);
-      timer ??= setTimeout(() => {
-        timer = null;
+      if (rel !== null) {
+        if (/(^|\/)node_modules(\/|$)/.test(rel) || rel.startsWith(".git")) return;
+        if (!/^(COURSE\.md$|CLAUDE\.md$|AGENTS\.md$|tutor(?:\/|$)|curriculum(?:\/|$))/.test(rel))
+          return;
+        pending.add(rel);
+      }
+      // Missing filenames and directory moves still invalidate the snapshot.
+      // Consumers re-read disk; these paths are never a complete inventory.
+      watchTimer ??= setTimeout(() => {
+        watchTimer = null;
         const paths = [...pending];
         pending.clear();
         onChange(paths);
@@ -83,6 +87,8 @@ export function watchCourse(root: string, onChange: (paths: string[]) => void): 
 }
 
 export function unwatchCourse(): void {
+  if (watchTimer !== null) clearTimeout(watchTimer);
+  watchTimer = null;
   watcher?.close();
   watcher = null;
 }

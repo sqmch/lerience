@@ -6,6 +6,7 @@ import { readDesktopPackageInputs, resolveDesktopTarget } from "./desktop-artifa
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const PREFLIGHT_TESTS = [
+  "tests/assemble-runtime.test.ts",
   "tests/runtime-manifest.test.ts",
   "tests/course-creator.test.ts",
   "tests/course-engine-updater.test.ts",

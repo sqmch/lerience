@@ -18,6 +18,9 @@ Standalone Node, Claude, and Codex are deliberately absent under ADR-025:
 
 - Electron is the JavaScript runtime. The assembler writes small `node`/`npm` shims that invoke the
   installed Electron executable in Node mode.
+- Windows npm and npx launchers cover PowerShell, cmd, and the packaged Git shell. Native
+  preflight runs them with no host Node on PATH, including an offline local dependency install,
+  script arguments, piped input, and failure exit codes.
 - Claude Code and Codex are provider-owned installations discovered by the app. Their binaries are
   not supply-ledger components, app resources, or independently updated payloads.
 - The Claude Agent SDK remains a production integration library, while pnpm explicitly ignores its

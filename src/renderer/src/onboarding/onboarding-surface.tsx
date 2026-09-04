@@ -15,12 +15,15 @@
 
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LINKISH, PRIMARY, QUIET } from "../components/controls";
+import { Menu } from "../components/menu";
 import { CheckGlyph, ChevronDownGlyph } from "../components/glyphs";
 import { AppShell } from "../shell/app-shell";
 import { BackToCourses, TitleRule } from "../shell/surface-head";
 import { CourseMarkdown } from "../components/markdown-view";
 import type { CourseSnapshot } from "../../../shared/ipc";
 import type { CourseModule } from "../../../shared/course-data";
+import type { SessionAccessOption, SessionAutonomyOption } from "../../../shared/seminar";
+import { sendArcAssent } from "./arc-assent";
 import { MODULE_PARTS, groupWritten, isWriteNoise, moduleParts } from "./build-parts";
 import {
   ApprovalCard,
@@ -38,11 +41,6 @@ import type { ToolActivity } from "../seminar/seminar-state";
 import { useSeminar } from "../seminar/use-seminar";
 import { TutorConnectionGate } from "../tutor/tutor-connection";
 import { useTutorConnection } from "../tutor/use-tutor-connection";
-
-/** What the learner's assent says, in their voice, because it is sent as their
- *  message. The engine's gate wants explicit agreement in the conversation —
- *  the button is a way of typing this, not a way of bypassing it. */
-const ASSENT = "The arc looks right — build module 00.";
 
 /** How long the finished state is GUARANTEED to be readable before the course
  *  view takes over. Held deliberately: arriving and leaving inside a second
@@ -74,11 +72,6 @@ function useSettled(condition: boolean, ms: number): boolean {
   }, [condition, ms]);
   return settled;
 }
-
-/** A bound on memory, not on what is shown: the readout needs every landed
- *  path to say which parts of the module exist, and the list itself sits
- *  behind a closed disclosure. A build is a few dozen files. */
-const WRITTEN_FILE_LIMIT = 400;
 
 /** Ticks the elapsed clock on the build screen. A multi-minute wait with no
  *  moving number is where people start wondering whether it has hung. */
@@ -259,7 +252,9 @@ function ConnectedOnboardingSurface({
   const [assented, setAssented] = useState(false);
   const [revising, setRevising] = useState(false);
   const [editsGranted, setEditsGranted] = useState(false);
-  const [written, setWritten] = useState<string[]>([]);
+  // A watch notification may name only a moved directory. App refreshes the
+  // disk inventory after each burst, including files already present on open.
+  const written = data.files.filter((path) => !isWriteNoise(path));
   const spoken = state.items.length > 0 || state.previousSession !== null;
   /* Module files landing is the fact; the assent click is only the fast signal
      that arrives before the first write does. Deriving from both means a window
@@ -335,28 +330,6 @@ function ConnectedOnboardingSurface({
     if (stage !== "arc") setRevising(false);
   }, [stage]);
 
-  /* What the tutor has written, as it lands. This is the fs-watch the course
-     surface already uses, not a progress model: the app reports files it
-     actually saw appear, in the order they appeared, and claims nothing about
-     what is still to come. */
-  useEffect(() => {
-    return window.praxeum.onCourseChanged((paths) => {
-      setWritten((seen) => {
-        // The watch already reports course-relative, forward-slash paths and
-        // already filters to the lens's own inputs, so a path arriving here is
-        // by definition worth showing. A rewritten file moves to the end rather
-        // than repeating: the list is "what has landed", not a log.
-        /* Write plumbing is not a course file: atomic-write twins, pnpm's
-           install temporaries, dependency trees. They land beside every real
-           write and made the list read as noise. */
-        const real = paths.filter((path) => !isWriteNoise(path));
-        const next = seen.filter((path) => !real.includes(path));
-        next.push(...real);
-        return next.slice(-WRITTEN_FILE_LIMIT);
-      });
-    });
-  }, []);
-
   /* The crossover. "ready" already means the turn is over; the timer gives the
      card its beat and then hands the window to the course view. */
   const crossing = stage === "ready";
@@ -381,12 +354,33 @@ function ConnectedOnboardingSurface({
      defaulted globally — the learner sees what they are agreeing to at the
      moment they agree to it, and one click undoes it (ADR-018). */
   const [uninterrupted, setUninterrupted] = useState(true);
+  const [chosenAccess, setChosenAccess] = useState<string | null>(null);
+  const accessOptions = seminar.controls?.access ?? [];
+  const selectedAccess =
+    chosenAccess ?? seminar.controls?.pending?.access ?? seminar.controls?.current.access;
+  const [accepting, setAccepting] = useState(false);
+  const acceptingRef = useRef(false);
+  const uninterruptedOption = seminar.controls?.autonomy.find(
+    (option) => option.skipsApprovalPrompts,
+  );
 
   const sendAssent = (): void => {
-    setAssented(true);
-    if (uninterrupted) void seminar.setControls({ autonomy: "bypassPermissions" });
-    void seminar.send(ASSENT).then((sent) => {
-      if (!sent) setAssented(false);
+    if (acceptingRef.current) return;
+    acceptingRef.current = true;
+    setAccepting(true);
+    void sendArcAssent(
+      uninterrupted ? uninterruptedOption : undefined,
+      seminar.setControls,
+      async (message) => {
+        setAssented(true);
+        const sent = await seminar.send(message);
+        if (!sent) setAssented(false);
+        return sent;
+      },
+      accessOptions.find((option) => option.id === chosenAccess),
+    ).finally(() => {
+      acceptingRef.current = false;
+      setAccepting(false);
     });
   };
 
@@ -428,7 +422,7 @@ function ConnectedOnboardingSurface({
       <OnboardingFrame title={title} stage="arc" rootPath={rootPath} onLeaveCourse={onLeaveCourse}>
         <ArcReview
           markdown={data.courseDoc ?? ""}
-          busy={busy}
+          busy={busy || accepting}
           revising={revising}
           draft={draft}
           onDraft={setDraft}
@@ -440,6 +434,11 @@ function ConnectedOnboardingSurface({
           latestTutorNote={latestTutorNote}
           uninterrupted={uninterrupted}
           onUninterrupted={setUninterrupted}
+          uninterruptedOption={uninterruptedOption}
+          controlError={state.controlNotice?.message}
+          accessOptions={accessOptions}
+          selectedAccess={selectedAccess}
+          onAccess={setChosenAccess}
         />
       </OnboardingFrame>
     );
@@ -821,10 +820,10 @@ function BuildStage({
  *
  * A module's parts are fixed (the engine's FORMAT.md), so the same watch that
  * used to scroll file names can say which of them exist yet — progress a
- * learner can read, still made only of files the app saw appear. The paths
+ * learner can read, still made only of files present on disk. The paths
  * themselves stay available behind a closed disclosure, grouped under their
- * directory so they stop wrapping. Until the module directory exists there is
- * nothing to report, and the bar and live line carry the wait alone.
+ * directory so they stop wrapping. Before any module files exist the readout
+ * shows zero, so the learner can see what the counter measures from the start.
  */
 function ModuleReadout({
   written,
@@ -834,11 +833,10 @@ function ModuleReadout({
   written: string[];
   modules: CourseModule[];
   activity: ToolActivity | null;
-}): React.JSX.Element | null {
+}): React.JSX.Element {
   const parts = moduleParts(written, activity?.detail ?? null);
-  if (parts === null) return null;
   const moduleTitle = modules.find((module) => module.id === parts.moduleId)?.title ?? null;
-  const number = /^(\d+)/.exec(parts.moduleId)?.[1] ?? null;
+  const number = parts.moduleId === null ? null : (/^(\d+)/.exec(parts.moduleId)?.[1] ?? null);
   const groups = groupWritten(written);
   const count = groups.reduce((total, group) => total + group.files.length, 0);
 
@@ -938,6 +936,11 @@ function ArcReview({
   latestTutorNote,
   uninterrupted,
   onUninterrupted,
+  uninterruptedOption,
+  controlError,
+  accessOptions,
+  selectedAccess,
+  onAccess,
 }: {
   markdown: string;
   busy: boolean;
@@ -950,6 +953,11 @@ function ArcReview({
   latestTutorNote: string;
   uninterrupted: boolean;
   onUninterrupted: (value: boolean) => void;
+  uninterruptedOption: SessionAutonomyOption | undefined;
+  controlError: string | undefined;
+  accessOptions: SessionAccessOption[];
+  selectedAccess: string | null | undefined;
+  onAccess: (id: string) => void;
 }): React.JSX.Element {
   return (
     <section className="flex min-h-0 flex-1 flex-col" aria-label="Review your course plan">
@@ -1010,6 +1018,7 @@ function ArcReview({
               type="button"
               className="text-ink-faint hover:text-hi self-start text-xs underline underline-offset-4"
               onClick={onAccept}
+              disabled={busy}
             >
               Actually, the plan is right — build module 00
             </button>
@@ -1040,19 +1049,47 @@ function ArcReview({
               </p>
             </div>
             {/* Stated where the consequence is, not buried in settings. */}
-            <label className="text-ink-dim hover:text-ink flex w-fit cursor-pointer items-center gap-2 text-xs transition-colors">
-              <input
-                type="checkbox"
-                className="accent-accent size-3.5 cursor-pointer"
-                checked={uninterrupted}
-                onChange={(event) => {
-                  onUninterrupted(event.target.checked);
-                }}
-              />
-              Let it work without asking permission — it writes many files and runs commands inside
-              this course folder
-            </label>
+            {accessOptions.length > 0 && (
+              <div className="text-ink-dim text-xs">
+                <div className="flex items-center gap-2">
+                  Tutor access
+                  <Menu
+                    label="Tutor access"
+                    disabled={busy}
+                    value={selectedAccess ?? null}
+                    onChange={onAccess}
+                    options={accessOptions.map((option) => ({
+                      value: option.id,
+                      label: option.label,
+                      description: option.description,
+                    }))}
+                  />
+                </div>
+                <p className="mt-1">
+                  {accessOptions.find((option) => option.id === selectedAccess)?.description}
+                </p>
+              </div>
+            )}
+            {uninterruptedOption && (
+              <label className="text-ink-dim hover:text-ink flex w-fit cursor-pointer items-center gap-2 text-xs transition-colors">
+                <input
+                  type="checkbox"
+                  className="accent-accent size-3.5 cursor-pointer"
+                  checked={uninterrupted}
+                  disabled={busy}
+                  onChange={(event) => {
+                    onUninterrupted(event.target.checked);
+                  }}
+                />
+                {uninterruptedOption.label}: {uninterruptedOption.description}
+              </label>
+            )}
           </div>
+        )}
+        {controlError && (
+          <p role="alert" className="text-attention mt-3 text-sm">
+            {controlError} The build has not started. Retry or change your choices.
+          </p>
         )}
       </div>
     </section>

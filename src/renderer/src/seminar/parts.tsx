@@ -417,7 +417,8 @@ export function SessionControlBar({
   const selected = { ...controls.current, ...controls.pending };
   const model = controls.models.find((candidate) => candidate.id === selected.model);
   const efforts = model?.efforts ?? [];
-  if (controls.models.length === 0 && controls.autonomy.length === 0) return null;
+  if (controls.models.length === 0 && controls.autonomy.length === 0 && !controls.access?.length)
+    return null;
 
   /* A setting changed mid-turn takes effect on the next reply, and the bar
      used to say so in a line under the pills. It said nothing the triggers do
@@ -427,7 +428,20 @@ export function SessionControlBar({
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="flex min-w-0 items-center gap-0.5 overflow-hidden">
+      <div className="flex min-w-0 flex-wrap items-center gap-0.5">
+        {!controls.access?.length ? null : (
+          <Menu
+            label="Where your tutor may act"
+            value={selected.access ?? null}
+            trigger={`${controls.access.find((option) => option.id === selected.access)?.label ?? "Access"}${controls.pending?.access ? " · next reply" : ""}`}
+            options={controls.access.map((option) => ({
+              value: option.id,
+              label: option.label,
+              description: option.description,
+            }))}
+            onChange={(access) => onChange({ access })}
+          />
+        )}
         {controls.autonomy.length === 0 ? null : (
           <Menu
             label="How much your tutor may do without asking"

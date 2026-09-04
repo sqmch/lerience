@@ -39,6 +39,11 @@ the root `pnpm check` includes that gate.
 The bar at the bottom selects deterministic screens. Hide it when inspecting the application's own
 status bar. The theme control changes the same root data attribute used by the production renderer.
 
+The `building` fixture starts at 0 of 7 parts with an uncounted synthetic module README. Tutor prose
+streams after 60 ms, and the command approval appears after about 2 seconds. At 5 seconds, a single
+directory-change notification publishes a snapshot containing all seven parts. The counter should
+jump to 7 of 7 while the approval remains visible. The `ready` fixture starts with all seven parts.
+
 ## Tool adapter
 
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is

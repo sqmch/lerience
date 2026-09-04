@@ -1,9 +1,9 @@
 /* What the build screen says about the files landing in the course folder.
  *
  * A module has a fixed shape (course-engine FORMAT.md), so the filesystem
- * watch can answer a better question than "what was the last file written":
+ * inventory can answer a better question than "what was the last file written":
  * which parts of the module exist yet. Everything here is derived from paths
- * the app actually saw appear — a part is landed when a file under it exists,
+ * currently present on disk — a part is landed when a file under it exists,
  * "now" only when the live tool activity names it — and nothing is claimed
  * about order or about what is still to come. */
 
@@ -21,7 +21,7 @@ export type ModulePartKey = (typeof MODULE_PARTS)[number]["key"];
 
 export interface ModuleParts {
   /** The module directory's name under curriculum/, e.g. "00-one-reading". */
-  moduleId: string;
+  moduleId: string | null;
   landed: ReadonlySet<ModulePartKey>;
   /** The part the tutor's current tool activity names, if any. */
   now: ModulePartKey | null;
@@ -49,14 +49,13 @@ function isUnderPart(relative: string, part: string): boolean {
   return relative === part || relative.startsWith(`${part}/`);
 }
 
-/** Null until a module directory has appeared: before that there is no module
- *  to report on, and the bar and live line carry the wait alone. */
+/** Before module files exist, report zero without inventing a directory name. */
 export function moduleParts(
   written: readonly string[],
   activityDetail: string | null,
-): ModuleParts | null {
+): ModuleParts {
   const moduleId = written.map(moduleIdOf).find((id) => id !== null) ?? null;
-  if (moduleId === null) return null;
+  if (moduleId === null) return { moduleId: null, landed: new Set(), now: null };
   const prefix = `curriculum/${moduleId}/`;
   const landed = new Set<ModulePartKey>();
   for (const path of written) {
