@@ -40,9 +40,16 @@ describe("runtime input normalization", () => {
         await copyNpmTree(path.dirname(require.resolve("npm/package.json")), npmRoot);
         await writeJavaScriptToolShims(npmRoot, "win32");
       }
+      // Keep the Windows system/profile environment used by the application.
+      // Remove every PATH spelling and Node injection before excluding host Node.
+      const inheritedEnvironment = { ...process.env };
+      for (const key of Object.keys(inheritedEnvironment)) {
+        if (/^(path|node_path|node_options)$/i.test(key)) delete inheritedEnvironment[key];
+      }
       const environment = createRuntimeEnvironment(
         [path.join(npmRoot, "bin")],
         {
+          ...inheritedEnvironment,
           SystemRoot: process.env.SystemRoot,
           TEMP: root,
           TMP: root,
@@ -83,10 +90,10 @@ describe("runtime input normalization", () => {
           { cwd: root, env, encoding: "utf8", timeout: 30000 },
         );
       for (const command of [
-        "npm --version",
-        "npx --version",
         "npm.cmd --version",
         "npx.cmd --version",
+        "npm --version",
+        "npx --version",
       ]) {
         const result = run(command);
         expect(result.stderr).toBe("");
