@@ -1,22 +1,40 @@
+<div align="center">
+
+<img src="build/icon.svg" alt="" width="88" height="88" />
+
 # Lerience
-[lerience.com](https://www.lerience.com/)
 
-<img src="build/icon.svg" alt="Lerience icon" width="96" height="96" />
+**A real course from the model you already pay for.**
 
-Lerience is a desktop app for taking a real course from a frontier model. Install it, point it at
-the Claude Code or Codex client you already pay for, and it builds you a course one module at a
-time, shaping each module around how the last one actually went.
+Lerience is a free, open-source desktop app that points your own Claude Code or Codex at a folder
+and teaches you from it: an onboarding interview, a course plan you approve, one module at a time,
+checks you run yourself, spaced recall, and a tutor that will not write the answer for you.
+
+[lerience.com](https://www.lerience.com/) · [Download for Windows](https://github.com/sqmch/lerience/releases/latest) · [How a course is put together](#how-a-course-is-put-together) · [Honest limits](#honest-limits)
+
+[![Latest release](https://img.shields.io/github/v/release/sqmch/lerience?label=release&labelColor=1c1c1c&color=8c8c8c)](https://github.com/sqmch/lerience/releases/latest) [![CI](https://github.com/sqmch/lerience/actions/workflows/ci.yml/badge.svg)](https://github.com/sqmch/lerience/actions/workflows/ci.yml) [![MIT License](https://img.shields.io/badge/license-MIT-8c8c8c?labelColor=1c1c1c)](LICENSE)
+
+</div>
+
+<img src="docs/images/course-view.png" alt="The course view: the module list on the left, the lesson in the middle, and the tutor conversation on the right." width="100%" />
 
 The course is a folder on your disk. Markdown files in that folder tell the model how to teach:
 how to interview you before it plans anything, what to do at the start and end of every session,
 when to withhold an answer, how to write the next module. The app is the interface around that
 folder. No account, no server, no terminal.
 
-> **Status:** Windows x64 community previews are available from the
-> [latest release](https://github.com/sqmch/lerience/releases/latest). Releases are unsigned at the
-> operating system level, so Windows will likely show an unknown-publisher warning. Lerience
-> verifies its own updates with a signed manifest. Provider support is experimental. Read [honest
-> limits](#honest-limits) before you install.
+## Install
+
+1. Take the versioned `Lerience-Setup-...exe` installer from the
+   [latest release](https://github.com/sqmch/lerience/releases/latest). Windows x64 only for now.
+2. Have [Claude Code](https://claude.com/claude-code) or Codex installed and signed in. Lerience
+   uses the client you already have; if it finds neither, it points you at the official installer.
+3. Open Lerience, connect your provider, start a course.
+
+> [!IMPORTANT]
+> Releases are unsigned at the operating system level, so Windows will likely show an
+> unknown-publisher warning. Lerience verifies its own updates with a signed manifest. Provider
+> support is experimental. Read [honest limits](#honest-limits) before you install.
 
 ## Why this exists
 
@@ -157,13 +175,6 @@ whole course without Lerience. App updates never rewrite course content or your 
 - **Unsigned and early.** Public packages are currently Windows x64. Native Apple Silicon and Intel
   Mac DMGs are now part of the release lane. Physical Gatekeeper and learner-path acceptance still
   comes before the first public Mac release, including a run on a separate Intel Mac.
-
-## Download
-
-Windows x64 builds are on the
-[releases page](https://github.com/sqmch/lerience/releases/latest). Take the versioned
-`Lerience-Setup-...exe` installer. You also need Claude Code or Codex installed and signed in. If
-Lerience finds neither, it points you at the official installer.
 
 ## Architecture
 
