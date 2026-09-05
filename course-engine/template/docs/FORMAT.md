@@ -113,7 +113,7 @@ check only enforces that the file exists.
                                     // absent everywhere → "Phase N")
   "prerequisites": ["01-embeddings"],
   "runtime": "node",                // what the scaffold needs to run
-  "estimatedHours": 4,
+  "estimatedHours": 0.75,           // complete learning cycle, including practice and discussion
   "provenance": "core",             // "core" (reviewed curriculum) | "tutor-generated"
   "volatileLayer": "generated-at-start",  // scaffold/checks/hints are JIT-generated
   "bossCheck": true                 // optional: this module ends a phase gate

@@ -35,8 +35,9 @@ When the learner says "new course" (or the repo has no course):
      occasionally ask how sure they are (a confident wrong answer is the interview's most
      valuable output). Keep it conversational and bounded: probe only what would change the
      route, and treat the result as uncertain evidence, never a measurement;
-   - **real hours/week** — the number they'll genuinely spend, not the aspirational one (pacing
-     rides on it);
+   - **real hours/week and comfortable session length** — use weekly availability for the
+     schedule and session length for teaching scope. Several available hours in a day can hold
+     several modules, retrieval and breaks;
    - **artifacts they care about** — the course must build things they'll want to keep, or
      motivation dies mid-phase;
    - **deadline / external goal** — an interview, a launch, a date, or explicitly none.
@@ -134,12 +135,26 @@ When the learner says "start session" (or similar):
 When the learner completes a module, generate the next one per the `COURSE.md` spine, under
 `curriculum/NN-name/` (format details: `docs/FORMAT.md`):
 
-Plan coherent work blocks, each with one observable learning outcome, the teaching needed for
-it, and a short demonstration before adding the next demand. Use sections within LESSON.md and
-BRIEF.md, not new tracking files. If several demanding topics lack a useful intermediate stopping
-point, simplify or split the module. Fit scope to the learner's prerequisites and available study
-time; there is no universal duration limit. Agree substantive arc changes with the learner and
-keep later modules at outline level until needed.
+Scope each module around one main observable outcome. Default to 30–60 minutes for the whole
+learning cycle: reading, worked example, visual exploration if useful, tutor discussion, exercise,
+checks and independent retrieval. Shorter sessions need smaller modules. More available hours
+per day allow more modules; they do not increase a module's scope. These are planning defaults,
+not deadlines or a universal attention-span claim. Calibrate from the learner's actual attempts.
+
+Aim for roughly 600–1,200 words of required lesson prose, with a short read followed by a
+demonstration before the next demand. Review a draft above 1,500 prose words or one hour of total
+work: split independently assessable outcomes into modules, move optional reference detail out of
+the required read, or explain in COURSE.md why this outcome needs a longer continuous exercise
+and where the learner can stop. Preserve necessary explanations and worked examples when
+splitting; terse prose is not a substitute for teaching. Module 00 follows the same rule: orient
+the learner only far enough to do its first task, then teach details when later tasks need them.
+
+Before handover, map every required outcome to an exercise or explanation and a retrieval question.
+If 4–8 focused questions cannot sample those outcomes without becoming multipart examinations,
+reduce scope. Use LESSON.md and BRIEF.md sections for steps within one outcome. Agree substantive
+arc changes with the learner; more modules are fine, but keep future content at outline level.
+Set estimatedHours to the complete learning cycle, and review the lesson-scope QA warning rather
+than treating a word count as proof of learning quality.
 
 - `LESSON.md` — the actual teaching: concepts explained properly, annotated examples, a fully
   **worked example** of the same kind of problem the task poses, and the "why is it built this

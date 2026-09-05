@@ -19,9 +19,9 @@ previews only provenance-bound engine paths, refuses learner edits/collisions, a
 validated engine commit only from a future learner action. Increment `engineVersion` whenever a
 reviewed template delta should become such an offered update.
 
-Engine 0.1.1 clarifies orientation, work blocks, source verification, and independent learning
-evidence in the canonical tutor protocol. Course format 0, schemas, scripts, and record locations
-are unchanged. Existing courses retain their own protocol and materials; this patch adds no update
+Engine 0.1.2 scopes modules around one outcome and a complete learning cycle, distinguishes daily
+availability from module size, and adds an advisory lesson-scope QA check. Course format 0,
+schemas and record locations are unchanged. Existing courses retain their own protocol and materials; this patch adds no update
 UI or automatic migration. The updater core remains subject to ADR-027's explicit action boundary.
 
 The repository-owned [teaching protocol evaluation](evaluations/teaching-protocol.md) records the
