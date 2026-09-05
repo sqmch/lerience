@@ -89,6 +89,7 @@
     "jsdom": "^30.0.1",
     "marked": "^18.0.9",
     "marked-highlight": "^2.2.4",
+    "mermaid": "11.17.2",
     "npm": "11.19.0",
     "prettier": "^3.9.6",
     "react": "^19.2.8",

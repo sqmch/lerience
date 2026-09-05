@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { visualSrc } from "../../../shared/visuals";
 import { renderCourseMarkdown, renderDocMarkdown } from "../markdown";
+import { mountDiagrams } from "../mermaid";
 
 /** Sanitized course markdown (journal, notes). */
 export function CourseMarkdown({
@@ -54,6 +55,7 @@ export function DocMarkdown({
       placeholder.replaceChildren(iframe);
       placeholder.dataset["visualMounted"] = "true";
     }
+    return mountDiagrams(root);
   }, [html, moduleId]);
 
   return (
