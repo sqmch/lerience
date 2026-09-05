@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { InstalledEditor } from "../src/main/editor/discovery";
 import {
   EditorService,
+  editorArguments,
   customEditorLabel,
   parseEditorPreference,
   type EditorPreference,
@@ -35,6 +36,25 @@ function service(installed: InstalledEditor[], initial?: EditorPreference) {
 }
 
 describe("EditorService", () => {
+  it("opens a file through the selected editor with location metadata", async () => {
+    const { editors, launch } = service([ZED]);
+    await expect(editors.open("C:/course/example.py", { line: 12 })).resolves.toEqual({ ok: true });
+    expect(launch).toHaveBeenCalledWith(ZED.launch, "C:/course/example.py", {
+      editorId: "zed",
+      line: 12,
+    });
+    expect(editorArguments("C:/a file.py", { editorId: "vscode", line: 12, column: 3 })).toEqual([
+      "--reuse-window",
+      "--goto",
+      "C:/a file.py:12:3",
+    ]);
+    expect(editorArguments("C:/a file.py", { editorId: "zed", line: 12 })).toEqual([
+      "C:/a file.py:12:1",
+    ]);
+    expect(editorArguments("C:/a file.py", { editorId: "custom", line: 12 })).toEqual([
+      "C:/a file.py",
+    ]);
+  });
   it("names the first editor found when the learner has not chosen, without persisting it", () => {
     const { editors, preference } = service([CODE, ZED]);
     expect(editors.catalog()).toEqual({

@@ -45,7 +45,7 @@ export interface EditorServiceOptions {
   discover: () => InstalledEditor[];
   readPreference: () => EditorPreference | undefined;
   writePreference: (preference: EditorPreference | undefined) => void;
-  launch?: (launch: EditorLaunch, directory: string) => Promise<void>;
+  launch?: (launch: EditorLaunch, target: string, file?: EditorFileOptions) => Promise<void>;
   platform?: NodeJS.Platform;
   isRunnable?: (executablePath: string) => boolean;
 }
@@ -60,8 +60,14 @@ export function customEditorLabel(executablePath: string): string {
     : base;
 }
 
+export interface EditorFileOptions {
+  editorId: EditorId;
+  line?: number;
+  column?: number;
+}
+
 export class EditorService {
-  private readonly launch: (launch: EditorLaunch, directory: string) => Promise<void>;
+  private readonly launch: NonNullable<EditorServiceOptions["launch"]>;
   private readonly platform: NodeJS.Platform;
 
   constructor(private readonly options: EditorServiceOptions) {
@@ -92,7 +98,10 @@ export class EditorService {
     return this.catalog();
   }
 
-  async open(directory: string): Promise<OpenInEditorReply> {
+  async open(
+    directory: string,
+    file?: { line?: number; column?: number },
+  ): Promise<OpenInEditorReply> {
     const { selected } = this.resolve();
     if (selected === null) {
       return {
@@ -102,7 +111,8 @@ export class EditorService {
       };
     }
     try {
-      await this.launch(selected.launch, directory);
+      if (file === undefined) await this.launch(selected.launch, directory);
+      else await this.launch(selected.launch, directory, { ...file, editorId: selected.id });
       return { ok: true };
     } catch (error) {
       const name = selected.label;
@@ -174,11 +184,23 @@ function customLaunch(executablePath: string, platform: NodeJS.Platform): Editor
 /** Start the editor and let go of it. The child is detached and its stdio
  *  ignored, so the app neither waits for it nor is held open by it; the
  *  promise settles on spawn success or failure, not on the editor's exit. */
-export function launchDetached(launch: EditorLaunch, directory: string): Promise<void> {
+export function editorArguments(target: string, file?: EditorFileOptions): string[] {
+  if (file === undefined || file.editorId === "custom") return [target];
+  const located = file.line === undefined ? target : `${target}:${file.line}:${file.column ?? 1}`;
+  if (file.editorId === "zed") return [located];
+  if (file.editorId === "sublime") return ["--add", located];
+  return ["--reuse-window", ...(file.line === undefined ? [] : ["--goto"]), located];
+}
+
+export function launchDetached(
+  launch: EditorLaunch,
+  directory: string,
+  file?: EditorFileOptions,
+): Promise<void> {
   const [command, args] =
     launch.kind === "mac-app"
       ? ["/usr/bin/open", ["-a", launch.bundlePath, directory]]
-      : [launch.path, [directory]];
+      : [launch.path, editorArguments(directory, file)];
 
   // An Electron-based editor inherits our environment; these two would make it
   // start as a headless Node process instead of an editor.
@@ -189,7 +211,7 @@ export function launchDetached(launch: EditorLaunch, directory: string): Promise
   return new Promise((resolve, reject) => {
     let settled = false;
     const child = spawn(command, args, {
-      cwd: directory,
+      cwd: file === undefined ? directory : path.dirname(directory),
       detached: true,
       stdio: "ignore",
       windowsHide: false,

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { PRODUCT_NAME, PRODUCT_WORDMARK } from "../shared/product";
+import { resolveDocumentLink } from "./editor/document-link";
 import {
   CHECK_RUN_CHANNEL,
   COURSE_CHANGED_CHANNEL,
@@ -863,6 +864,53 @@ void app.whenReady().then(async () => {
     async (_event, target: unknown): Promise<OpenInEditorReply> => {
       const root = currentCourseRoot();
       if (root === null) return { ok: false, reason: "no-course", detail: "Open a course first." };
+      if (
+        typeof target === "object" &&
+        target !== null &&
+        "kind" in target &&
+        target.kind === "document-link"
+      ) {
+        const record = target as Record<string, unknown>;
+        const link = resolveDocumentLink(root, record["moduleId"], record["href"]);
+        if (link.kind === "invalid") return { ok: false, reason: "no-target", detail: link.detail };
+        if (link.kind === "web") {
+          try {
+            await shell.openExternal(link.url);
+            return { ok: true };
+          } catch {
+            return {
+              ok: false,
+              reason: "launch-failed",
+              detail: "The browser could not open this link.",
+            };
+          }
+        }
+        // Binary reference documents belong in their associated app, never an executable association.
+        if (
+          [".xlsx", ".pdf", ".png", ".jpg", ".jpeg"].includes(path.extname(link.path).toLowerCase())
+        ) {
+          try {
+            const error = await shell.openPath(link.path);
+            return error === ""
+              ? { ok: true }
+              : {
+                  ok: false,
+                  reason: "launch-failed",
+                  detail: `The file could not be opened. ${error}`,
+                };
+          } catch {
+            return {
+              ok: false,
+              reason: "launch-failed",
+              detail: "The file could not be opened in its associated app.",
+            };
+          }
+        }
+        return editorService().open(link.path, {
+          ...(link.line === undefined ? {} : { line: link.line }),
+          ...(link.column === undefined ? {} : { column: link.column }),
+        });
+      }
       const directory = editorTargetDirectory(root, target);
       if (directory === null) {
         return {

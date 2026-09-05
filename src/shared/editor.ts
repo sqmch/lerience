@@ -42,7 +42,10 @@ export interface EditorCatalog {
 
 /** What to open: a module's scaffold (the project the learner builds, where
  *  package.json and the checks' cwd live) or the whole course folder. */
-export type EditorTarget = { kind: "module"; moduleId: string } | { kind: "course" };
+export type EditorTarget =
+  | { kind: "module"; moduleId: string }
+  | { kind: "course" }
+  | { kind: "document-link"; moduleId: string; href: string };
 
 export type OpenInEditorReply =
   | { ok: true }
