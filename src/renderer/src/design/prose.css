@@ -176,3 +176,37 @@
   border-radius: var(--radius-md);
   background: var(--bg-deep);
 }
+
+.doc-mermaid {
+  border: var(--stroke-hair) solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--bg-read);
+}
+.doc-mermaid-viewport {
+  overflow: auto;
+}
+.doc-mermaid img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+.doc-mermaid[data-actual-size="true"] img {
+  max-width: none;
+}
+.doc-mermaid figcaption,
+.doc-mermaid button,
+.doc-mermaid summary {
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+}
+.doc-mermaid button,
+.doc-mermaid summary {
+  cursor: pointer;
+  margin-top: var(--space-3);
+}
+.doc-mermaid button {
+  text-decoration: underline;
+}

@@ -8,7 +8,23 @@ import {
   detectRelativeTiming,
   hint2Fences,
   lintVisualHtml,
+  lessonScope,
 } from "../template/scripts/qa-module.mjs";
+
+test("lesson scope flags excessive required prose or total work, excluding fenced references", () => {
+  assert.deepEqual(lessonScope("word ".repeat(1500), 1), { words: 1500, review: false });
+  assert.equal(lessonScope("word ".repeat(1501), 0.75).review, true);
+  assert.equal(lessonScope("A short lesson", 1.75).review, true);
+  assert.deepEqual(
+    lessonScope(
+      "Read [this example](reference/example.md).\n```js\n" +
+        "code ".repeat(1600) +
+        "\n```\n[ref]: file.md",
+      0.5,
+    ),
+    { words: 3, review: false },
+  );
+});
 
 // vitest prints a per-test "Tests …" summary distinct from "Test Files …".
 const passOut =

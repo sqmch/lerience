@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { visualSrc } from "../../../shared/visuals";
 import { renderCourseMarkdown, renderDocMarkdown } from "../markdown";
+import { mountDiagrams } from "../mermaid";
 
 /** Sanitized course markdown (journal, notes). */
 export function CourseMarkdown({
@@ -32,7 +33,27 @@ export function DocMarkdown({
   className?: string;
 }): React.JSX.Element {
   const html = useMemo(() => renderDocMarkdown(markdown), [markdown]);
+  // React compares this object by identity. Recreating it on a parent render
+  // resets innerHTML, removing frames mounted by the effect without rerunning it.
+  const markup = useMemo(() => ({ __html: html }), [html]);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [notice, setNotice] = useState<{ moduleId: string; html: string; text: string } | null>(
+    null,
+  );
+
+  const openLink = (event: React.MouseEvent<HTMLDivElement>): void => {
+    const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
+    const href = anchor?.getAttribute("href");
+    if (href === undefined || href === null || href.startsWith("#")) return;
+    event.preventDefault();
+    setNotice(null);
+    void window.praxeum.openInEditor({ kind: "document-link", moduleId, href }).then(
+      (reply) => {
+        if (!reply.ok) setNotice({ moduleId, html, text: reply.detail });
+      },
+      () => setNotice({ moduleId, html, text: "This link could not be opened. Try again." }),
+    );
+  };
 
   useEffect(() => {
     const root = rootRef.current;
@@ -51,7 +72,29 @@ export function DocMarkdown({
       placeholder.replaceChildren(iframe);
       placeholder.dataset["visualMounted"] = "true";
     }
+    return mountDiagrams(root);
   }, [html, moduleId]);
 
-  return <div ref={rootRef} className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <>
+      {notice?.moduleId === moduleId && notice.html === html && (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-3 rounded-md border border-line p-3 text-sm text-ink-dim"
+        >
+          <span>{notice.text}</span>
+          <button type="button" className="ml-auto underline" onClick={() => setNotice(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      <div
+        key={moduleId}
+        ref={rootRef}
+        className={className}
+        onClick={openLink}
+        dangerouslySetInnerHTML={markup}
+      />
+    </>
+  );
 }

@@ -148,6 +148,17 @@ let volatilePresent = false;
 // The vitest-output classifier. Distinguishes: tests ran and reported assertion
 // failures (the intended red) vs the process crashed / zero tests found (the
 // harness measured nothing). `run` is { out, raw, timedOut }.
+/** Approximate prose load, excluding fenced examples and reference destinations. */
+export function lessonScope(text, estimatedHours) {
+  const prose = (text ?? "")
+    .replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, "")
+    .replace(/^\s*\[[^\]]+\]:\s+\S+.*$/gm, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .trim();
+  const words = prose === "" ? 0 : prose.split(/\s+/u).length;
+  return { words, review: words > 1500 || estimatedHours > 1 };
+}
+
 export function classify(run) {
   if (run.timedOut) return { verdict: "no-results", detail: "the check run timed out" };
   const out = run.out ?? "";
@@ -683,6 +694,23 @@ function main() {
 
   // ---- STATIC 2 — module.json + lab.json against the schemas ----
   schemaCheck();
+
+  // Advisory: size can reveal an overloaded lesson, but cannot judge its pedagogy.
+  {
+    const lesson = readText(path.join(moduleDir, "LESSON.md"));
+    if (lesson !== null) {
+      const manifest = safeJson(readText(path.join(moduleDir, "module.json")));
+      const { words, review } = lessonScope(lesson, manifest?.estimatedHours);
+      add(
+        "lesson-scope",
+        review ? "warn" : "ok",
+        `approximately ${words} prose words; estimated total work: ${manifest?.estimatedHours ?? "unspecified"}h. ` +
+          (review
+            ? "Review scope before handover: split independently assessable outcomes or explain the longer exercise and stopping points in COURSE.md."
+            : "Within the scope-review thresholds; outcome coverage still needs tutor review."),
+      );
+    }
+  }
 
   // ---- STATIC 3 — scaffold carries at least one TODO(you) gap ----
   if (!hasScaffold) {

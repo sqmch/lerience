@@ -45,6 +45,14 @@ code must decide whether to reject it or return a documented sentinel.
 
 ## Vocabulary
 
+\`\`\`mermaid
+flowchart LR
+    A[Two vectors] --> B[Dot product]
+    A --> C[Lengths]
+    B --> D[Cosine similarity]
+    C --> D
+\`\`\`
+
 - vector and magnitude
 - dot product
 - cosine similarity

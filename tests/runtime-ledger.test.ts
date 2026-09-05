@@ -36,7 +36,7 @@ describe("runtime supply ledger", () => {
     expect(ledger.schemaVersion).toBe(2);
     expect(ledger.components.npm.version).toBe(packageJson.devDependencies.npm);
     expect(ledger.components.git.packageVersion).toBe(packageJson.devDependencies.dugite);
-    expect(engineManifest.engineVersion).toBe("0.1.1");
+    expect(engineManifest.engineVersion).toBe("0.1.2");
   });
 
   it("cannot install provider-native payloads through the dependency graph", () => {
