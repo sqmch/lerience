@@ -32,6 +32,9 @@ export function DocMarkdown({
   className?: string;
 }): React.JSX.Element {
   const html = useMemo(() => renderDocMarkdown(markdown), [markdown]);
+  // React compares this object by identity. Recreating it on a parent render
+  // resets innerHTML, removing frames mounted by the effect without rerunning it.
+  const markup = useMemo(() => ({ __html: html }), [html]);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,5 +56,7 @@ export function DocMarkdown({
     }
   }, [html, moduleId]);
 
-  return <div ref={rootRef} className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <div key={moduleId} ref={rootRef} className={className} dangerouslySetInnerHTML={markup} />
+  );
 }
