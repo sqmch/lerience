@@ -303,7 +303,7 @@ export function RecordOverlay({
                 ) : (
                   <>
                     <SectionHead
-                      title={`${String(counts.done)} of ${String(counts.total)} modules complete`}
+                      title={`${String(counts.done)} ${counts.done === 1 ? "module" : "modules"} complete`}
                       {...(learner.length === 0 ? {} : { lede: learner.join(" · ") })}
                     />
                     <div className="flex flex-col">

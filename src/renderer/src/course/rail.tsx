@@ -163,18 +163,20 @@ export function CourseRail({
           one head line across the workspace — the single strongest signal that
           this is one window rather than three panels. */}
       {modules.length === 0 ? null : (
-        /* A count, and deliberately not a meter. The bar that used to live here
-           divided completed modules by the modules on the TRACK, and the track
-           is only as long as the tutor has built so far — so it read 100% at
-           the end of module 00 of a twelve-module course, and fell back to 50%
-           when module 01 appeared. A number the learner can verify by counting
-           the marks below it cannot drift like that. */
+        /* A count of what is done, and deliberately no denominator. The bar
+           that used to live here divided completed modules by the modules on
+           the TRACK, and the track is only as long as the tutor has built so
+           far — so it read 100% at the end of module 00 of a twelve-module
+           course. "2 of 3" has the same flaw one size down: the next module is
+           generated when the learner gets there, so the fraction is always
+           "all but one" and says nothing. A number the learner can verify by
+           counting the marks below it cannot drift like that. */
         <header
           className="border-line-soft flex h-12 shrink-0 items-center border-b px-4"
           aria-live="polite"
         >
           <span className="text-ink-dim shrink-0 text-xs tabular-nums">
-            {completed} of {modules.length} {modules.length === 1 ? "module" : "modules"} done
+            {completed} {completed === 1 ? "module" : "modules"} completed
           </span>
         </header>
       )}
