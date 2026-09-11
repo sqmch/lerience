@@ -145,7 +145,16 @@ export class SessionConductor {
     const active = this.requireActive("open");
     // Busy check BEFORE persisting: the adapter would refuse the send, and the
     // durable transcript must never record a message the tutor never received.
-    if (active.session.busy) throw new Error("A tutor turn is already in progress.");
+    if (active.session.busy) {
+      if (!active.session.steerable) throw new Error("A tutor turn is already in progress.");
+      // Same principle, other order: the provider accepts the message into
+      // the running turn first, and only then does the transcript record it.
+      // A refused steer (the turn moved on) persists nothing; the renderer
+      // queues the message for the next turn.
+      await active.session.steer(message);
+      await active.transcript.append({ kind: "learner", text: message });
+      return;
+    }
     await active.transcript.append({ kind: "learner", text: message });
     active.lastRequest = { kind: "learner", text: message };
     active.session.send(message);
@@ -582,6 +591,7 @@ export class SessionConductor {
       messages: snapshot.messages,
       totalCostUsd: latestUsage(snapshot),
       turnInProgress: knownTurnInProgress ?? runtime?.session.busy ?? false,
+      steerable: runtime?.session.steerable ?? false,
       ...(latestLifecycle?.kind === "lifecycle" && latestLifecycle.detail !== undefined
         ? { detail: latestLifecycle.detail }
         : {}),
@@ -720,6 +730,7 @@ function closedSnapshot(): SeminarSnapshot {
     messages: [],
     totalCostUsd: 0,
     turnInProgress: false,
+    steerable: false,
   };
 }
 

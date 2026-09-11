@@ -449,6 +449,84 @@ describe("CodexAgentSession", () => {
     });
     await session.end();
   });
+
+  it("steers a running turn through turn/steer aimed at the live turn id", async () => {
+    const { connection, session } = setup();
+    connection.responses.set("turn/steer", {
+      turn: { id: "turn-1", status: "inProgress", error: null },
+    });
+    const iterator = session.events[Symbol.asyncIterator]();
+    expect(session.steerable).toBe(true);
+    session.send("Build the first module");
+    await expect(session.steer("Also cover unit tests")).resolves.toBeUndefined();
+    expect(connection.calls.find((call) => call.method === "turn/steer")).toEqual({
+      method: "turn/steer",
+      params: {
+        threadId: "thread-1",
+        expectedTurnId: "turn-1",
+        input: [{ type: "text", text: "Also cover unit tests", text_elements: [] }],
+      },
+    });
+    // A steer is not a turn: the same turn is still running, and its one
+    // completion is the only turn_complete the seam ever sees.
+    expect(session.busy).toBe(true);
+    connection.emit("turn/completed", {
+      threadId: "thread-1",
+      turn: { id: "turn-1", status: "completed", error: null },
+    });
+    await expect(iterator.next()).resolves.toEqual({
+      done: false,
+      value: { type: "turn_complete" },
+    });
+    expect(session.busy).toBe(false);
+    expect(connection.calls.filter((call) => call.method === "turn/start")).toHaveLength(1);
+    await session.end();
+  }, 30_000);
+
+  it("refuses to steer when no turn is in flight or the turn never started", async () => {
+    const { connection, session } = setup();
+    await session.describeControls();
+    await expect(session.steer("too early")).rejects.toThrow(/not working/);
+
+    connection.responses.set("turn/start", null);
+    session.send("Build");
+    const steering = session.steer("mid-flight");
+    await expect(steering).rejects.toThrow(/not working/);
+    await vi.waitFor(() => expect(session.busy).toBe(false));
+    expect(connection.calls.some((call) => call.method === "turn/steer")).toBe(false);
+    await session.end();
+  }, 30_000);
+
+  it("propagates a refused or mismatched turn/steer without touching the turn", async () => {
+    const { connection, session } = setup();
+    const iterator = session.events[Symbol.asyncIterator]();
+    session.send("Build");
+
+    // steer() waits for turn/start itself, so no separate wait is needed —
+    // and the startup write proof runs real PowerShell, which a loaded CI
+    // process can stretch past a short poll.
+    connection.responses.set("turn/steer", { turn: { id: "turn-later", status: "inProgress" } });
+    await expect(session.steer("first try")).rejects.toThrow(/did not take/);
+    expect(connection.calls.some((call) => call.method === "turn/start")).toBe(true);
+
+    const request = connection.request.bind(connection);
+    connection.request = vi.fn(async (method: string, params: unknown) => {
+      if (method === "turn/steer") throw new Error("expected turn is no longer active");
+      return request(method, params);
+    });
+    await expect(session.steer("second try")).rejects.toThrow(/no longer active/);
+
+    expect(session.busy).toBe(true);
+    connection.emit("turn/completed", {
+      threadId: "thread-1",
+      turn: { id: "turn-1", status: "completed", error: null },
+    });
+    await expect(iterator.next()).resolves.toEqual({
+      done: false,
+      value: { type: "turn_complete" },
+    });
+    await session.end();
+  }, 30_000);
 });
 
 describe("Codex adapter normalization", () => {

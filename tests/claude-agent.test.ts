@@ -322,6 +322,20 @@ describe("ClaudeTutorAgent", () => {
     await closeSession(session, sdkQuery);
   });
 
+  it("reports that it cannot steer a running turn and refuses to try", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery, 10).startSession({
+      courseDir: "C:/course",
+    });
+    expect(session.steerable).toBe(false);
+    session.send("long task");
+    await expect(session.steer("also this")).rejects.toThrow(
+      "This provider cannot take a message while the tutor is working.",
+    );
+    expect(session.busy).toBe(true);
+    await closeSession(session, sdkQuery);
+  });
+
   it("lets the interrupted turn's own result close it, without a failure banner", async () => {
     const sdkQuery = new FakeClaudeQuery();
     const session = new ClaudeTutorAgent(() => sdkQuery, 5_000).startSession({

@@ -492,6 +492,9 @@ export function rehydrateMessages(entries: readonly TranscriptEntry[]): Rehydrat
   let tutor: RehydratedMessage | null = null;
   for (const entry of entries) {
     if (entry.kind === "learner") {
+      // A learner message steered into a running turn (ADR-042) closes the
+      // tutor text before it: whatever the tutor says next is a new message.
+      if (tutor !== null) tutor.partial = false;
       tutor = null;
       messages.push({
         id: `learner-${String(entry.sequence)}`,

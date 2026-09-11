@@ -210,9 +210,11 @@ turns, learner turns, composer, thinking state, approvals, retry notices, queue 
 controls, and scroll-follow logic. A surface may compose those parts differently; it must not fork
 their behavior.
 
-- The composer grows with its content and remains usable while the tutor is working. A submitted
-  mid-turn reply is visibly queued, cancellable, and sent through the normal path when the turn
-  settles.
+- The composer grows with its content and remains usable while the tutor is working. What a
+  mid-turn reply does is the provider's fact, reported by the app, never assumed. A provider that
+  can steer takes the reply into the running turn and the composer says the tutor sees it at its
+  next step. A provider that cannot leaves the reply visibly queued, cancellable, and sent through
+  the normal path when the turn settles (ADR-042).
 - Recovery keeps the previous conversation and its closing reply readable while the fresh session
   opens below a labeled boundary. The learner may collapse the previous session; the app never
   hides it automatically during the handoff.
@@ -236,8 +238,9 @@ their behavior.
 - Dangerous autonomy must be named plainly with its shell/course scope. Convenience is not grounds
   for silent escalation.
 
-See [ADR-004](DECISIONS/ADR-004-agent-seam-claude-first.md) and
-[ADR-018](DECISIONS/ADR-018-learner-owned-session-controls.md).
+See [ADR-004](DECISIONS/ADR-004-agent-seam-claude-first.md),
+[ADR-018](DECISIONS/ADR-018-learner-owned-session-controls.md), and
+[ADR-042](DECISIONS/ADR-042-steering-a-running-turn.md).
 
 ## Controls and accessibility
 

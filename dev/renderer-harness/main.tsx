@@ -335,6 +335,7 @@ function installBridge(
     messages: [],
     totalCostUsd: 0,
     turnInProgress: false,
+    steerable: false,
   };
   const providerCatalog: ProviderCatalog = {
     selectedProviderId: connected ? "codex" : "claude",

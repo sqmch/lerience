@@ -248,6 +248,7 @@ function installBridge(initialTheme: ThemePreference): void {
     messages: TRANSCRIPT,
     totalCostUsd: 0,
     turnInProgress: false,
+    steerable: false,
   };
 
   const providerCatalog: ProviderCatalog = {
