@@ -230,14 +230,16 @@ their behavior.
   live activity line still never shows a command.
 - Session controls report provider-confirmed current values. Pending next-turn values must look
   pending, not active.
-- Model, effort, edit grants, and autonomy changes are learner-initiated and session-scoped. A new
-  session starts from the learner's provider configuration, and the app never edits provider auth
-  or settings files.
+- Model, effort, autonomy, and access changes are learner-initiated. A session starts from the
+  learner's provider configuration, then re-applies the explicit choices the learner made for this
+  course last time, and the pill says "remembered" until the learner changes it (ADR-040). The
+  file-edit grant stays session-scoped. The app never edits provider auth or settings files.
 - Dangerous autonomy must be named plainly with its shell/course scope. Convenience is not grounds
   for silent escalation.
 
-See [ADR-004](DECISIONS/ADR-004-agent-seam-claude-first.md) and
-[ADR-018](DECISIONS/ADR-018-learner-owned-session-controls.md).
+See [ADR-004](DECISIONS/ADR-004-agent-seam-claude-first.md),
+[ADR-018](DECISIONS/ADR-018-learner-owned-session-controls.md), and
+[ADR-040](DECISIONS/ADR-040-remembered-session-controls.md).
 
 ## Controls and accessibility
 

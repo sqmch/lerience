@@ -29,7 +29,8 @@ are likely to revisit and that cannot be edited more naturally where their effec
 ## Deliberately not settings
 
 - Provider credentials, credential locations, login/logout, or API keys. Providers own auth.
-- Model, reasoning effort, or autonomy defaults. ADR-018 keeps these learner-initiated and
-  session-scoped unless real usage justifies a separate decision.
+- App-wide model, reasoning effort, autonomy, or access defaults. ADR-040 remembers the learner's
+  explicit choices per course, at the point of use, and shows them on the session bar; a global
+  default would re-create what ADR-004 forbids.
 - Course-derived facts such as title, progress, current module, or due count.
 - Per-course pane widths; window arrangement is app-wide under ADR-019.

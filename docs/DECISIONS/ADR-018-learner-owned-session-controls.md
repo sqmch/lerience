@@ -1,6 +1,7 @@
 # ADR-018 — The app offers session controls; it never imposes them
 
-Date: 2026-08-13 · Status: accepted; amended 2026-08-14 · Amends ADR-004
+Date: 2026-08-13 · Status: accepted; amended 2026-08-14 · Amends ADR-004 · Amended by ADR-040
+(2026-09-11: the "Reopens if" clause fired; explicit choices are now remembered per course)
 
 ## Decision
 

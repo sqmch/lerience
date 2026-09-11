@@ -1,6 +1,7 @@
 # ADR-037 - Explicit session-scoped Codex Full access
 
-Date: 2026-09-04 · Status: accepted · Amends ADR-018 and ADR-036
+Date: 2026-09-04 · Status: accepted · Amends ADR-018 and ADR-036 · Amended by ADR-040 (a Full
+access choice is remembered per course and re-armed visibly at session start)
 
 ## Decision
 
