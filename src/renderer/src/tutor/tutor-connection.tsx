@@ -4,6 +4,7 @@ import type { ProviderReadiness, TutorProviderId } from "../../../shared/provide
 import { GHOST, PRIMARY, QUIET } from "../components/controls";
 import { CheckGlyph, ChevronDownGlyph, ChevronLeftGlyph, SpinnerGlyph } from "../components/glyphs";
 import { MENU_PANEL, MENU_ROW, MENU_TICK } from "../components/menu";
+import { useLayerContainer } from "../components/layer";
 import {
   isReady,
   needsRepair,
@@ -331,6 +332,7 @@ export function TutorControl({
     else if (action.kind === "guide") void connection.openGuide(provider.id);
     else void connection.recheck(provider.id);
   };
+  const container = useLayerContainer();
 
   return (
     <DropdownMenu.Root>
@@ -359,7 +361,7 @@ export function TutorControl({
         <ChevronDownGlyph className="size-2.5 shrink-0 opacity-60" />
       </DropdownMenu.Trigger>
 
-      <DropdownMenu.Portal>
+      <DropdownMenu.Portal container={container}>
         <DropdownMenu.Content
           align="end"
           sideOffset={6}

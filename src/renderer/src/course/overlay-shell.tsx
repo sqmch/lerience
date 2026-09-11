@@ -10,7 +10,9 @@
  * would otherwise override the closed element's `display: none`. Hence
  * `hidden open:flex`. */
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+import { LayerContainerProvider } from "../components/layer";
 
 export function OverlayShell({
   open,
@@ -35,6 +37,10 @@ export function OverlayShell({
   children: ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLDialogElement>(null);
+  /* State, not the ref, because a menu or tooltip inside the overlay has to
+     RE-RENDER once the container exists; a ref mutation tells React nothing
+     and the first open would still portal to the body. */
+  const [layer, setLayer] = useState<HTMLDialogElement | null>(null);
 
   useEffect(() => {
     const element = ref.current;
@@ -45,7 +51,10 @@ export function OverlayShell({
 
   return (
     <dialog
-      ref={ref}
+      ref={(element) => {
+        ref.current = element;
+        setLayer(element);
+      }}
       aria-label={title}
       /* SEPARATION, three ways, because one was not enough: the overlay sits a
          step above the workspace in value (--bg-raised, not --bg, which is the
@@ -66,41 +75,47 @@ export function OverlayShell({
         if (event.target === ref.current) onOpenChange(false);
       }}
     >
-      <div className="border-line flex h-(--overlay-head-h) shrink-0 items-center gap-3.5 border-b pr-4 pl-5">
-        {/* The overlay names itself QUIETLY. It was set as a headline, which
+      {/* Everything the overlay holds — its head row included, since the
+          visualization switcher is an `actions` control — sees the dialog as
+          its layer container, so a popover opened in here is drawn in the top
+          layer with it rather than underneath it (components/layer.tsx). */}
+      <LayerContainerProvider value={layer}>
+        <div className="border-line flex h-(--overlay-head-h) shrink-0 items-center gap-3.5 border-b pr-4 pl-5">
+          {/* The overlay names itself QUIETLY. It was set as a headline, which
             put it in direct competition with the section tabs beside it — two
             things at similar weight on one row, neither clearly the label nor
             the navigation. The content
             below carries the real heading. */}
-        <h2 className="text-ink-dim shrink-0 text-xs font-medium tracking-tight">{title}</h2>
-        <p className="sr-only">{srDescription}</p>
-        {actions === undefined ? null : (
-          <>
-            <span className="bg-line h-4 w-(--stroke-hair) shrink-0" aria-hidden="true" />
-            {/* Stretched to the head's full height so a full-height control —
+          <h2 className="text-ink-dim shrink-0 text-xs font-medium tracking-tight">{title}</h2>
+          <p className="sr-only">{srDescription}</p>
+          {actions === undefined ? null : (
+            <>
+              <span className="bg-line h-4 w-(--stroke-hair) shrink-0" aria-hidden="true" />
+              {/* Stretched to the head's full height so a full-height control —
                 a tab with a rule under it — can sit on the head's own edge. */}
-            <div className="flex min-w-0 flex-1 items-stretch gap-2 self-stretch">{actions}</div>
-          </>
-        )}
-        <button
-          type="button"
-          aria-label="Close"
-          className="text-ink-dim hover:bg-surface-raised hover:text-hi focus-visible:outline-focus ml-auto grid size-7 shrink-0 place-items-center rounded-pill transition-colors focus-visible:outline-2"
-          onClick={() => {
-            onOpenChange(false);
-          }}
-        >
-          <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
-            <path
-              d="M1.5 1.5 L9.5 9.5 M9.5 1.5 L1.5 9.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+              <div className="flex min-w-0 flex-1 items-stretch gap-2 self-stretch">{actions}</div>
+            </>
+          )}
+          <button
+            type="button"
+            aria-label="Close"
+            className="text-ink-dim hover:bg-surface-raised hover:text-hi focus-visible:outline-focus ml-auto grid size-7 shrink-0 place-items-center rounded-pill transition-colors focus-visible:outline-2"
+            onClick={() => {
+              onOpenChange(false);
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
+              <path
+                d="M1.5 1.5 L9.5 9.5 M9.5 1.5 L1.5 9.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      </LayerContainerProvider>
     </dialog>
   );
 }

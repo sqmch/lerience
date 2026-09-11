@@ -22,6 +22,8 @@ import { cloneElement, useEffect, useLayoutEffect, useRef, useState } from "reac
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+import { useLayerContainer } from "./layer";
+
 export type TipPlacement = {
   side?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";
@@ -40,7 +42,11 @@ const ARROW_SHORT = 5;
 /* Above the lab overlay's 200, since a lab row is one of the two things that
    tooltips. Inline rather than a utility because the surface already carries
    inline position values from the measure pass — one style object, one place
-   to read the whole stacking answer. */
+   to read the whole stacking answer.
+
+   A z-index only settles the ordering WITHIN a stacking context. Getting above
+   a modal `<dialog>` is not that problem, and no number solves it; the tip has
+   to be rendered inside the dialog instead (components/layer.tsx). */
 const TIP_Z = 300;
 
 /** The tip's own ground. Same panel, border and elevation as the menu — a
@@ -131,6 +137,7 @@ function TipSurface(props: {
   wide?: boolean;
 }) {
   const { content, anchor, side, align, wide } = props;
+  const container = useLayerContainer();
   const ref = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
 
@@ -176,7 +183,7 @@ function TipSurface(props: {
       {content}
       {layout && <TipArrow side={layout.side} at={layout.arrow} />}
     </div>,
-    document.body,
+    container,
   );
 }
 
