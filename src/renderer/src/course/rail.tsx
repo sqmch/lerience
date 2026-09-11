@@ -4,11 +4,13 @@
  * every module node sits ON it. Exactly one point is lit — where the course
  * has got to. That is the whole accent budget for this column.
  *
- * What is new is the column's two ends. The header carries progress, because a
- * meter belongs beside the count it is a picture of. The footer carries Record,
- * Lab and Folder, which used to live in a horizontal band above the workspace —
- * a band that cost every reader its height forever to hold three controls used
- * a few times a session (ADR-019). */
+ * What is new is the column's two ends. The header carries the count of what is
+ * on the track — a COUNT, never a meter: modules are generated just-in-time, so
+ * the denominator is "what exists so far", and a bar drawn against it claims a
+ * finish line the course has not got. The footer carries Record, Lab and Folder,
+ * which used to live in a horizontal band above the workspace — a band that cost
+ * every reader its height forever to hold three controls used a few times a
+ * session (ADR-019). */
 
 import type { ReactElement } from "react";
 
@@ -71,14 +73,29 @@ function ModuleMark({
 }
 
 /**
- * The way to read a module entry the column cannot hold.
+ * How long a module is, in the unit a learner plans with.
  *
- * Two of the rail's lines clip by design: the title at two lines, the runtime
- * string at one. Neither should stop clipping — a tutor can write a runtime
- * line ("jvm (Temurin 25 LTS) + Maven 3.9; checks run through a Node adapter")
- * that no sane rail width holds, and letting one entry grow to fit it would
- * cost every OTHER entry the even rhythm that makes the track scannable. The
- * cap stays; the text gets a second door.
+ * The manifest carries `estimatedHours` as a number, and the rail printed it
+ * raw: a 45-minute module read "0.75h", which is a unit nobody says out loud
+ * and which takes arithmetic to turn into "after dinner". Under an hour it is
+ * minutes; at or over, hours and minutes. Rounded to the minute, because the
+ * number is a tutor's estimate of a whole learning cycle, not a measurement.
+ */
+export function moduleLength(hours: number): string | null {
+  if (!Number.isFinite(hours) || hours <= 0) return null;
+  const minutes = Math.max(1, Math.round(hours * 60));
+  if (minutes < 60) return `${String(minutes)} min`;
+  const whole = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${String(whole)}h` : `${String(whole)}h ${String(rest)}m`;
+}
+
+/**
+ * The way to read a module title the column cannot hold.
+ *
+ * The title clips at two lines by design, and should not stop: letting one
+ * entry grow to fit a long title would cost every OTHER entry the even rhythm
+ * that makes the track scannable. The cap stays; the text gets a second door.
  *
  * It opens only when something is actually clipped, so a rail dragged wide
  * enough to hold its titles stops tipping — the pointer goes quiet exactly
@@ -86,11 +103,9 @@ function ModuleMark({
  */
 function ModuleTip({
   title,
-  runtime,
   children,
 }: {
   title: string;
-  runtime: string | null;
   children: ReactElement;
 }): React.JSX.Element {
   return (
@@ -99,12 +114,7 @@ function ModuleTip({
       align="center"
       wide
       whenClipped
-      content={
-        <span className="flex flex-col gap-1">
-          <span className="text-hi font-medium">{title}</span>
-          {runtime === null ? null : <span className="text-ink-dim">{runtime}</span>}
-        </span>
-      }
+      content={<span className="text-hi font-medium">{title}</span>}
     >
       {children}
     </Tooltip>
@@ -146,7 +156,6 @@ export function CourseRail({
     if (last?.phase === entry.phase) last.modules.push(entry);
     else phases.push({ phase: entry.phase, phaseName: entry.phaseName, modules: [entry] });
   }
-  const percent = modules.length === 0 ? 0 : (completed / modules.length) * 100;
 
   return (
     <nav className="bg-surface flex min-h-0 flex-1 flex-col" aria-label="Course track">
@@ -154,29 +163,20 @@ export function CourseRail({
           one head line across the workspace — the single strongest signal that
           this is one window rather than three panels. */}
       {modules.length === 0 ? null : (
-        <header className="border-line-soft flex h-12 shrink-0 items-center gap-3 border-b px-4">
+        /* A count of what is done, and deliberately no denominator. The bar
+           that used to live here divided completed modules by the modules on
+           the TRACK, and the track is only as long as the tutor has built so
+           far — so it read 100% at the end of module 00 of a twelve-module
+           course. "2 of 3" has the same flaw one size down: the next module is
+           generated when the learner gets there, so the fraction is always
+           "all but one" and says nothing. A number the learner can verify by
+           counting the marks below it cannot drift like that. */
+        <header
+          className="border-line-soft flex h-12 shrink-0 items-center border-b px-4"
+          aria-live="polite"
+        >
           <span className="text-ink-dim shrink-0 text-xs tabular-nums">
-            {completed} of {modules.length}
-          </span>
-          <div
-            className="bg-line h-0.5 min-w-0 flex-1 overflow-hidden rounded-pill"
-            role="progressbar"
-            aria-label="Modules completed"
-            aria-valuenow={completed}
-            aria-valuemin={0}
-            aria-valuemax={modules.length}
-          >
-            <div
-              className={
-                completed === modules.length
-                  ? "bg-ok h-full rounded-pill transition-[width] duration-(--dur-slow)"
-                  : "bg-accent h-full rounded-pill transition-[width] duration-(--dur-slow)"
-              }
-              style={{ width: `${String(percent)}%` }}
-            />
-          </div>
-          <span className="text-ink-faint shrink-0 text-2xs tabular-nums">
-            {completed === modules.length ? "done" : `${String(Math.round(percent))}%`}
+            {completed} {completed === 1 ? "module" : "modules"} completed
           </span>
         </header>
       )}
@@ -236,9 +236,9 @@ export function CourseRail({
                   {phase.modules.map((entry) => {
                     const current = entry.id === currentModuleId;
                     const selected = entry.id === selectedId;
-                    const runtime = entry.runtime === "" ? null : entry.runtime;
+                    const length = moduleLength(entry.estimatedHours);
                     return (
-                      <ModuleTip key={entry.id} title={entry.title} runtime={runtime}>
+                      <ModuleTip key={entry.id} title={entry.title}>
                         <button
                           type="button"
                           aria-current={selected ? "true" : undefined}
@@ -268,24 +268,30 @@ export function CourseRail({
                               {entry.title}
                             </span>
                             {/* Deliberately few facts: the mark already says "boss
-                              check" and "you are here". */}
-                            <span
-                              className={
-                                current
-                                  ? "text-accent flex min-w-0 items-center gap-1.5 text-2xs"
-                                  : "text-ink-dim flex min-w-0 items-center gap-1.5 text-2xs"
-                              }
-                            >
-                              <span data-clip className="min-w-0 truncate tabular-nums">
-                                {entry.estimatedHours}h{runtime === null ? "" : ` · ${runtime}`}
+                              check" and "you are here". The manifest's `runtime`
+                              used to ride here too and was dropped — "node" told
+                              a learner what the SCAFFOLD needs to execute, which
+                              is the tutor's business when it writes the checks
+                              and nobody's when reading the track. */}
+                            {length === null && !entry.hasVisual ? null : (
+                              <span
+                                className={
+                                  current
+                                    ? "text-accent flex min-w-0 items-center gap-1.5 text-2xs"
+                                    : "text-ink-dim flex min-w-0 items-center gap-1.5 text-2xs"
+                                }
+                              >
+                                {length === null ? null : (
+                                  <span className="min-w-0 truncate tabular-nums">{length}</span>
+                                )}
+                                {entry.hasVisual ? (
+                                  <>
+                                    <DiamondGlyph className="size-2.5 shrink-0" />
+                                    <span className="sr-only">has a visualization</span>
+                                  </>
+                                ) : null}
                               </span>
-                              {entry.hasVisual ? (
-                                <>
-                                  <DiamondGlyph className="size-2.5 shrink-0" />
-                                  <span className="sr-only">has a visualization</span>
-                                </>
-                              ) : null}
-                            </span>
+                            )}
                           </span>
                         </button>
                       </ModuleTip>
