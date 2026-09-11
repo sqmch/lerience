@@ -121,6 +121,10 @@ export interface SessionControls {
   /** Learner-selected values that this provider can only apply when the next
    *  turn starts. `current` remains the provider-confirmed state until then. */
   pending?: SessionControlPatch;
+  /** Controls the app restored from this course's remembered choices
+   *  (ADR-040) and the learner has not changed since. The bar labels them, so
+   *  a restored grant is never presented as a fresh provider default. */
+  remembered?: ("model" | "effort" | "autonomy" | "access")[];
   current: {
     model: string | null;
     effort: SessionEffort | null;

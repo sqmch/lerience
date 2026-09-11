@@ -417,6 +417,15 @@ export function SessionControlBar({
   const selected = { ...controls.current, ...controls.pending };
   const model = controls.models.find((candidate) => candidate.id === selected.model);
   const efforts = model?.efforts ?? [];
+  /* A value the app restored from this course's memory (ADR-040) says so on
+     the pill. It matters most for access: a sandbox grant that quietly comes
+     back is the one setting the learner must be able to see is in force. */
+  const suffix = (key: "model" | "effort" | "autonomy" | "access"): string =>
+    controls.pending?.[key] !== undefined
+      ? " · next reply"
+      : controls.remembered?.includes(key)
+        ? " · remembered"
+        : "";
   if (controls.models.length === 0 && controls.autonomy.length === 0 && !controls.access?.length)
     return null;
 
@@ -433,7 +442,7 @@ export function SessionControlBar({
           <Menu
             label="Where your tutor may act"
             value={selected.access ?? null}
-            trigger={`${controls.access.find((option) => option.id === selected.access)?.label ?? "Access"}${controls.pending?.access ? " · next reply" : ""}`}
+            trigger={`${controls.access.find((option) => option.id === selected.access)?.label ?? "Access"}${suffix("access")}`}
             options={controls.access.map((option) => ({
               value: option.id,
               label: option.label,
@@ -446,6 +455,7 @@ export function SessionControlBar({
           <Menu
             label="How much your tutor may do without asking"
             value={selected.autonomy}
+            trigger={`${controls.autonomy.find((mode) => mode.id === selected.autonomy)?.label ?? "Autonomy"}${suffix("autonomy")}`}
             options={controls.autonomy.map((mode) => ({
               value: mode.id,
               label: mode.label,
@@ -463,7 +473,7 @@ export function SessionControlBar({
             /* When the provider reports a model the app has no row for, the
              trigger shows that id rather than claiming "default" — the
              learner must always be able to see what is actually answering. */
-            trigger={model?.label ?? selected.model ?? "Model"}
+            trigger={`${model?.label ?? selected.model ?? "Model"}${suffix("model")}`}
             options={controls.models.map((option) => ({
               value: option.id,
               label: option.label,
@@ -478,7 +488,7 @@ export function SessionControlBar({
           <Menu
             label="How hard the model thinks before answering"
             value={selected.effort}
-            trigger={selected.effort === null ? "Default effort" : EFFORT_LABELS[selected.effort]}
+            trigger={`${selected.effort === null ? "Default effort" : EFFORT_LABELS[selected.effort]}${suffix("effort")}`}
             options={efforts.map((level) => ({ value: level, label: EFFORT_LABELS[level] }))}
             onChange={(effort) => {
               onChange({ effort });

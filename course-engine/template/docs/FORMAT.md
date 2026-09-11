@@ -19,7 +19,7 @@ curriculum/
     BRIEF.md         ← task spec + acceptance criteria
     scaffold/        ← runnable starter project with TODO(you) gaps
     checks/          ← automated tests, run by the learner
-    hints/           ← hint-1.md (nudge), hint-2.md (approach), hint-3.md (near-spoiler)
+    REVIEW.md        ← the learner's-eye review written before handover (below)
     quiz.md          ← 4–8 retrieval questions
     lab.json         ← optional: claims/configures the module's visualizations (below)
     visuals/         ← optional: self-contained interactive HTML, rendered sandboxed
@@ -33,9 +33,10 @@ tutor/
 hundreds of MB and committing it bloats every clone. **QA a generated module mechanically with
 `npm run qa`** (`scripts/qa-module.mjs`, the entry point for the sealed-reference ritual): it
 runs the reference all-green → stripped-scaffold red-*on-assertions* check and lints the earned
-materials rules — `TODO(you)` gaps, no pasteable code in hint-2, no relative-timing checks, 4–8
-quiz questions, `lab.json` claims that resolve, self-contained visuals, and no committed
-node_modules.
+materials rules — `TODO(you)` gaps, a complete and current `REVIEW.md`, the answer contract
+between brief and scaffold where a structured answer file exists, no relative-timing checks,
+4–8 quiz questions, `lab.json` claims that resolve, self-contained visuals, and no committed
+`node_modules`.
 
 ## COURSE.md — the course spine
 
@@ -121,9 +122,38 @@ check only enforces that the file exists.
 ```
 
 **Stable/volatile split:** `LESSON.md`, `BRIEF.md`, `quiz.md`, `module.json` are the *stable
-layer* — written when the course spine is built. `scaffold/`, `checks/`, `hints/` are the
+layer* — written when the course spine is built. `scaffold/`, `checks/`, `REVIEW.md` are the
 *volatile layer* — generated when the learner starts the module (facts drift: versions, prices,
 APIs), and always QA'd against a sealed reference solution first.
+
+## REVIEW.md — the learner's-eye review
+
+Written before handover by a reader with none of the author's context (`CLAUDE.md`, **Module
+generation**): only the lesson, the brief, the scaffold and the learner's evidenced
+prerequisites. Four `##` headings, each a per-item list ending in a location, `fixed: …` or
+`removed: …`:
+
+```markdown
+# Learner's-eye review — 02-vector-store
+
+## Terms before use
+- `cosine` — LESSON.md "Two ways to compare", before the worked example.
+- `top_k` — fixed: defined in the brief's answer table; it was only in the scaffold.
+
+## Answer form
+- Task 1 → `answers.json` `nearest`: an array of three quoted ids, in rank order.
+
+## Doable from the page
+- Task 2 needs the sample vectors — LESSON.md "A worked query" lists all four.
+
+## Assumptions about the learner
+- Reads a TypeScript type annotation — progress.json 01-embeddings note, 2026-06-11.
+```
+
+`npm run qa` fails a generated module without it, warns when it is older than `LESSON.md` or
+`BRIEF.md`, and cross-checks the answer contract where a structured answer file exists.
+Courses generated before engine 0.2.0 carry `hints/` instead; the QA script reads those as
+legacy and only warns.
 
 ## tutor/progress.json
 
@@ -136,7 +166,8 @@ APIs), and always QA'd against a sealed reference solution first.
       "status": "completed",        // "not-started" | "in-progress" | "completed"
       "startedAt": "2026-06-10",
       "completedAt": "2026-06-11",
-      "hintsUsed": ["hint-1"],
+      "hintsUsed": ["hint-1"],        // assistance levels given live: hint-1 nudge,
+                                      // hint-2 approach, hint-3 near-spoiler (CLAUDE.md)
       "checkAttempts": 3,
       "notes": "free-form tutor notes: struggles, calibration decisions, open threads",
       "bossCheck": {                // optional: the phase-gate trace for this module

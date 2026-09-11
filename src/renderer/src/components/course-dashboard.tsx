@@ -334,17 +334,12 @@ function CourseCard({
               )}
             </span>
             {facts.total > 0 ? (
+              /* A count, never a meter or a fraction: modules are generated
+                 just-in-time, so "done of total" only ever counts the modules
+                 built so far and reads as "all but one" for the whole course. */
               <div className="mt-1 flex flex-wrap items-center gap-3">
-                <span className="bg-accent-wash rounded-pill h-1 w-48 overflow-hidden">
-                  <i
-                    className="bg-accent block h-full"
-                    style={{
-                      width: `${String(Math.round((facts.done / facts.total) * 100))}%`,
-                    }}
-                  />
-                </span>
                 <span className="text-ink-faint font-data text-2xs tabular-nums">
-                  {facts.done} of {facts.total} modules
+                  {facts.done} {facts.done === 1 ? "module" : "modules"} completed
                 </span>
                 {facts.due > 0 ? (
                   <span className={`${CHIP} text-attention bg-attention/10`}>{facts.due} due</span>

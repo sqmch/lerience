@@ -62,7 +62,7 @@ const MODULE_FILES = [
   "scaffold/package.json",
   "scaffold/src/reading.ts",
   "checks/reading.test.ts",
-  "hints/01.md",
+  "REVIEW.md",
 ].map((file) => `curriculum/00-one-reading/${file}`);
 
 function courseFor(stage: Stage, published = stage === "ready"): CourseSnapshot {

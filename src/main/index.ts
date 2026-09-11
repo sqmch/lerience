@@ -86,6 +86,7 @@ import { guardModuleDirectory } from "./scripts/parsers";
 import type { BrowseEditorReply, EditorCatalog, OpenInEditorReply } from "../shared/editor";
 import { buildPingReply } from "./ping";
 import { createEngineScriptService } from "./scripts/engine-script-service";
+import { FileControlMemory } from "./session/control-memory";
 import { readSettings, updateSettings } from "./settings";
 import { ElectronUtilityProcessRunner } from "./scripts/utility-process-runner";
 import { SessionConductor } from "./session/conductor";
@@ -514,6 +515,7 @@ void app.whenReady().then(async () => {
       npmCliPath: runtime.npmCliPath,
     }),
     userDataPath: app.getPath("userData"),
+    controlMemory: new FileControlMemory(app.getPath("userData")),
     emitAgentEvent: broadcastSeminarEvent,
     emitSnapshot: broadcastSeminarSnapshot,
   });

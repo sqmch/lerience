@@ -81,7 +81,7 @@ it("shows zero at build start and reads every part from refreshed disk snapshots
     "quiz.md",
     "scaffold/package.json",
     "checks/example.test.ts",
-    "hints/01.md",
+    "REVIEW.md",
   ].map((file) => `curriculum/00-synthetic/${file}`);
   await render(["COURSE.md", ...files.slice(0, 3)]);
   expect(host.textContent).toContain("3 of 7 parts landed");

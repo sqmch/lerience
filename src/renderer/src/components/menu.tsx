@@ -11,6 +11,7 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import type { ReactNode } from "react";
 import { CheckGlyph, ChevronDownGlyph } from "./glyphs";
+import { useLayerContainer } from "./layer";
 
 /* ── the menu's shared chrome ────────────────────────────────────────────────
    Exported as class strings rather than as wrapper components, because a menu
@@ -67,6 +68,10 @@ export function Menu<T extends string>({
   disabled?: boolean;
 }): React.JSX.Element {
   const selected = options.find((option) => option.value === value);
+  /* The default portal target is `document.body`, which is UNDER an open modal
+     dialog's top layer — so a menu inside an overlay opened into nothing at
+     all. See components/layer.tsx. */
+  const container = useLayerContainer();
 
   return (
     <DropdownMenu.Root>
@@ -79,7 +84,7 @@ export function Menu<T extends string>({
         <ChevronDownGlyph className="size-2.5 shrink-0 opacity-60" />
       </DropdownMenu.Trigger>
 
-      <DropdownMenu.Portal>
+      <DropdownMenu.Portal container={container}>
         <DropdownMenu.Content
           align={align}
           sideOffset={6}
