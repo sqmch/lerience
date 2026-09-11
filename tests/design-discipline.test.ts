@@ -171,6 +171,35 @@ describe("ink contrast against the grounds text sits on", () => {
       expect(dim).toBeGreaterThanOrEqual(7);
     });
   }
+
+  /* The floor and the ordering both passed while dark prose still read as a
+     wall of text, because neither measures the distance a READER uses to find
+     a heading. Contrast ratios cannot: they are dominated by the ground, which
+     both themes separate by ~85 L*. The heading step is the difference between
+     --hi and --ink, and light got it for free (its --hi can go to near-black)
+     while dark's ceiling capped it at 7.7 L* — 62% of light's. The two themes
+     are one design, so the step is held together here rather than left to
+     whoever next nudges an ink value. */
+  it("headings step away from body text by the same amount in both themes", () => {
+    const lightness = (hex: string): number => {
+      const y = luminance(hex);
+      return y > 0.008856 ? 116 * Math.cbrt(y) - 16 : 903.3 * y;
+    };
+    const step = (selector: string): number => {
+      const source = block(selector);
+      return lightness(value(source, "ink")) - lightness(value(source, "hi"));
+    };
+
+    const dark = Math.abs(step(":root {"));
+    const light = Math.abs(step(':root[data-theme="light"]'));
+    const media = Math.abs(step(":root:not([data-theme])"));
+
+    // Enough separation to read as hierarchy at all, in either theme.
+    expect(Math.min(dark, light, media)).toBeGreaterThanOrEqual(10);
+    // And close enough that one theme is not quietly flatter than the other.
+    expect(Math.abs(dark - light)).toBeLessThanOrEqual(3);
+    expect(light).toBeCloseTo(media, 5);
+  });
 });
 
 describe("the three palette blocks of tokens.css", () => {

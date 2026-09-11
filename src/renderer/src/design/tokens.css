@@ -63,7 +63,15 @@
      ink-dim for secondary text that still has to read, ink-faint for
      peripheral only: rules, disabled, placeholders — never running text. */
   --hi: #fafafa;
-  --ink: #e4e4e4;
+  /* --ink is BODY TEXT, and on dark it answers to a second constraint the
+     light palette gets for free: the distance to --hi. Light's headings sit
+     12.4 L* from its body text; at #e4e4e4 dark's sat 7.7 away, because --hi
+     is already near the ceiling and the gap can only be opened downward. So
+     a lesson whose headings separate a section cleanly in light read as one
+     undifferentiated block in dark. #d7d7d7 restores the step to 12.3 L* and
+     still clears 11.8:1 on the darkest ground it lands on. A test holds the
+     two themes' steps together (tests/design-discipline.test.ts). */
+  --ink: #d7d7d7;
   /* --ink-dim is SUPPORTING TEXT — ledes, captions, secondary lines people
      actually read — so it answers to comfort, not to the 4.5:1 minimum.
      8.2:1 on its worst ground. */
