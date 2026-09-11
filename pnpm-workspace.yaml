@@ -16,3 +16,11 @@ minimumReleaseAgeStrict: false
 # packaged as an app-owned provider runtime (ADR-025).
 ignoredOptionalDependencies:
   - "@anthropic-ai/claude-agent-sdk-*"
+
+# Two transitive development-only packages under electron-builder carry high
+# advisories (@xmldom/xmldom via plist, js-yaml via builder-util) and CI audits
+# every dependency at that level. Pin the patched versions until electron-
+# builder's own chain moves past them; nothing here reaches the packaged app.
+overrides:
+  "@xmldom/xmldom": "~0.8.15"
+  js-yaml: "~4.3.2"
