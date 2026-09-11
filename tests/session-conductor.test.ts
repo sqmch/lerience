@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { AsyncQueue } from "../src/main/agent/async-queue";
 import type { CourseContextInspection } from "../src/main/scripts/engine-script-service";
 import { SessionConductor } from "../src/main/session/conductor";
+import { FileControlMemory, type ControlMemory } from "../src/main/session/control-memory";
 import type {
   AgentEvent,
   AgentSession,
@@ -45,8 +46,12 @@ class FakeSession implements AgentSession {
   readonly events = this.queue;
   readonly sent: string[] = [];
   readonly approvals: Array<{ id: string; allow: boolean }> = [];
+  /** Every control patch the conductor applied, in order. */
+  readonly applied: SessionControlPatch[] = [];
   /** Tests flip this to exercise the conductor's in-flight guards. */
   busy = false;
+  /** A provider that rejects every control change (ADR-018 invariant 7). */
+  refuseControls = false;
   ended = false;
   controls: SessionControls = {
     models: [{ id: "sonnet", label: "Sonnet", efforts: ["low", "high"] }],
@@ -67,6 +72,8 @@ class FakeSession implements AgentSession {
   }
 
   async applyControls(patch: SessionControlPatch): Promise<SessionControls> {
+    this.applied.push(patch);
+    if (this.refuseControls) throw new Error("The provider refused that control.");
     this.controls = {
       ...this.controls,
       current: { ...this.controls.current, ...patch },
@@ -97,10 +104,12 @@ class FakeAgent implements TutorAgent {
   readonly providerId = "claude";
   readonly sessions: FakeSession[] = [];
   readonly starts: StartSessionOptions[] = [];
+  refuseControls = false;
 
   startSession(options: StartSessionOptions): AgentSession {
     this.starts.push(options);
     const session = new FakeSession();
+    session.refuseControls = this.refuseControls;
     this.sessions.push(session);
     return session;
   }
@@ -123,6 +132,7 @@ function harness(options: {
   userData?: string;
   agent?: FakeAgent;
   inspections?: CourseContextInspection[];
+  controlMemory?: ControlMemory;
 }) {
   const courseDir = options.courseDir ?? temporaryRoot();
   const userData = options.userData ?? temporaryRoot();
@@ -144,6 +154,7 @@ function harness(options: {
     },
     emitAgentEvent: (event) => events.push(event),
     emitSnapshot: (snapshot) => snapshots.push(snapshot),
+    ...(options.controlMemory === undefined ? {} : { controlMemory: options.controlMemory }),
   });
   conductors.push(conductor);
   return { conductor, courseDir, userData, agent, snapshots, events };
@@ -452,5 +463,72 @@ describe("SessionConductor", () => {
       turnInProgress: true,
     });
     expect((await second.conductor.current(courseDir)).lifecycle).toBe("open");
+  });
+});
+
+describe("remembered session controls (ADR-040)", () => {
+  it("remembers explicit choices per course and restores them before the opener", async () => {
+    const userData = temporaryRoot();
+    const memory = new FileControlMemory(userData);
+    const first = harness({ userData, controlMemory: memory });
+    await first.conductor.start({
+      courseDir: first.courseDir,
+      currentModuleId: null,
+      onboarding: false,
+    });
+    await first.conductor.applySessionControls({ autonomy: "bypass", effort: "high" });
+    expect(memory.read(COURSE_ID, "claude")).toEqual({ autonomy: "bypass", effort: "high" });
+    // A choice the learner made in this session is theirs, live — not "remembered".
+    expect((await first.conductor.sessionControls())?.remembered).toBeUndefined();
+    // Back to the provider default forgets the key rather than storing it.
+    await first.conductor.applySessionControls({ effort: null });
+    expect(memory.read(COURSE_ID, "claude")).toEqual({ autonomy: "bypass" });
+    await first.conductor.abandon();
+
+    // The next runtime for this course — here the recovery of the abandoned
+    // one, an app-initiated open — re-applies the choice before its opener.
+    const second = harness({ courseDir: first.courseDir, userData, controlMemory: memory });
+    await second.conductor.start({
+      courseDir: first.courseDir,
+      currentModuleId: null,
+      onboarding: false,
+    });
+    const session = second.agent.sessions[0];
+    if (session === undefined) throw new Error("no session started");
+    expect(session.applied).toEqual([{ autonomy: "bypass" }]);
+    expect(session.sent).toHaveLength(1);
+    expect(session.controls.current.autonomy).toBe("bypass");
+    expect((await second.conductor.sessionControls())?.remembered).toEqual(["autonomy"]);
+
+    // Changing it makes it the learner's live choice again, and updates memory.
+    const changed = await second.conductor.applySessionControls({ autonomy: "default" });
+    expect(changed?.remembered).toBeUndefined();
+    expect(memory.read(COURSE_ID, "claude")).toEqual({ autonomy: "default" });
+  });
+
+  it("keeps the memory per course and per provider", () => {
+    const memory = new FileControlMemory(temporaryRoot());
+    memory.remember(COURSE_ID, "codex", { access: "danger-full-access" });
+    expect(memory.read(COURSE_ID, "claude")).toEqual({});
+    expect(memory.read("other-course", "codex")).toEqual({});
+    expect(memory.read(COURSE_ID, "codex")).toEqual({ access: "danger-full-access" });
+    memory.remember(COURSE_ID, "codex", { access: "workspace-write" });
+    expect(memory.read(COURSE_ID, "codex")).toEqual({ access: "workspace-write" });
+  });
+
+  it("still opens the session when the provider refuses the remembered controls", async () => {
+    const userData = temporaryRoot();
+    const memory = new FileControlMemory(userData);
+    const agent = new FakeAgent();
+    agent.refuseControls = true;
+    memory.remember(COURSE_ID, "claude", { model: "sonnet" });
+    const { conductor, courseDir } = harness({ userData, agent, controlMemory: memory });
+    await expect(
+      conductor.start({ courseDir, currentModuleId: null, onboarding: false }),
+    ).resolves.toEqual({ ok: true });
+    expect(agent.sessions[0]?.applied).toEqual([{ model: "sonnet" }]);
+    expect(agent.sessions[0]?.sent[0]).toMatch(/start session$/);
+    // Nothing restored, so nothing is labelled as remembered.
+    expect((await conductor.sessionControls())?.remembered).toBeUndefined();
   });
 });

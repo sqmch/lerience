@@ -14,6 +14,11 @@ import type {
 import type { RunChecksReply, SeminarSnapshot } from "../../shared/session";
 import { buildSessionOpener, type SessionOpenerFacts } from "../agent/opener";
 import { getOrCreateCourseIdentity, readCourseIdentity } from "../course-identity";
+import {
+  REMEMBERED_CONTROL_KEYS,
+  type ControlMemory,
+  type RememberedControlKey,
+} from "./control-memory";
 import type {
   CourseContextInspection,
   EngineScriptService,
@@ -30,6 +35,8 @@ type RuntimeFlow = "normal" | "recovery" | "wrapping";
 interface ActiveRuntime {
   id: number;
   courseDir: string;
+  courseId: string;
+  providerId: TutorAgent["providerId"];
   currentModuleId: string | null;
   onboarding: boolean;
   flow: RuntimeFlow;
@@ -52,6 +59,10 @@ interface ActiveRuntime {
    *  THIS runtime. Never persisted, never provider config (ADR-004): a fresh
    *  session starts back at ask-every-time. */
   autoAllowCourseEdits: boolean;
+  /** Controls this runtime restored from the course's memory (ADR-040) and the
+   *  learner has not changed since. Reported so the bar can say "remembered"
+   *  rather than presenting a restored grant as a fresh default. */
+  remembered: Set<RememberedControlKey>;
   /** Update handoff waits here while a learner-approved provider turn finishes.
    * Resolved by turn completion or process end; never persisted. */
   idleWaiters: Set<() => void>;
@@ -73,6 +84,9 @@ export interface SessionConductorOptions {
   createAgent: () => TutorAgent;
   scripts: Pick<EngineScriptService, "inspectContext" | "runChecks">;
   userDataPath: string;
+  /** Per-course memory of the learner's explicit control choices (ADR-040).
+   *  Absent means nothing is remembered and every session starts on config. */
+  controlMemory?: ControlMemory;
   emitAgentEvent: (event: AgentEvent) => void;
   emitSnapshot: (snapshot: SeminarSnapshot) => void;
   clock?: () => Date;
@@ -157,17 +171,47 @@ export class SessionConductor {
     const active = this.active;
     if (active === null) return null;
     try {
-      return await active.session.describeControls();
+      return this.withRemembered(active, await active.session.describeControls());
     } catch {
       return null;
     }
   }
 
-  /** Apply a learner-initiated session change (ADR-018). Session-scoped: it
-   *  dies with the runtime and never reaches the learner's own config. */
+  /** Apply a learner-initiated session change (ADR-018) and remember it for
+   *  this course and provider (ADR-040). It never reaches the learner's own
+   *  provider configuration; a provider rejection remembers nothing. */
   async applySessionControls(patch: SessionControlPatch): Promise<SessionControls | null> {
     const active = this.requireActive();
-    return await active.session.applyControls(patch);
+    const controls = await active.session.applyControls(patch);
+    for (const key of REMEMBERED_CONTROL_KEYS) {
+      if (patch[key] !== undefined) active.remembered.delete(key);
+    }
+    this.options.controlMemory?.remember(active.courseId, active.providerId, patch);
+    return this.withRemembered(active, controls);
+  }
+
+  private withRemembered(active: ActiveRuntime, controls: SessionControls): SessionControls {
+    return active.remembered.size === 0
+      ? controls
+      : { ...controls, remembered: [...active.remembered] };
+  }
+
+  /** Re-apply what the learner chose for this course last time (ADR-040).
+   *  Runs before the opener so the first turn already honours the choice —
+   *  Codex can only apply on a turn start. A failure is local, exactly as a
+   *  refused control is: the session still opens on the learner's config. */
+  private async restoreRememberedControls(active: ActiveRuntime): Promise<void> {
+    const memory = this.options.controlMemory;
+    if (memory === undefined) return;
+    const remembered = memory.read(active.courseId, active.providerId);
+    const keys = REMEMBERED_CONTROL_KEYS.filter((key) => remembered[key] !== undefined);
+    if (keys.length === 0) return;
+    try {
+      await active.session.applyControls(remembered);
+      for (const key of keys) active.remembered.add(key);
+    } catch {
+      // The provider's own init frame stays authoritative (ADR-018).
+    }
   }
 
   /** Ask the last request again, unchanged. A provider turn can complete having
@@ -310,7 +354,7 @@ export class SessionConductor {
     });
 
     try {
-      await this.startRuntime(options, transcript, "normal", opener);
+      await this.startRuntime(courseId, options, transcript, "normal", opener);
     } catch (error) {
       await transcript.markLifecycle(
         "closed",
@@ -333,7 +377,7 @@ export class SessionConductor {
     });
 
     try {
-      await this.startRuntime(options, transcript, "recovery", opener);
+      await this.startRuntime(transcript.courseId, options, transcript, "recovery", opener);
     } catch (error) {
       await transcript.markLifecycle("close_failed", "The recovery tutor could not start.");
       throw error;
@@ -341,15 +385,19 @@ export class SessionConductor {
   }
 
   private async startRuntime(
+    courseId: string,
     options: StartConductedSessionOptions,
     transcript: FileTranscriptStore,
     flow: RuntimeFlow,
     opener: string,
   ): Promise<void> {
-    const session = this.options.createAgent().startSession({ courseDir: options.courseDir });
+    const agent = this.options.createAgent();
+    const session = agent.startSession({ courseDir: options.courseDir });
     const active: ActiveRuntime = {
       id: this.nextRuntimeId++,
       courseDir: options.courseDir,
+      courseId,
+      providerId: agent.providerId,
       currentModuleId: options.currentModuleId,
       onboarding: options.onboarding,
       flow,
@@ -362,12 +410,15 @@ export class SessionConductor {
       approvalToolNames: new Map(),
       lastRequest: { kind: "operator", text: opener },
       autoAllowCourseEdits: false,
+      remembered: new Set(),
       idleWaiters: new Set(),
       pump: Promise.resolve(),
     };
     this.active = active;
     active.pump = this.pump(active);
     try {
+      await this.restoreRememberedControls(active);
+      if (this.active?.id !== active.id) return;
       await transcript.append({ kind: "operator", text: opener });
       session.send(opener);
       // send() accepted the hidden opener synchronously. Report that turn as
