@@ -19,9 +19,12 @@ previews only provenance-bound engine paths, refuses learner edits/collisions, a
 validated engine commit only from a future learner action. Increment `engineVersion` whenever a
 reviewed template delta should become such an offered update.
 
-Engine 0.1.2 scopes modules around one outcome and a complete learning cycle, distinguishes daily
-availability from module size, and adds an advisory lesson-scope QA check. Course format 0,
-schemas and record locations are unchanged. Existing courses retain their own protocol and materials; this patch adds no update
+Engine 0.2.0 replaces sealed hint files with three assistance levels given live, and requires a
+learner's-eye `REVIEW.md` before handover, cross-checked by QA where a structured answer file
+exists (ADR-041). Course format 0, schemas and record locations are unchanged; `hintsUsed` keeps
+its values with the new meaning, and a module carrying legacy `hints/` still validates. Engine
+0.1.2 scoped modules around one outcome and a complete learning cycle, distinguished daily
+availability from module size, and added an advisory lesson-scope QA check. Existing courses retain their own protocol and materials; this patch adds no update
 UI or automatic migration. The updater core remains subject to ADR-027's explicit action boundary.
 
 The repository-owned [teaching protocol evaluation](evaluations/teaching-protocol.md) records the

@@ -14,7 +14,7 @@ export const MODULE_PARTS = [
   { key: "quiz", label: "Quiz", path: "quiz.md" },
   { key: "scaffold", label: "Scaffold", path: "scaffold" },
   { key: "checks", label: "Checks", path: "checks" },
-  { key: "hints", label: "Hints", path: "hints" },
+  { key: "review", label: "Review", path: "REVIEW.md" },
 ] as const;
 
 export type ModulePartKey = (typeof MODULE_PARTS)[number]["key"];

@@ -4,9 +4,9 @@
 // scaffold, confirm the checks fail ON ASSERTIONS (not crashes), delete the
 // reference. That is pure discipline today, and it leaks — the *learner* has
 // repeatedly caught what the ritual should have: a price-key mismatch, hardcoded
-// dollar values, a flaky `secondMs < firstMs/2` timing check, a hint-2 with a
-// pasteable code block, a refusal-contract hole. This is the mechanical check
-// that prose couldn't be.
+// dollar values, a flaky `secondMs < firstMs/2` timing check, a brief whose
+// answer file lied about its own types, a refusal-contract hole. This is the
+// mechanical check that prose couldn't be.
 //
 // It is READ-ONLY on the course: static lints read files and `git ls-files`;
 // dynamic runs copy the scaffold+checks into a throwaway temp dir (never in
@@ -228,20 +228,89 @@ export function detectRelativeTiming(files) {
   return flagged;
 }
 
-// hint-2 fenced-code detection (the demotion rule): returns the 1-based line
-// number of each *opening* code fence. Inline `code` is fine; fenced blocks are
-// pasteable and make it a hint-3.
-export function hint2Fences(text) {
-  const fences = [];
+// The learner's-eye review (CLAUDE.md "Learner's-eye review"): four headings,
+// each a per-item list. Returns { missing, empty } — heading keys absent from
+// the file, and headings present with nothing under them. Matching is by the
+// key phrase so the reviewer may word the heading freely.
+export const REVIEW_SECTIONS = [
+  { key: "terms", heading: "Terms before use", pattern: /terms/i },
+  { key: "answer-form", heading: "Answer form", pattern: /answer\s+form/i },
+  { key: "doable", heading: "Doable from the page", pattern: /doable/i },
+  { key: "assumptions", heading: "Assumptions about the learner", pattern: /assumption/i },
+];
+export function reviewChecklist(text) {
   const lines = text.split(/\r?\n/);
-  let open = false;
-  lines.forEach((line, i) => {
-    if (/^\s*(```|~~~)/.test(line)) {
-      if (!open) fences.push(i + 1);
-      open = !open;
+  const sections = [];
+  let current = null;
+  for (const line of lines) {
+    const heading = /^\s*#{1,6}\s+(.+?)\s*$/.exec(line);
+    if (heading) {
+      current = { title: heading[1], body: [] };
+      sections.push(current);
+    } else if (current && line.trim() !== "") current.body.push(line);
+  }
+  const missing = [];
+  const empty = [];
+  for (const section of REVIEW_SECTIONS) {
+    const found = sections.find((s) => section.pattern.test(s.title));
+    if (!found) missing.push(section.heading);
+    else if (found.body.length === 0) empty.push(section.heading);
+  }
+  return { missing, empty };
+}
+
+// The answer contract between a brief and a structured answer file. Leaves of
+// the reference (or, without one, of the scaffold) are compared: a scaffold
+// placeholder may be null ("unanswered"); anything else must be the type a
+// correct answer has — a "" where a number goes taught one learner to type
+// strings. And every leaf the learner must fill has to be NAMED in the brief.
+// Keys under a top-level `instructions` are prose for the learner, not answers.
+export function answerContract(scaffold, reference, brief) {
+  const jtype = (v) => (v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
+  const leaves = (value, prefix = "", out = []) => {
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      for (const [k, v] of Object.entries(value)) leaves(v, prefix ? `${prefix}.${k}` : k, out);
+    } else out.push([prefix, jtype(value)]);
+    return out;
+  };
+  const scaffoldTypes = new Map(leaves(scaffold));
+  const typeMismatch = [];
+  const notInBrief = [];
+  const source = reference === null ? leaves(scaffold) : leaves(reference);
+  for (const [p, refType] of source) {
+    if (p === "instructions" || p.startsWith("instructions.")) continue;
+    const scaffoldType = scaffoldTypes.get(p);
+    if (reference !== null) {
+      if (scaffoldType === undefined)
+        typeMismatch.push(`${p}: absent from the scaffold (a correct answer is ${refType})`);
+      else if (scaffoldType !== refType && scaffoldType !== "null")
+        typeMismatch.push(`${p}: placeholder is ${scaffoldType}, a correct answer is ${refType}`);
     }
-  });
-  return fences;
+    const field = p.split(".").pop();
+    if (field && !brief.includes(field)) notInBrief.push(p);
+  }
+  return { typeMismatch, notInBrief };
+}
+
+// Closed vocabulary the brief uses has to be taught somewhere the learner can
+// see. Every inline `code` span in the brief that reads as a TERM (no
+// whitespace, slash or dot; not a number or a quoted literal) must appear in
+// LESSON.md or in the scaffold text handed over. Fenced blocks are skipped.
+export function untaughtTerms(brief, lesson, scaffoldTexts) {
+  const stripped = brief.replace(/```[\s\S]*?```/g, "").replace(/~~~[\s\S]*?~~~/g, "");
+  const seen = new Set();
+  const out = [];
+  for (const match of stripped.matchAll(/`([^`\n]+)`/g)) {
+    const token = match[1].trim();
+    if (seen.has(token)) continue;
+    seen.add(token);
+    if (/[\s/.]/.test(token) || token.length < 2) continue;
+    if (/^[-+"'\d]/.test(token) || /^(null|true|false)$/.test(token)) continue;
+    if (lesson.includes(token)) continue;
+    if (scaffoldTexts.some((text) => text.includes(token))) continue;
+    out.push(token);
+  }
+  return out;
 }
 
 // visuals external-reference linter (the serve-time CSP blocks all network).
@@ -663,32 +732,31 @@ function main() {
   visualsDir = path.join(moduleDir, "visuals");
   hasScaffold = fs.existsSync(scaffoldDir);
   hasChecks = fs.existsSync(checksDir);
-  // The volatile layer (scaffold/checks/hints) is generated when the learner
-  // starts the module. A stable-only module (spine written, not yet generated)
-  // can't be QA'd for handover — say so, don't fail it.
-  volatilePresent = hasScaffold || hasChecks || fs.existsSync(path.join(moduleDir, "hints"));
+  // The volatile layer (scaffold/checks/REVIEW.md) is generated when the
+  // learner starts the module. A stable-only module (spine written, not yet
+  // generated) can't be QA'd for handover — say so, don't fail it.
+  volatilePresent = hasScaffold || hasChecks;
+  // Courses generated before engine 0.2.0 carry sealed hint files instead of a
+  // review; those modules are read as legacy and warned about, never failed.
+  const legacyHints = fs.existsSync(path.join(moduleDir, "hints"));
 
   // ---- STATIC 1 — required files ----
   {
     const stable = ["LESSON.md", "BRIEF.md", "module.json", "quiz.md"];
-    const volatile = ["hints/hint-1.md", "hints/hint-2.md", "hints/hint-3.md"];
     const missingStable = stable.filter((f) => !fs.existsSync(path.join(moduleDir, f)));
-    const missingVolatile = volatile.filter((f) => !fs.existsSync(path.join(moduleDir, f)));
     if (missingStable.length)
       add("required-files", "fail", `missing required file(s): ${missingStable.join(", ")}`);
     else if (!volatilePresent)
       add(
         "required-files",
         "warn",
-        "stable layer present; volatile layer (scaffold/checks/hints) not generated yet — QA the module after generating it",
+        "stable layer present; volatile layer (scaffold/checks/REVIEW.md) not generated yet — QA the module after generating it",
       );
-    else if (missingVolatile.length)
-      add("required-files", "fail", `missing required file(s): ${missingVolatile.join(", ")}`);
     else
       add(
         "required-files",
         "ok",
-        "all required files present (LESSON, BRIEF, module.json, quiz.md, hints/hint-1..3)",
+        "all required files present (LESSON, BRIEF, module.json, quiz.md)",
       );
   }
 
@@ -736,21 +804,133 @@ function main() {
       );
   }
 
-  // ---- STATIC 4 — hint-2 contains no pasteable code fence (the demotion rule) ----
+  // ---- STATIC 4 — the learner's-eye review exists, is complete, and is current ----
   {
-    const h2 = path.join(moduleDir, "hints", "hint-2.md");
-    const text = readText(h2);
+    const reviewPath = path.join(moduleDir, "REVIEW.md");
+    const text = readText(reviewPath);
     if (text === null) {
-      add("hint2-code", volatilePresent ? "fail" : "warn", "hints/hint-2.md not found");
-    } else {
-      const fences = hint2Fences(text);
-      if (fences.length > 0)
+      if (legacyHints)
         add(
-          "hint2-code",
-          "fail",
-          `hint-2 has ${fences.length} fenced code block(s) (line ${fences.join(", ")}) — pasteable code makes it a hint-3; demote it (CLAUDE.md hint contract). Inline \`code\` is fine; fenced blocks are not.`,
+          "review",
+          "warn",
+          "no REVIEW.md; this module carries legacy hints/ from an earlier engine — write the learner's-eye review before its next handover (CLAUDE.md)",
         );
-      else add("hint2-code", "ok", "hint-2 is prose (no pasteable code fences)");
+      else
+        add(
+          "review",
+          volatilePresent ? "fail" : "warn",
+          volatilePresent
+            ? "REVIEW.md not found — a fresh context must read LESSON.md, BRIEF.md and the scaffold with only what the learner has, and write the review before handover (CLAUDE.md)"
+            : "no REVIEW.md yet (volatile layer not generated)",
+        );
+    } else {
+      const { missing, empty } = reviewChecklist(text);
+      const problems = [
+        ...missing.map((h) => `missing section "${h}"`),
+        ...empty.map((h) => `section "${h}" has no items`),
+      ];
+      if (problems.length)
+        add(
+          "review",
+          "fail",
+          `REVIEW.md is incomplete: ${problems.join("; ")} — every heading is a per-item list ending in a location, "fixed: …" or "removed: …"`,
+        );
+      else {
+        const mtime = (f) => {
+          try {
+            return fs.statSync(path.join(moduleDir, f)).mtimeMs;
+          } catch {
+            return 0;
+          }
+        };
+        const stale = ["LESSON.md", "BRIEF.md"].filter((f) => mtime(f) > mtime("REVIEW.md"));
+        if (stale.length)
+          add(
+            "review",
+            "warn",
+            `REVIEW.md is older than ${stale.join(" and ")} — re-run the learner's-eye review on the repaired files before handover`,
+          );
+        else
+          add("review", "ok", "REVIEW.md covers all four headings and is newer than the material");
+      }
+    }
+  }
+
+  // ---- STATIC 4b — the answer contract, where a structured answer file exists ----
+  // A scaffold whose deliverable is source code has no equivalent; the lint
+  // stays silent rather than inventing a contract.
+  {
+    const answerFiles = hasScaffold
+      ? walkFiles(scaffoldDir).filter((rel) => /(^|\/)answers[^/]*\.json$/i.test(rel))
+      : [];
+    const brief = readText(path.join(moduleDir, "BRIEF.md")) ?? "";
+    if (answerFiles.length === 0)
+      add(
+        "answer-contract",
+        "ok",
+        "no structured answer file under scaffold/ — contract lint does not apply",
+      );
+    else {
+      const fails = [];
+      const notes = [];
+      for (const rel of answerFiles) {
+        const scaffoldJson = safeJson(readText(path.join(scaffoldDir, rel)));
+        if (scaffoldJson === null) {
+          fails.push(`${rel}: not valid JSON`);
+          continue;
+        }
+        const refFile = referenceDir ? path.join(path.resolve(referenceDir), rel) : null;
+        const referenceJson =
+          refFile && fs.existsSync(refFile) ? safeJson(readText(refFile)) : null;
+        const { typeMismatch, notInBrief } = answerContract(scaffoldJson, referenceJson, brief);
+        for (const m of typeMismatch) fails.push(`${rel}: ${m}`);
+        for (const p of notInBrief) fails.push(`${rel}: ${p} is never named in BRIEF.md`);
+        if (referenceJson === null)
+          notes.push(
+            `${rel}: placeholder types not checked (no sealed reference copy of this file under --reference)`,
+          );
+      }
+      if (fails.length)
+        add(
+          "answer-contract",
+          "fail",
+          `the brief and the answer file disagree — a placeholder must be null or the type a correct answer has, and every answer field must be named in the brief:\n    ${fails.join("\n    ")}`,
+        );
+      else if (notes.length) add("answer-contract", "warn", notes.join("; "));
+      else
+        add(
+          "answer-contract",
+          "ok",
+          `${answerFiles.length} answer file(s): placeholders type-honest, every field named in BRIEF.md`,
+        );
+    }
+  }
+
+  // ---- STATIC 4c — closed vocabulary the brief uses is taught somewhere ----
+  {
+    const brief = readText(path.join(moduleDir, "BRIEF.md"));
+    const lesson = readText(path.join(moduleDir, "LESSON.md"));
+    if (brief === null || lesson === null)
+      add("untaught-terms", "warn", "BRIEF.md or LESSON.md missing");
+    else {
+      const scaffoldTexts = hasScaffold
+        ? walkFiles(scaffoldDir)
+            .filter((rel) => /\.(md|json|txt|[cm]?[jt]sx?|py|ya?ml|csv)$/i.test(rel))
+            .map((rel) => readText(path.join(scaffoldDir, rel)) ?? "")
+        : [];
+      const terms = untaughtTerms(brief, lesson, scaffoldTexts);
+      if (terms.length)
+        add(
+          "untaught-terms",
+          "warn",
+          `${terms.length} term(s) the brief uses in \`code\` appear in neither LESSON.md nor the scaffold — define them before use or they are labels the learner must guess: ${terms.join(", ")}`,
+        );
+      else
+        add(
+          "untaught-terms",
+          "ok",
+          "every code-span term in BRIEF.md appears in LESSON.md or the scaffold",
+        );
     }
   }
 
