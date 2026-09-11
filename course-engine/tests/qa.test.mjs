@@ -1,14 +1,17 @@
 // Unit tests for the pure heuristics in scripts/qa-module.mjs: the vitest-output
-// classifier, the relative-timing detector, the hint-2 fence detector, and the
-// visuals external-URL linter.
+// classifier, the relative-timing detector, the learner's-eye review checklist,
+// the answer-contract and untaught-terms lints, and the visuals external-URL
+// linter.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  answerContract,
   classify,
   detectRelativeTiming,
-  hint2Fences,
   lintVisualHtml,
   lessonScope,
+  reviewChecklist,
+  untaughtTerms,
 } from "../template/scripts/qa-module.mjs";
 
 test("lesson scope flags excessive required prose or total work, excluding fenced references", () => {
@@ -101,11 +104,72 @@ test("detectRelativeTiming: flags measured-vs-measured, ignores absolute bounds 
   );
 });
 
-test("hint2Fences: reports opening fence lines; prose and inline code are clean", () => {
-  assert.deepEqual(hint2Fences("Just prose with `inline` code and no fences."), []);
-  assert.deepEqual(hint2Fences("intro\n```js\ncode()\n```\nmore"), [2]);
-  assert.deepEqual(hint2Fences("~~~\nblock\n~~~"), [1]);
-  assert.deepEqual(hint2Fences("a\n```\none\n```\nb\n```\ntwo\n```"), [2, 6]);
+test("reviewChecklist: all four headings with items pass; missing and empty ones are named", () => {
+  const complete = [
+    "# Learner's-eye review — 00",
+    "## Terms before use",
+    "- `folder_number` — LESSON.md, block A.",
+    "## Answer form",
+    "- Task 1 → answers.json `count`: a number.",
+    "## Doable from the page",
+    "- Task 1 needs the April workbook — LESSON.md lists it.",
+    "## Assumptions about the learner",
+    "- Reads a CSV header — progress.json note 2026-09-05.",
+  ].join("\n");
+  assert.deepEqual(reviewChecklist(complete), { missing: [], empty: [] });
+  const partial = "## Terms before use\n\n## Answer form\n- ok\n";
+  assert.deepEqual(reviewChecklist(partial), {
+    missing: ["Doable from the page", "Assumptions about the learner"],
+    empty: ["Terms before use"],
+  });
+  // Free wording of the heading still matches on its key phrase.
+  assert.deepEqual(reviewChecklist(complete.replace("## Answer form", "## Answer form per task")), {
+    missing: [],
+    empty: [],
+  });
+});
+
+test("answerContract: null placeholders pass, wrong types fail, unnamed fields fail", () => {
+  // The module-00 shape that failed live: a "" where a number goes, and status
+  // fields the brief never named.
+  const scaffold = {
+    instructions: "Fill every value.",
+    A: { distinct_workbooks: "", expected_slots: null },
+    B: { raw_status: null },
+  };
+  const reference = {
+    instructions: "Fill every value.",
+    A: { distinct_workbooks: 4, expected_slots: 6 },
+    B: { raw_status: "missing" },
+  };
+  const brief = "Enter `distinct_workbooks` and `expected_slots` as numbers.";
+  assert.deepEqual(answerContract(scaffold, reference, brief), {
+    typeMismatch: ["A.distinct_workbooks: placeholder is string, a correct answer is number"],
+    notInBrief: ["B.raw_status"],
+  });
+  // Without a reference only the naming rule can run; `instructions` is prose.
+  assert.deepEqual(answerContract(scaffold, null, brief), {
+    typeMismatch: [],
+    notInBrief: ["B.raw_status"],
+  });
+  // A leaf the reference has and the scaffold lacks is a contract hole too.
+  assert.deepEqual(
+    answerContract({ A: { x: null } }, { A: { x: 1, y: 2 } }, "`x` and `y`").typeMismatch,
+    ["A.y: absent from the scaffold (a correct answer is number)"],
+  );
+});
+
+test("untaughtTerms: flags brief-only labels, skips paths, commands, literals and fenced code", () => {
+  const brief = [
+    "Choose one of `flag_without_assignment`, `infer_from_folder` or `create_building`.",
+    'Run `npm run check` in `scaffold/` and read `answers.json`; enter `null` or `"W-23"` or `42`.',
+    "```json",
+    '{ "unrelated_in_fence": true }',
+    "```",
+  ].join("\n");
+  const lesson = "The resolver may `create_building` when no owner is registered.";
+  const scaffold = ['{ "action": "infer_from_folder" }'];
+  assert.deepEqual(untaughtTerms(brief, lesson, scaffold), ["flag_without_assignment"]);
 });
 
 test("lintVisualHtml: external fails, relative warns, data/inline/anchors pass, net API flagged", () => {

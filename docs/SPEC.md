@@ -69,8 +69,9 @@ hosted path is not the product: same model, amputated agent, plus unsustainable 
    check lens (a "Run checks" button per module — red/green results rendered in place, powered by
    the module's own `checks/`). Workspace affordances are presence-based: they render only when
    the current module actually has a `scaffold/` or `checks/`, so a non-buildable course (history,
-   theory) simply never shows them — no course-type classifier exists (ADR-013). Hints unseal one
-   level at a time through the chat.
+   theory) simply never shows them — no course-type classifier exists (ADR-013). Help comes one
+   assistance level at a time through the chat, about the learner's actual stuck point
+   (ADR-041).
 5. **Walk away.** Closing the laptop mid-session loses nothing. Abandonment is the normal end of
    a session (ADR-009).
 6. **Come back.** Next open: the app detects the unclosed session, has the tutor wrap it up
