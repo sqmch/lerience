@@ -123,9 +123,13 @@ const MODULES: CourseModule[] = [
     hintsUsed: ["hint-1"],
     note: "Distinguished a position from a displacement after one worked example.",
   }),
+  /* Half and three-quarter hours: the two lengths the rail used to print as
+     "0.5h" and "0.75h". They exist here so the minutes formatting is on the
+     showcase rather than only in a unit test. */
   module("01-vector-length", "Vector length", 0, "Read the map", {
     status: "completed",
     checkAttempts: 1,
+    estimatedHours: 0.5,
   }),
   module("02-direction-comparison", "Comparing directions", 0, "Read the map", {
     status: "in-progress",
@@ -135,7 +139,7 @@ const MODULES: CourseModule[] = [
     quizPath: "curriculum/02-direction-comparison/quiz.md",
   }),
   module("03-grid-navigation", "Compose a route", 1, "Build with vectors", {
-    estimatedHours: 2.5,
+    estimatedHours: 0.75,
   }),
   module("04-projections", "Project onto an axis", 1, "Build with vectors"),
   module("05-route-check", "Explain a route from evidence", 1, "Build with vectors", {
@@ -153,9 +157,11 @@ const MODULES: CourseModule[] = [
     bossCheck: true,
     estimatedHours: 2.5,
   }),
-  /* Deliberately overlong, in both lines a rail entry clips: a title past two
-     lines and a runtime string past one. A tutor writes these freely, and no
-     rail width holds them — this is the entry that exercises the tooltip. */
+  /* Deliberately overlong: a title past the two lines a rail entry clips at.
+     A tutor writes these freely and no rail width holds them, so this is the
+     entry that exercises the tooltip. (It also still carries a long `runtime`,
+     which the rail no longer draws — kept so the fixture still proves that a
+     module manifest may carry one without it reaching the learner.) */
   module(
     "09-long-entry-fixture",
     "Reconcile a surveyed traverse against its plotted bearings and close the loop",
@@ -264,6 +270,12 @@ const DATA: CourseData = {
   unreadableModuleIds: [],
   quiz: QUIZ,
   journal: JOURNAL,
+  /* TWO labs, not one, and that is the point: the overlay only draws its
+     visualization switcher when there is a choice to make, so a one-lab
+     fixture exercises everything about the lab overlay EXCEPT the control
+     learners actually reach for. The switcher shipped dead — it portalled
+     under the modal dialog's top layer — and this fixture is why nothing
+     caught it. */
   labs: [
     {
       key: "vectors",
@@ -271,8 +283,17 @@ const DATA: CourseData = {
       blurb: "Drag two arrows. Feel dot product, length, cosine, and distance move.",
       modules: ["02-direction-comparison"],
     },
+    {
+      key: "precision-recall",
+      title: "Precision & Recall",
+      blurb: "Slide a cutoff over a ranked list; watch precision and recall pull apart.",
+      modules: ["06-error-bounds"],
+    },
   ],
-  labClaims: [{ moduleId: "02-direction-comparison", lab: { vectors: {} } }],
+  labClaims: [
+    { moduleId: "02-direction-comparison", lab: { vectors: {} } },
+    { moduleId: "06-error-bounds", lab: { "precision-recall": {} } },
+  ],
   courseDoc: "# COURSE.md — Map vectors: direction, distance, and projection\n",
   title: "Map vectors: direction, distance, and projection",
   files: [],

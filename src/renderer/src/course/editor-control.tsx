@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { EditorCatalog, EditorTarget } from "../../../shared/editor";
 import { CheckGlyph, ChevronDownGlyph, CodeGlyph, SpinnerGlyph } from "../components/glyphs";
 import { MENU_PANEL, MENU_ROW, MENU_TICK } from "../components/menu";
+import { useLayerContainer } from "../components/layer";
 
 /* The two halves of one pill. Between them: one hairline, drawn once (the
    right half's left border is dropped) so the seam reads as a division of one
@@ -104,6 +105,7 @@ export function EditorControl({
   const selected = catalog?.editors.find((editor) => editor.id === catalog.selectedEditorId);
   const none = catalog !== null && selected === undefined;
   const label = selected === undefined ? "Open in editor" : `Open in ${selected.label}`;
+  const container = useLayerContainer();
 
   return (
     <DropdownMenu.Root
@@ -156,7 +158,7 @@ export function EditorControl({
         </DropdownMenu.Trigger>
       </div>
 
-      <DropdownMenu.Portal>
+      <DropdownMenu.Portal container={container}>
         <DropdownMenu.Content
           align="end"
           sideOffset={6}
