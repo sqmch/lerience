@@ -13,7 +13,7 @@ the turn settles.
 
 Codex is steerable. App Server 0.144.6 has a stable `turn/steer` method whose `expectedTurnId` is
 a precondition: the request fails when the live turn is no longer that one. The adapter aims every
-steer at the turn id it received from `turn/start`, checks that the returned turn carries the same
+steer at the turn id it received from `turn/start`, checks that the returned `turnId` is the same
 id, and rejects on any other answer. A steer is not a turn. It adds no result and no
 `turn_complete`; the running turn's own completion is still the only boundary.
 

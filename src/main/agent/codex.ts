@@ -325,11 +325,12 @@ export class CodexAgentSession implements AgentSession {
       expectedTurnId,
       input: [{ type: "text", text: message, text_elements: [] }],
     });
+    // TurnSteerResponse is `{ turnId }` (generated schema, codex-cli 0.144.6):
+    // the id of the turn the input went into, which must be the one aimed at.
     if (
       !isRecord(response) ||
-      !isRecord(response.turn) ||
-      typeof response.turn.id !== "string" ||
-      response.turn.id !== expectedTurnId
+      typeof response.turnId !== "string" ||
+      response.turnId !== expectedTurnId
     ) {
       throw new Error("Codex did not take that message into the running turn.");
     }

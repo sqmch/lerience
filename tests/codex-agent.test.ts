@@ -453,7 +453,7 @@ describe("CodexAgentSession", () => {
   it("steers a running turn through turn/steer aimed at the live turn id", async () => {
     const { connection, session } = setup();
     connection.responses.set("turn/steer", {
-      turn: { id: "turn-1", status: "inProgress", error: null },
+      turnId: "turn-1",
     });
     const iterator = session.events[Symbol.asyncIterator]();
     expect(session.steerable).toBe(true);
@@ -505,7 +505,7 @@ describe("CodexAgentSession", () => {
     // steer() waits for turn/start itself, so no separate wait is needed —
     // and the startup write proof runs real PowerShell, which a loaded CI
     // process can stretch past a short poll.
-    connection.responses.set("turn/steer", { turn: { id: "turn-later", status: "inProgress" } });
+    connection.responses.set("turn/steer", { turnId: "turn-later" });
     await expect(session.steer("first try")).rejects.toThrow(/did not take/);
     expect(connection.calls.some((call) => call.method === "turn/start")).toBe(true);
 
