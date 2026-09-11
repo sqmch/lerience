@@ -5,6 +5,12 @@ log. A record may distinguish package acceptance from learner-path acceptance. P
 requires every release-blocking check named by that record to pass, subject to the explicit
 unsigned-preview acceptance-debt rule in `distribution/RELEASE-OPERATIONS.md`.
 
+## Record naming
+
+A record covering every target this release stages is named `vMAJOR.MINOR.PATCH.md`. A record
+covering a single target keeps that target's suffix, as the historical `-windows-x64` records do.
+Either way the version is exact, because a record describes one candidate and never a range.
+
 ## Candidate record requirements
 
 Each record must identify:

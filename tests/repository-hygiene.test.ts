@@ -268,7 +268,7 @@ describe("repository publication hygiene", () => {
     const evidenceFiles = fs.readdirSync(evidenceRoot).sort();
     expect(evidenceFiles).toContain("README.md");
     for (const fileName of evidenceFiles.filter((candidate) => candidate !== "README.md")) {
-      expect(fileName).toMatch(/^v\d+\.\d+\.\d+-windows-x64\.md$/u);
+      expect(fileName).toMatch(/^v\d+\.\d+\.\d+(?:-[a-z0-9-]+)?\.md$/u);
     }
 
     const policy = read("distribution/evidence/README.md");
