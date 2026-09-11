@@ -196,6 +196,7 @@ describe("seminarReducer", () => {
         sessionId: "session-1",
         totalCostUsd: 0.4,
         turnInProgress: false,
+        steerable: false,
         messages: [
           {
             id: "learner-2",
@@ -263,6 +264,7 @@ describe("seminarReducer", () => {
         sessionId: null,
         totalCostUsd: 0,
         turnInProgress: false,
+        steerable: false,
         messages: [],
       },
     });
@@ -278,6 +280,7 @@ describe("seminarReducer", () => {
         sessionId: "session-1",
         totalCostUsd: 0,
         turnInProgress: true,
+        steerable: false,
         messages: [],
       },
     });
@@ -297,6 +300,7 @@ describe("seminarReducer", () => {
         sessionId: "session-old",
         totalCostUsd: 0.4,
         turnInProgress: false,
+        steerable: false,
         messages: [
           {
             id: "learner-2",
@@ -317,6 +321,7 @@ describe("seminarReducer", () => {
           sessionId: "session-old",
           totalCostUsd: 0.4,
           turnInProgress: true,
+          steerable: false,
           messages: [
             {
               id: "learner-2",
@@ -337,6 +342,7 @@ describe("seminarReducer", () => {
           sessionId: "session-old",
           totalCostUsd: 0.4,
           turnInProgress: false,
+          steerable: false,
           messages: [
             {
               id: "learner-2",
@@ -362,6 +368,7 @@ describe("seminarReducer", () => {
         sessionId: "session-new",
         totalCostUsd: 0,
         turnInProgress: true,
+        steerable: false,
         messages: [],
       },
     });

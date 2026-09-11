@@ -50,6 +50,11 @@ class FakeSession implements AgentSession {
   readonly applied: SessionControlPatch[] = [];
   /** Tests flip this to exercise the conductor's in-flight guards. */
   busy = false;
+  /** Tests flip this to exercise the steer path (ADR-042). */
+  steerable = false;
+  readonly steered: string[] = [];
+  /** When set, the provider refuses the next steer (the turn moved on). */
+  refuseSteer: Error | null = null;
   /** A provider that rejects every control change (ADR-018 invariant 7). */
   refuseControls = false;
   ended = false;
@@ -61,6 +66,13 @@ class FakeSession implements AgentSession {
 
   send(message: string): void {
     this.sent.push(message);
+  }
+
+  async steer(message: string): Promise<void> {
+    if (!this.steerable) throw new Error("This provider cannot take a message mid-turn.");
+    if (!this.busy) throw new Error("No turn is in flight.");
+    if (this.refuseSteer !== null) throw this.refuseSteer;
+    this.steered.push(message);
   }
 
   respondToApproval(requestId: string, allow: boolean): void {
@@ -356,6 +368,32 @@ describe("SessionConductor", () => {
     expect((await conductor.current(courseDir)).lifecycle).toBe("open");
     session.busy = false;
     await expect(conductor.send("now it lands")).resolves.toBeUndefined();
+  });
+
+  it("steers a busy steerable session and persists the message only after acceptance", async () => {
+    const { conductor, courseDir, agent } = harness({});
+    await conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    const session = agent.sessions[0];
+    if (session === undefined) throw new Error("no session started");
+    session.busy = true;
+    session.steerable = true;
+    expect((await conductor.current(courseDir)).steerable).toBe(true);
+
+    const before = (await conductor.current(courseDir)).messages.length;
+    session.refuseSteer = new Error("expected turn is no longer active");
+    await expect(conductor.send("too late for that turn")).rejects.toThrow(/no longer active/);
+    expect((await conductor.current(courseDir)).messages.length).toBe(before);
+    expect(session.steered).toEqual([]);
+
+    session.refuseSteer = null;
+    await expect(conductor.send("also cover the dot product")).resolves.toBeUndefined();
+    expect(session.steered).toEqual(["also cover the dot product"]);
+    expect(session.sent).toHaveLength(1); // the opener; a steer starts no turn
+    expect((await conductor.current(courseDir)).messages.at(-1)).toMatchObject({
+      role: "learner",
+      content: "also cover the dot product",
+    });
+    expect((await conductor.current(courseDir)).turnInProgress).toBe(true);
   });
 
   it("waits for an in-flight turn before releasing the provider for update handoff", async () => {

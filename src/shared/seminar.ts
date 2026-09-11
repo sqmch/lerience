@@ -153,6 +153,18 @@ export interface AgentSession {
    *  buildSessionOpener output is just the first send). One turn at a time:
    *  throws if a turn is already in flight. */
   send(message: string): void;
+  /** True when this provider can take a learner message INTO the running
+   *  turn. The app reports this rather than assuming it (ADR-042): a provider
+   *  without the capability keeps the renderer's queue, and the composer says
+   *  which of the two applies. */
+  readonly steerable: boolean;
+  /** Inject a learner message into the in-flight turn. The model sees it at
+   *  its next step — after the tool call or reasoning step now under way —
+   *  not instantly. Rejects when the provider cannot steer, when no turn is
+   *  in flight, or when the provider refuses because the turn it was aimed at
+   *  has already moved on; the caller then falls back to queueing. A steer
+   *  is not a turn: it adds no result and no `turn_complete`. */
+  steer(message: string): Promise<void>;
   /** Answer a pending approval_request. Unknown ids are ignored. */
   respondToApproval(requestId: string, allow: boolean, reason?: string): void;
   /** What the learner may change, and what it is set to now. Providers that

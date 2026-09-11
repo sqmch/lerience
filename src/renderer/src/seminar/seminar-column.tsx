@@ -221,6 +221,7 @@ export function SeminarColumn({
             controlNotice={state.controlNotice}
             queued={seminar.queued}
             onUnqueue={seminar.unqueue}
+            steerable={state.steerable}
             placeholder="Reply to your tutor…"
           />
         )}

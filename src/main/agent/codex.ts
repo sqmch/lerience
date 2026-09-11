@@ -261,6 +261,9 @@ export class CodexAgentSession implements AgentSession {
   private pendingControls: SessionControlPatch = {};
 
   readonly events: AsyncIterable<AgentEvent> = this.output;
+  /** App Server 0.144.6's stable `turn/steer` injects input into the running
+   *  turn, guarded by the turn id the caller expects to be live. */
+  readonly steerable = true;
 
   get busy(): boolean {
     return this.turnInFlight;
@@ -301,6 +304,36 @@ export class CodexAgentSession implements AgentSession {
     if (pending === undefined) return;
     this.pendingApprovals.delete(requestId);
     this.client.respond(pending.rpcId, allow ? pending.allowResult : pending.denyResult);
+  }
+
+  async steer(message: string): Promise<void> {
+    if (this.terminal) throw new Error("This tutor session has ended.");
+    if (!this.turnInFlight) throw new Error("Your tutor is not working on anything right now.");
+    // turn/start may still be awaiting its response; only after it lands is
+    // there a turn id to aim at.
+    await this.turnStart;
+    if (!this.turnInFlight || this.threadId === null || this.currentTurnId === null) {
+      throw new Error("Your tutor is not working on anything right now.");
+    }
+    const expectedTurnId = this.currentTurnId;
+    // expectedTurnId is a precondition on the provider side: the request
+    // fails when the live turn is no longer that one, and the caller queues
+    // the message for the next turn instead. Turn accounting is untouched —
+    // a steer produces no result and no turn_complete of its own.
+    const response = await this.client.request("turn/steer", {
+      threadId: this.threadId,
+      expectedTurnId,
+      input: [{ type: "text", text: message, text_elements: [] }],
+    });
+    // TurnSteerResponse is `{ turnId }` (generated schema, codex-cli 0.144.6):
+    // the id of the turn the input went into, which must be the one aimed at.
+    if (
+      !isRecord(response) ||
+      typeof response.turnId !== "string" ||
+      response.turnId !== expectedTurnId
+    ) {
+      throw new Error("Codex did not take that message into the running turn.");
+    }
   }
 
   async describeControls(): Promise<SessionControls> {

@@ -551,6 +551,7 @@ export function Composer({
   controlNotice,
   queued,
   onUnqueue,
+  steerable = false,
 }: {
   draft: string;
   onDraft: (value: string) => void;
@@ -558,6 +559,9 @@ export function Composer({
   onStop?: () => void;
   busy: boolean;
   placeholder: string;
+  /** The provider reports it can take a message into the running turn. The
+   *  composer says so only then; otherwise a mid-turn message queues. */
+  steerable?: boolean;
   controls?: SessionControls | null;
   onControls?: (patch: SessionControlPatch) => void;
   controlNotice?: SeminarState["controlNotice"];
@@ -581,6 +585,10 @@ export function Composer({
       send();
     }
   };
+
+  /* What happens to a message typed now is the provider's fact, not the
+     app's promise: the placeholder reports whichever behaviour applies. */
+  const steering = busy && steerable;
 
   return (
     <div className="flex flex-col gap-2">
@@ -622,7 +630,7 @@ export function Composer({
           className="text-hi placeholder:text-ink-faint max-h-44 min-h-6 resize-none border-0 bg-transparent px-4 pt-3.5 pb-1 text-md leading-normal outline-none field-sizing-content"
           rows={1}
           value={draft}
-          placeholder={placeholder}
+          placeholder={steering ? "Your tutor sees this at its next step…" : placeholder}
           onChange={(event) => {
             onDraft(event.target.value);
           }}
@@ -653,9 +661,12 @@ export function Composer({
                 : "bg-accent text-accent-ink focus-visible:outline-focus ml-auto grid size-8 shrink-0 place-items-center rounded-pill transition-[filter,opacity] hover:brightness-95 disabled:opacity-35 disabled:hover:brightness-100 focus-visible:outline-2 focus-visible:outline-offset-2"
             }
             disabled={draft.trim() === ""}
-            /* Sending mid-turn is allowed: the message waits its turn rather
-               than being refused, which is what every agent CLI does. */
-            title={busy ? "Send when the tutor finishes" : "Send"}
+            /* Sending mid-turn is allowed: the message joins the running turn
+               when the provider can take it, and otherwise waits its turn
+               rather than being refused. */
+            title={
+              steering ? "Send to the running turn" : busy ? "Send when the tutor finishes" : "Send"
+            }
             onClick={send}
           >
             <span className="sr-only">Send</span>

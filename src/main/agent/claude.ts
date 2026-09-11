@@ -387,6 +387,9 @@ class ClaudeAgentSession implements AgentSession {
   private models: (SessionModelOption & { resolved?: string })[] | null = null;
 
   readonly events: AsyncIterable<AgentEvent> = this.output;
+  /** Agent SDK 0.3.233 has no method that injects into a running turn, so a
+   *  mid-turn message stays queued in the renderer (ADR-042). */
+  readonly steerable = false;
 
   get busy(): boolean {
     return this.turnInFlight;
@@ -434,6 +437,10 @@ class ClaudeAgentSession implements AgentSession {
       message: { role: "user", content: message },
       parent_tool_use_id: null,
     });
+  }
+
+  async steer(): Promise<void> {
+    throw new Error("This provider cannot take a message while the tutor is working.");
   }
 
   respondToApproval(requestId: string, allow: boolean, reason?: string): void {

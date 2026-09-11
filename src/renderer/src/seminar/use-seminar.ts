@@ -17,7 +17,8 @@ export interface SeminarController {
   controls: SessionControls | null;
   /** Change model, effort, or autonomy for this session only. */
   setControls: (patch: SessionControlPatch) => Promise<boolean>;
-  /** A message typed during a turn, waiting for it to finish. */
+  /** A message typed during a turn, waiting for it to finish. Only the
+   *  fallback when the provider cannot take it into the running turn. */
   queued: string | null;
   /** Drop the queued message before it is sent. */
   unqueue: () => void;
@@ -102,19 +103,38 @@ export function useSeminar({
     void start();
   }, [autoStart, start, state.phase]);
 
-  /** Resolves true when the message was accepted — sent now, or queued for the
-   *  moment this turn ends. The caller clears its draft only then, so nothing
-   *  typed is ever lost. */
+  const queue = useCallback((message: string): void => {
+    setQueued((pending) => (pending === null ? message : `${pending}\n\n${message}`));
+  }, []);
+
+  /** Resolves true when the message was accepted — sent now, taken into the
+   *  running turn, or queued for the moment this turn ends. The caller clears
+   *  its draft only then, so nothing typed is ever lost. */
   const send = useCallback(
     async (text: string): Promise<boolean> => {
       const message = text.trim();
       if (message === "") return false;
-      // A turn in flight does not mean "wait, then retype". The provider takes
-      // one turn at a time, so the app holds the message and sends it the
-      // moment the tutor finishes — the learner keeps their train of thought.
+      // A turn in flight does not mean "wait, then retype". A provider that
+      // reports it can steer takes the message into the running turn (the
+      // tutor sees it at its next step); otherwise the app holds it and sends
+      // it the moment the tutor finishes — either way the learner keeps their
+      // train of thought. The conductor persists a steered message only once
+      // the provider accepted it, so a refusal here means it never landed and
+      // the queue takes it instead.
       if (state.phase !== "idle") {
         if (state.phase === "closed") return false;
-        setQueued((pending) => (pending === null ? message : `${pending}\n\n${message}`));
+        if (!state.steerable) {
+          queue(message);
+          return true;
+        }
+        const id = crypto.randomUUID();
+        dispatch({ type: "steer_learner", id, text: message });
+        try {
+          await window.praxeum.sendSeminarMessage(message);
+        } catch {
+          dispatch({ type: "steer_failed", id });
+          queue(message);
+        }
         return true;
       }
       const id = crypto.randomUUID();
@@ -131,7 +151,7 @@ export function useSeminar({
         return false;
       }
     },
-    [failed, state.phase],
+    [failed, queue, state.phase, state.steerable],
   );
 
   /* Flush the queue when the turn ends. Sending goes through the same path a

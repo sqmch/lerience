@@ -18,6 +18,10 @@ export interface SeminarSnapshot {
   /** Main-process truth. A live opener is already a turn even before its first
    *  visible delta reaches the renderer. */
   turnInProgress: boolean;
+  /** The running provider can take a learner message into the turn in
+   *  flight (ADR-042). False for a closed session and for providers that
+   *  only queue; the composer reports whichever applies. */
+  steerable: boolean;
   detail?: string;
 }
 

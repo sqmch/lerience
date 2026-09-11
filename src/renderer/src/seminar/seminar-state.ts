@@ -60,6 +60,10 @@ export interface SeminarState {
    *  never imply that the tutor or conversation failed. */
   controlNotice: { kind: "error"; message: string } | null;
   nextItemId: number;
+  /** The provider can take a message into the running turn (ADR-042). Main-
+   *  process truth from the snapshot, never assumed: it decides whether a
+   *  mid-turn message is steered or queued, and what the composer says. */
+  steerable: boolean;
   /** Whether the turn in flight has produced anything the learner can see.
    *  A turn that completes having produced nothing is the failure this tracks:
    *  it looks exactly like success to every other signal (no error, a cost, a
@@ -75,6 +79,13 @@ export type SeminarAction =
   | { type: "retry_started" }
   | { type: "submit_learner"; id: string; text: string }
   | { type: "submit_failed"; id: string; message: string }
+  /** A learner message accepted INTO the running turn: it joins the
+   *  transcript without starting a turn, so the phase, the live line, and
+   *  any approval card stay exactly as they were. */
+  | { type: "steer_learner"; id: string; text: string }
+  /** The provider refused the steer (the turn moved on). The message is
+   *  queued instead, so the optimistic entry comes out with no failure. */
+  | { type: "steer_failed"; id: string }
   | { type: "approval_answered" }
   | { type: "approval_failed"; message: string }
   | { type: "control_change_started" }
@@ -99,6 +110,7 @@ export function createSeminarState(): SeminarState {
     failure: null,
     controlNotice: null,
     nextItemId: 1,
+    steerable: false,
     turnProducedContent: false,
   };
 }
@@ -233,6 +245,7 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
       toolActivity: null,
       approval: null,
       limitWarning: null,
+      steerable: false,
       failure:
         event.reason === "died" && state.failure === null
           ? { kind: "unavailable", message: "The tutor session ended unexpectedly." }
@@ -341,6 +354,7 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       totalCostUsd: snapshot.totalCostUsd,
       failure,
       nextItemId: largestSeenId + 1,
+      steerable: snapshot.steerable,
       // A rehydrated conversation has already shown the learner something, so
       // only a turn started AFTER this point can be judged silent. Mounting
       // mid-turn (the onboarding surface handing over to the course view) must
@@ -417,6 +431,22 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       items: state.items.filter((item) => item.id !== action.id),
       failure: { kind: "unavailable", message: action.message },
     };
+  }
+
+  if (action.type === "steer_learner") {
+    // The tutor's words so far are done; what it says after reading this is
+    // a new bubble, in the order the conversation actually happened.
+    return {
+      ...state,
+      items: [
+        ...finalizeStreamingTutor(state.items),
+        { id: action.id, role: "learner", content: action.text, streaming: false },
+      ],
+    };
+  }
+
+  if (action.type === "steer_failed") {
+    return { ...state, items: state.items.filter((item) => item.id !== action.id) };
   }
 
   if (action.type === "approval_answered") {

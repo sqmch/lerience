@@ -950,6 +950,7 @@ void app.whenReady().then(async () => {
           messages: [],
           totalCostUsd: 0,
           turnInProgress: false,
+          steerable: false,
         }
       : sessionConductor().current(root);
   });

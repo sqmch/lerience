@@ -41,6 +41,7 @@ describe("useSeminar session controls", () => {
         messages: [],
         totalCostUsd: 0,
         turnInProgress: true,
+        steerable: false,
       }),
       seminarControls: async () => providerControls,
       onSeminarEvent: (next: (event: AgentEvent) => void) => {
@@ -88,6 +89,7 @@ describe("useSeminar session controls", () => {
           messages: [],
           totalCostUsd: 0,
           turnInProgress: false,
+          steerable: false,
         }),
         seminarControls: async () => controls,
         setSeminarControls,
@@ -132,6 +134,86 @@ describe("useSeminar session controls", () => {
     },
   );
 
+  it.each([
+    { outcome: "accepted", refuse: false },
+    { outcome: "refused", refuse: true },
+  ])(
+    "steers a mid-turn message when the provider can take it, queueing it when $outcome fails",
+    async ({ refuse }) => {
+      let eventListener: ((event: AgentEvent) => void) | null = null;
+      const sendSeminarMessage = vi.fn(async () => {
+        if (refuse) throw new Error("expected turn is no longer active");
+      });
+      const bridge = {
+        currentSeminar: async () => ({
+          lifecycle: "open" as const,
+          sessionId: "session-1",
+          messages: [{ id: "tutor-1", role: "tutor" as const, content: "Working", partial: true }],
+          totalCostUsd: 0,
+          turnInProgress: true,
+          steerable: true,
+        }),
+        sendSeminarMessage,
+        seminarControls: async () => null,
+        onSeminarEvent: (listener: (event: AgentEvent) => void) => {
+          eventListener = listener;
+          return () => undefined;
+        },
+        onSeminarSnapshot: () => () => undefined,
+      } as unknown as PraxeumApi;
+      Object.defineProperty(window, "praxeum", { configurable: true, value: bridge });
+
+      const observed: { current: SeminarController | null } = { current: null };
+      const seminar = (): SeminarController => {
+        if (observed.current === null) throw new Error("Seminar hook has not rendered.");
+        return observed.current;
+      };
+      function Probe(): null {
+        const controller = useSeminar({ currentModuleId: null, autoStart: false });
+        useEffect(() => {
+          observed.current = controller;
+        }, [controller]);
+        return null;
+      }
+
+      root = createRoot(document.createElement("div"));
+      await act(async () => {
+        root?.render(<Probe />);
+      });
+      await vi.waitFor(() => expect(seminar().state.steerable).toBe(true));
+      expect(seminar().busy).toBe(true);
+
+      await act(async () => {
+        expect(await seminar().send("Also cover the dot product")).toBe(true);
+      });
+      expect(sendSeminarMessage).toHaveBeenCalledWith("Also cover the dot product");
+      // The turn keeps running either way; the composer never sees a failure.
+      expect(seminar().busy).toBe(true);
+      expect(seminar().state.failure).toBeNull();
+
+      if (refuse) {
+        expect(seminar().queued).toBe("Also cover the dot product");
+        expect(seminar().state.items.map((item) => item.role)).toEqual(["tutor"]);
+        await act(async () => {
+          eventListener?.({ type: "turn_complete" });
+        });
+        await vi.waitFor(() => expect(sendSeminarMessage).toHaveBeenCalledTimes(2));
+        expect(seminar().queued).toBeNull();
+        return;
+      }
+
+      expect(seminar().queued).toBeNull();
+      expect(seminar().state.items.map((item) => item.role)).toEqual(["tutor", "learner"]);
+      expect(seminar().state.items[0]).toMatchObject({ content: "Working", streaming: false });
+      // What the tutor says after reading it is a new bubble, in order.
+      await act(async () => {
+        eventListener?.({ type: "message_delta", delta: "Adding the dot product." });
+      });
+      expect(seminar().state.items.map((item) => item.role)).toEqual(["tutor", "learner", "tutor"]);
+      expect(sendSeminarMessage).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("queues a message while recovery hands off to the fresh opener", async () => {
     let eventListener: ((event: AgentEvent) => void) | null = null;
     let snapshotListener: ((snapshot: SeminarSnapshot) => void) | null = null;
@@ -150,6 +232,7 @@ describe("useSeminar session controls", () => {
         ],
         totalCostUsd: 0.2,
         turnInProgress: false,
+        steerable: false,
       }),
       startSeminar: async () => ({ ok: true as const }),
       sendSeminarMessage,
@@ -200,6 +283,7 @@ describe("useSeminar session controls", () => {
         ],
         totalCostUsd: 0.2,
         turnInProgress: true,
+        steerable: false,
       });
       eventListener?.({ type: "message_delta", delta: "Wrapped up" });
       eventListener?.({ type: "turn_complete" });
@@ -222,6 +306,7 @@ describe("useSeminar session controls", () => {
         ],
         totalCostUsd: 0.2,
         turnInProgress: false,
+        steerable: false,
       });
       snapshotListener?.({
         lifecycle: "open",
@@ -229,6 +314,7 @@ describe("useSeminar session controls", () => {
         messages: [],
         totalCostUsd: 0,
         turnInProgress: true,
+        steerable: false,
       });
     });
 
