@@ -48,12 +48,18 @@ provider events clear the prior warning. The notice names warning/rejected state
 percentage exists, and includes the local reset date as well as time. It never substitutes
 `surpassedThreshold`, an overage reset, or a different bucket's utilization.
 
-Validation pending: focused fixtures, required `pnpm check`, native application smoke,
-and final-head CI/publication checks. No preserved native warning payload was available in
+Adapter/state fixtures and rendered-component tests cover all six pinned buckets, fractional
+and above-cap values, warning/rejected/healthy transitions, unknown payloads, missing fields,
+invalid reset timestamps, date display, and separation from foreground completion. No preserved native warning payload was available in
 the earlier activity probes, which logged only the event type. No model turns will be spent
 to manufacture a warning. The learner's original 77%/92% comparisons lack paired timestamps
 and exact bucket identities; these are useful regression values, not proof that the weekly
 model-specific and all-model buckets were equivalent.
+
+Delivery: implemented in source; [PR #90](https://github.com/sqmch/lerience/pull/90) records
+full source checks, native application smoke, CI and merge outcomes. Native warning acceptance,
+installed-app update, and release remain separate. No provider, engine, model, effort, context,
+or session admission changes are included.
 
 Done when fixtures derived from the documented contract produce accurate percentages, window
 names, warning state, and reset times, including unknown/missing data. Show a true overage

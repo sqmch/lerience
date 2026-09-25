@@ -443,6 +443,27 @@ describe("SessionConductor", () => {
     expect((await conductor.current(courseDir)).messages).toEqual([]);
   });
 
+  it("forwards allowance state without saving it as course evidence", async () => {
+    const { conductor, courseDir, agent, events } = harness({});
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    const session = agent.sessions[0]!;
+    session.emit({
+      type: "limit_warning",
+      label: "Claude weekly limit",
+      usedPercent: 77,
+      resetsAt: null,
+      status: "warning",
+    });
+    session.emit({ type: "limit_cleared" });
+    session.emit({ type: "turn_complete" });
+    await settleUntil(() => events.some((event) => event.type === "turn_complete"));
+    expect(events.some((event) => event.type === "limit_warning")).toBe(true);
+    expect(events.some((event) => event.type === "limit_cleared")).toBe(true);
+    expect((await conductor.current(courseDir)).messages).toEqual([]);
+    await conductor.abandon();
+    expect((await conductor.current(courseDir)).messages).toEqual([]);
+  });
+
   it("rehydrates background activity only while its provider runtime is alive", async () => {
     const { conductor, courseDir, agent, events } = harness({});
     await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
