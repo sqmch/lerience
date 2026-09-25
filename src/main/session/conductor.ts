@@ -66,6 +66,12 @@ interface ActiveRuntime {
   /** Update handoff waits here while a learner-approved provider turn finishes.
    * Resolved by turn completion or process end; never persisted. */
   idleWaiters: Set<() => void>;
+  /** Hold provider output until an accepted request has been saved. */
+  admission: Promise<void> | null;
+  /** Includes a result queued by the adapter but not yet saved by this pump. */
+  turnPending: boolean;
+  backgroundTasks: NonNullable<SeminarSnapshot["backgroundTasks"]>;
+  taskNotice: NonNullable<SeminarSnapshot["taskNotice"]> | null;
   /** The pump's own completion — the only truthful "all trailing events are
    *  persisted" signal. Replacement and abandon must await it before another
    *  store instance may touch the same JSONL. */
@@ -157,21 +163,71 @@ export class SessionConductor {
 
   async send(message: string): Promise<void> {
     const active = this.requireActive("open");
-    // Busy check BEFORE persisting: the adapter would refuse the send, and the
-    // durable transcript must never record a message the tutor never received.
-    if (active.session.busy) {
-      if (!active.session.steerable) throw new Error("A tutor turn is already in progress.");
-      // Same principle, other order: the provider accepts the message into
-      // the running turn first, and only then does the transcript record it.
-      // A refused steer (the turn moved on) persists nothing; the renderer
-      // queues the message for the next turn.
-      await active.session.steer(message);
-      await active.transcript.append({ kind: "learner", text: message });
-      return;
+    await this.deliver(active, { kind: "learner", text: message }, { allowSteer: true });
+  }
+
+  private async deliver(
+    active: ActiveRuntime,
+    request: { kind: "operator" | "learner"; text: string },
+    options: { allowSteer?: boolean; closing?: boolean } = {},
+  ): Promise<void> {
+    if (active.admission !== null) throw new Error("A tutor turn is already in progress.");
+    // Drain the previous result before a new closing request can own it.
+    while (!active.session.busy && active.turnPending) {
+      await new Promise<void>((resolve) => active.idleWaiters.add(resolve));
+      if (this.active !== active) throw new Error("The tutor session changed.");
     }
-    await active.transcript.append({ kind: "learner", text: message });
-    active.lastRequest = { kind: "learner", text: message };
-    active.session.send(message);
+    if (this.requireActive("open") !== active) throw new Error("The tutor session changed.");
+    if (active.admission !== null) throw new Error("A tutor turn is already in progress.");
+    const steer = active.session.busy && options.allowSteer && active.session.steerable;
+    if (active.session.busy && !steer) {
+      throw new Error(
+        options.closing
+          ? "The tutor is still working. Wait for the turn to finish, then end."
+          : "A tutor turn is already in progress.",
+      );
+    }
+    let release!: () => void;
+    active.admission = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let accepted = false;
+    try {
+      // Admission is synchronous for new turns. No persistence await can let
+      // an automatic continuation win after a learner entry was written.
+      if (steer) await active.session.steer(request.text);
+      else active.session.send(request.text);
+      accepted = true;
+      active.turnPending = true;
+      if (!steer) active.lastRequest = request;
+      if (options.closing) {
+        active.flow = "wrapping";
+        await active.transcript.markLifecycle("wrapping");
+      }
+      await active.transcript.append(request);
+      if (options.closing) this.options.emitSnapshot(await this.snapshotFor(active.transcript));
+    } catch (error) {
+      if (!accepted) throw error;
+      // The provider already received this request. A rejected IPC promise
+      // would invite resending it. End the runtime and report the save failure
+      // instead, retaining the learner's visible text for recovery.
+      await active.session.interrupt().catch(() => undefined);
+      await active.session.end().catch(() => undefined);
+      this.active = null;
+      this.followOn = null;
+      this.followOnEpoch += 1;
+      this.resolveIdleWaiters(active);
+      this.options.emitAgentEvent({
+        type: "error",
+        code: "process-exited",
+        message:
+          "The tutor received your message, but it could not be saved. The session stopped. Keep a copy of your message before reopening.",
+      });
+      this.options.emitAgentEvent({ type: "session_ended", reason: "died" });
+    } finally {
+      active.admission = null;
+      release();
+    }
   }
 
   /** What the learner may change about the running session. A closed session
@@ -229,11 +285,9 @@ export class SessionConductor {
    *  repeated rather than pretending a new one was made. */
   async retry(): Promise<void> {
     const active = this.requireActive("open");
-    if (active.session.busy) throw new Error("A tutor turn is already in progress.");
     const request = active.lastRequest;
     if (request === null) throw new Error("There is nothing to ask again.");
-    await active.transcript.append({ kind: request.kind, text: request.text });
-    active.session.send(request.text);
+    await this.deliver(active, request);
   }
 
   async respondToApproval(requestId: string, allow: boolean, reason?: string): Promise<void> {
@@ -283,18 +337,7 @@ export class SessionConductor {
   async end(): Promise<void> {
     await this.serializeLifecycle(async () => {
       const active = this.requireActive("open");
-      // Refuse cleanly BEFORE mutating lifecycle state: sending "end session"
-      // mid-turn would throw after the transcript was already marked wrapping,
-      // locking the learner out and letting the in-flight turn trigger a wrap
-      // verdict on a ritual the tutor never ran.
-      if (active.session.busy) {
-        throw new Error("The tutor is still working. Wait for the turn to finish, then end.");
-      }
-      active.flow = "wrapping";
-      await active.transcript.markLifecycle("wrapping");
-      await active.transcript.append({ kind: "operator", text: "end session" });
-      this.options.emitSnapshot(await this.snapshotFor(active.transcript));
-      active.session.send("end session");
+      await this.deliver(active, { kind: "operator", text: "end session" }, { closing: true });
     });
   }
 
@@ -311,7 +354,7 @@ export class SessionConductor {
     await this.serializeLifecycle(async () => {
       const active = this.active;
       if (active === null) return;
-      if (active.session.busy) {
+      if (active.session.busy || active.turnPending) {
         await new Promise<void>((resolve) => active.idleWaiters.add(resolve));
       }
       if (this.active?.id === active.id) await this.abandonLocked();
@@ -324,6 +367,7 @@ export class SessionConductor {
     const active = this.active;
     if (active === null) return;
     active.suppressEndedUi = true;
+    if (active.admission !== null) await active.admission;
     await active.session.end();
     // end() resolves when the adapter has QUEUED its trailing events; only the
     // pump's completion proves they are persisted. A second store instance on
@@ -421,6 +465,10 @@ export class SessionConductor {
       autoAllowCourseEdits: false,
       remembered: new Set(),
       idleWaiters: new Set(),
+      admission: null,
+      turnPending: true,
+      backgroundTasks: [],
+      taskNotice: null,
       pump: Promise.resolve(),
     };
     this.active = active;
@@ -445,7 +493,22 @@ export class SessionConductor {
   private async pump(active: ActiveRuntime): Promise<void> {
     try {
       for await (const event of active.session.events) {
+        while (active.admission !== null) await active.admission;
         if (this.active?.id !== active.id) return;
+        if (event.type === "turn_started") active.turnPending = true;
+        if (event.type === "background_tasks") {
+          if (
+            event.tasks.some((task) => !active.backgroundTasks.some((old) => old.id === task.id))
+          ) {
+            active.taskNotice = null;
+          }
+          active.backgroundTasks = event.tasks;
+        }
+        if (event.type === "task_notification") active.taskNotice = event.status;
+        if (event.type === "session_ended") {
+          active.backgroundTasks = [];
+          active.taskNotice = null;
+        }
         // Once doctor has verified the close, the JSONL artifact is immutable.
         // Provider adapters may still drain a final usage/error/end frame while
         // their process exits; those are runtime cleanup, not logical-session
@@ -481,6 +544,9 @@ export class SessionConductor {
           active.wrapTurnFailed = true;
         }
 
+        if (event.type === "turn_complete" || event.type === "session_ended") {
+          active.turnPending = false;
+        }
         if (!(event.type === "session_ended" && active.suppressEndedUi)) {
           this.options.emitAgentEvent(event);
         }
@@ -641,8 +707,11 @@ export class SessionConductor {
       sessionId: snapshot.header.sessionId,
       messages: snapshot.messages,
       totalCostUsd: latestUsage(snapshot),
-      turnInProgress: knownTurnInProgress ?? runtime?.session.busy ?? false,
+      turnInProgress:
+        knownTurnInProgress ?? (runtime !== null && (runtime.turnPending || runtime.session.busy)),
       steerable: runtime?.session.steerable ?? false,
+      backgroundTasks: runtime?.backgroundTasks ?? [],
+      taskNotice: runtime?.taskNotice ?? null,
       ...(latestLifecycle?.kind === "lifecycle" && latestLifecycle.detail !== undefined
         ? { detail: latestLifecycle.detail }
         : {}),
@@ -733,6 +802,13 @@ function closeVerdict(inspection: CourseContextInspection): { clean: boolean; de
 }
 
 function transcriptEntry(event: AgentEvent): TranscriptEntryInput | null {
+  // Live activity is not learning evidence and must not revive after restart.
+  if (
+    event.type === "turn_started" ||
+    event.type === "background_tasks" ||
+    event.type === "task_notification"
+  )
+    return null;
   if (event.type === "message_delta") return { kind: "tutor_delta", delta: event.delta };
   if (event.type === "tool_activity") {
     return {

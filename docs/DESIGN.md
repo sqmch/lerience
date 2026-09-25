@@ -226,6 +226,11 @@ their behavior.
   it stands in when there is one.
 - Silent or failed provider turns get honest retryable states. Do not leave permanent thinking
   indicators after a turn completed without visible content.
+- Background tasks have a separate status with their count and provider descriptions. Their
+  completed, failed, or stopped outcomes do not imply the foreground tutor turn has finished.
+  Foreground completion clears Thinking even while tasks remain; a genuine provider-initiated
+  continuation starts it again. Background-only activity does not block the composer or change
+  queued-message delivery. These states survive a surface remount through live snapshots (ADR-043).
 - Permission prompts are trust moments. State the actual action and scope; never hide a command or
   outside-course effect inside a broad file-edit label. A command approval shows the command itself
   and where it runs — the course folder, a path inside it, or an absolute path outside it. The

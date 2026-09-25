@@ -44,6 +44,11 @@ streams after 60 ms, and the command approval appears after about 2 seconds. At 
 directory-change notification publishes a snapshot containing all seven parts. The counter should
 jump to 7 of 7 while the approval remains visible. The `ready` fixture starts with all seven parts.
 
+The `background`, `continuing`, and `settled` course fixtures exercise separate provider activity
+lifetimes. Background shows two tasks after foreground completion, without Thinking or Stop.
+Continuing shows a provider-initiated foreground turn after task completion. Settled shows its
+finalized reply with Thinking and Stop cleared. These are synthetic states, not live-provider proof.
+
 ## Tool adapter
 
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is

@@ -11,6 +11,86 @@ function reduce(state: SeminarState, actions: readonly SeminarAction[]): Seminar
 }
 
 describe("seminarReducer", () => {
+  it("preserves provider activity when a concurrent retry or close is refused", () => {
+    const state = reduce(createSeminarState(), [
+      { type: "retry_started" },
+      { type: "event", event: { type: "turn_started" } },
+      { type: "submit_failed", id: "retry", message: "busy" },
+      { type: "request_failed", message: "still working" },
+    ]);
+    expect(state.phase).toBe("thinking");
+    expect(state.failure?.message).toBe("still working");
+  });
+  it("keeps background tasks separate from foreground completion and automatic continuation", () => {
+    let state = reduce(createSeminarState(), [
+      { type: "submit_learner", id: "learner", text: "Review" },
+      {
+        type: "event",
+        event: {
+          type: "background_tasks",
+          tasks: [
+            { id: "a", description: "Review lesson" },
+            { id: "b", description: "Review brief" },
+          ],
+        },
+      },
+      { type: "event", event: { type: "message_delta", delta: "Review pending." } },
+      { type: "event", event: { type: "turn_complete" } },
+    ]);
+    expect(state.phase).toBe("idle");
+    expect(state.backgroundTasks).toHaveLength(2);
+    state = reduce(state, [
+      { type: "event", event: { type: "task_notification", taskId: "b", status: "failed" } },
+      {
+        type: "event",
+        event: { type: "background_tasks", tasks: [{ id: "a", description: "Review lesson" }] },
+      },
+      { type: "event", event: { type: "turn_started" } },
+    ]);
+    expect(state.phase).toBe("thinking");
+    expect(state.backgroundTasks).toHaveLength(1);
+    expect(state.taskNotice).toBe("failed");
+    state = reduce(state, [
+      { type: "event", event: { type: "message_delta", delta: "The brief review failed." } },
+      { type: "event", event: { type: "turn_complete" } },
+      { type: "event", event: { type: "background_tasks", tasks: [] } },
+      { type: "event", event: { type: "task_notification", taskId: "a", status: "stopped" } },
+    ]);
+    expect(state.phase).toBe("idle");
+    expect(state.taskNotice).toBe("stopped");
+    expect(state.backgroundTasks).toEqual([]);
+    expect(state.items.filter((item) => item.role === "tutor").map((item) => item.content)).toEqual(
+      ["Review pending.", "The brief review failed."],
+    );
+    expect(state.items.every((item) => !item.streaming)).toBe(true);
+  });
+
+  it("hydrates live background work without inventing a foreground turn and clears it on death", () => {
+    const state = seminarReducer(createSeminarState(), {
+      type: "hydrate",
+      snapshot: {
+        lifecycle: "open",
+        sessionId: "session",
+        messages: [],
+        totalCostUsd: 0,
+        turnInProgress: false,
+        steerable: false,
+        backgroundTasks: [{ id: "a", description: "Review" }],
+        taskNotice: "failed",
+      },
+    });
+    expect(state.phase).toBe("idle");
+    expect(state.backgroundTasks).toHaveLength(1);
+    expect(state.taskNotice).toBe("failed");
+    const ended = seminarReducer(state, {
+      type: "event",
+      event: { type: "session_ended", reason: "died" },
+    });
+    expect(ended.backgroundTasks).toEqual([]);
+    expect(ended.taskNotice).toBeNull();
+    expect(ended.phase).toBe("closed");
+  });
+
   it("maps a complete local agent stream through the visible seminar phases", () => {
     const state = reduce(createSeminarState(), [
       { type: "open_started" },

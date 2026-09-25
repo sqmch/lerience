@@ -22,6 +22,9 @@ export interface SeminarSnapshot {
    *  flight (ADR-042). False for a closed session and for providers that
    *  only queue; the composer reports whichever applies. */
   steerable: boolean;
+  /** Live provider activity, never reconstructed from an old transcript. */
+  backgroundTasks?: import("./seminar").BackgroundTask[];
+  taskNotice?: import("./seminar").TaskOutcome | null;
   detail?: string;
 }
 

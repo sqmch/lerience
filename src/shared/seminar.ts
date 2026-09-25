@@ -19,7 +19,20 @@ export type AgentErrorCode =
   | "turn-failed" // the turn errored; message kept, retry is sane
   | "process-exited"; // the agent process died outside a turn
 
+export interface BackgroundTask {
+  id: string;
+  description: string;
+}
+
+export type TaskOutcome = "completed" | "failed" | "stopped";
+
 export type AgentEvent =
+  /** A provider-initiated foreground turn, without a new learner send. */
+  | { type: "turn_started" }
+  /** Authoritative live background membership; replace rather than pair edges. */
+  | { type: "background_tasks"; tasks: BackgroundTask[] }
+  /** A task outcome is separate from completion of the foreground turn. */
+  | { type: "task_notification"; taskId: string; status: TaskOutcome }
   /** A chunk of the tutor's streaming reply text. */
   | { type: "message_delta"; delta: string }
   /** The tutor is doing tool work. Rendered as the live line of the waiting
@@ -145,9 +158,8 @@ export interface AgentSession {
   /** Every event the session emits, in order, for its whole lifetime.
    *  Completes after `session_ended`. Iterate once (the conductor does). */
   readonly events: AsyncIterable<AgentEvent>;
-  /** True while a turn is in flight. The conductor checks this BEFORE
-   *  persisting a learner message, so the durable transcript never records
-   *  a message the provider refused to accept. */
+  /** True while a turn is in flight. The conductor obtains synchronous send
+   *  acceptance before saving the request, and gates output until it is saved. */
   readonly busy: boolean;
   /** Send a learner message (the opener included — ADR-014's
    *  buildSessionOpener output is just the first send). One turn at a time:

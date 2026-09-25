@@ -27,6 +27,135 @@ afterEach(() => {
 });
 
 describe("useSeminar session controls", () => {
+  it("retains a rejected queue and preserves an intervening automatic turn without a retry loop", async () => {
+    let listener: ((event: AgentEvent) => void) | undefined;
+    let rejectSend!: (error: Error) => void;
+    const sendSeminarMessage = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectSend = reject;
+        }),
+    );
+    Object.defineProperty(window, "praxeum", {
+      configurable: true,
+      value: {
+        currentSeminar: async () => ({
+          lifecycle: "open",
+          sessionId: "race",
+          messages: [],
+          totalCostUsd: 0,
+          turnInProgress: true,
+          steerable: false,
+        }),
+        seminarControls: async () => null,
+        sendSeminarMessage,
+        onSeminarEvent: (next: (event: AgentEvent) => void) => {
+          listener = next;
+          return () => undefined;
+        },
+        onSeminarSnapshot: () => () => undefined,
+      },
+    });
+    const observed: { current: SeminarController | null } = { current: null };
+    function Probe(): null {
+      const controller = useSeminar({ currentModuleId: null, autoStart: false });
+      useEffect(() => {
+        observed.current = controller;
+      }, [controller]);
+      return null;
+    }
+    root = createRoot(document.createElement("div"));
+    await act(async () => root?.render(<Probe />));
+    await act(async () => {
+      await observed.current?.send("Keep this question");
+    });
+    await act(async () => listener?.({ type: "turn_complete" }));
+    expect(sendSeminarMessage).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      listener?.({ type: "turn_started" });
+      rejectSend(new Error("A tutor turn is already in progress."));
+    });
+    expect(observed.current?.busy).toBe(true);
+    expect(observed.current?.queued).toBe("Keep this question");
+    expect(observed.current?.state.items).toEqual([]);
+    expect(sendSeminarMessage).toHaveBeenCalledTimes(1);
+    await act(async () => listener?.({ type: "turn_complete" }));
+    expect(sendSeminarMessage).toHaveBeenCalledTimes(2);
+    await act(async () => rejectSend(new Error("Temporarily unavailable")));
+    expect(observed.current?.queued).toBe("Keep this question");
+    expect(sendSeminarMessage).toHaveBeenCalledTimes(2);
+    sendSeminarMessage.mockResolvedValueOnce(undefined);
+    await act(async () => observed.current?.retryQueued?.());
+    expect(sendSeminarMessage).toHaveBeenCalledTimes(3);
+    expect(observed.current?.queued).toBeNull();
+    expect(observed.current?.state.items.map((item) => item.content)).toEqual([
+      "Keep this question",
+    ]);
+  });
+  it("queues during an automatic foreground turn and flushes once at its result, independently of background work", async () => {
+    let listener: ((event: AgentEvent) => void) | undefined;
+    const sendSeminarMessage = vi.fn(async () => undefined);
+    const bridge = {
+      currentSeminar: async () => ({
+        lifecycle: "open",
+        sessionId: "review",
+        messages: [],
+        totalCostUsd: 0,
+        turnInProgress: false,
+        steerable: false,
+      }),
+      seminarControls: async () => null,
+      sendSeminarMessage,
+      onSeminarEvent: (next: (event: AgentEvent) => void) => {
+        listener = next;
+        return () => undefined;
+      },
+      onSeminarSnapshot: () => () => undefined,
+    } as unknown as PraxeumApi;
+    Object.defineProperty(window, "praxeum", { configurable: true, value: bridge });
+    const observed: { current: SeminarController | null } = { current: null };
+    function Probe(): null {
+      const controller = useSeminar({ currentModuleId: null, autoStart: false });
+      useEffect(() => {
+        observed.current = controller;
+      }, [controller]);
+      return null;
+    }
+    root = createRoot(document.createElement("div"));
+    await act(async () => root?.render(<Probe />));
+    await act(async () => {
+      listener?.({
+        type: "background_tasks",
+        tasks: [{ id: "review", description: "Read lesson" }],
+      });
+      listener?.({ type: "turn_started" });
+    });
+    expect(observed.current?.busy).toBe(true);
+    await act(async () => {
+      await observed.current?.send("Also explain this");
+    });
+    expect(sendSeminarMessage).not.toHaveBeenCalled();
+    expect(observed.current?.queued).toBe("Also explain this");
+    await act(async () =>
+      listener?.({ type: "task_notification", taskId: "other", status: "completed" }),
+    );
+    expect(sendSeminarMessage).not.toHaveBeenCalled();
+    await act(async () => {
+      listener?.({ type: "message_delta", delta: "Review conclusion" });
+      listener?.({ type: "turn_complete" });
+    });
+    expect(sendSeminarMessage).toHaveBeenCalledExactlyOnceWith("Also explain this");
+    expect(observed.current?.queued).toBeNull();
+    expect(observed.current?.state.backgroundTasks).toHaveLength(1);
+    await act(async () => {
+      listener?.({ type: "message_delta", delta: "Explanation" });
+      listener?.({ type: "turn_complete" });
+      listener?.({ type: "background_tasks", tasks: [] });
+    });
+    expect(sendSeminarMessage).toHaveBeenCalledTimes(1);
+    expect(observed.current?.busy).toBe(false);
+  });
+
   it("refreshes pending access after a tool-only turn completes", async () => {
     let listener: ((event: AgentEvent) => void) | undefined;
     let providerControls: SessionControls = {
@@ -198,7 +327,8 @@ describe("useSeminar session controls", () => {
           eventListener?.({ type: "turn_complete" });
         });
         await vi.waitFor(() => expect(sendSeminarMessage).toHaveBeenCalledTimes(2));
-        expect(seminar().queued).toBeNull();
+        expect(seminar().queued).toBe("Also cover the dot product");
+        expect(seminar().retryQueued).toBeTypeOf("function");
         return;
       }
 

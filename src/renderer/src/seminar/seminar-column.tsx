@@ -21,6 +21,7 @@ import { CloseGlyph } from "../components/glyphs";
 import { Notice } from "../components/notice";
 import {
   ApprovalCard,
+  BackgroundActivity,
   Composer,
   ConversationTranscript,
   FailureNotice,
@@ -128,6 +129,7 @@ export function SeminarColumn({
           ) : null}
 
           <ConversationTranscript state={state} />
+          <BackgroundActivity state={state} />
 
           {busy ? (
             <Thinking label={conversationThinkingLabel(state)} activity={state.toolActivity} />
@@ -221,6 +223,7 @@ export function SeminarColumn({
             controlNotice={state.controlNotice}
             queued={seminar.queued}
             onUnqueue={seminar.unqueue}
+            onRetryQueued={seminar.retryQueued}
             steerable={state.steerable}
             placeholder="Reply to your tutor…"
           />

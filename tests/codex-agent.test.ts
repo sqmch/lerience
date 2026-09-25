@@ -15,6 +15,7 @@ import {
 import type { CodexAppServerConnection } from "../src/main/provider/codex-app-server";
 import type { AgentEvent } from "../src/shared/seminar";
 import { CODEX_COURSE_SANDBOX_CONFIG } from "../src/main/provider/codex-course-write";
+import * as courseWrite from "../src/main/provider/codex-course-write";
 
 let courseDir: string;
 beforeEach(() => {
@@ -98,6 +99,65 @@ async function events(iterator: AsyncIterator<AgentEvent>, count: number): Promi
 }
 
 describe("CodexAgentSession", () => {
+  it("does not confuse a collaboration item or child turn completion with the parent turn", async () => {
+    // This tests event routing. The sandbox tests below exercise the real
+    // marker command; starting another PowerShell here made this unit test
+    // depend on cold process startup under CI load.
+    const writeProof = vi.spyOn(courseWrite, "verifyCodexCourseWrite").mockResolvedValue(undefined);
+    const { connection, session } = setup();
+    try {
+      const iterator = session.events[Symbol.asyncIterator]();
+      session.send("review the lesson");
+      await session.describeControls();
+      await vi.waitFor(() =>
+        expect(connection.calls.some((call) => call.method === "turn/start")).toBe(true),
+      );
+      connection.emit("item/started", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        item: {
+          type: "collabAgentToolCall",
+          id: "review",
+          tool: "spawnAgent",
+          status: "inProgress",
+          senderThreadId: "thread-1",
+          receiverThreadIds: ["child"],
+          agentsStates: {},
+        },
+      });
+      expect(await events(iterator, 1)).toEqual([
+        { type: "tool_activity", name: "Agent", summary: "Delegating a task" },
+      ]);
+      connection.emit("item/completed", {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        item: {
+          type: "collabAgentToolCall",
+          id: "review",
+          tool: "spawnAgent",
+          status: "completed",
+          senderThreadId: "thread-1",
+          receiverThreadIds: ["child"],
+          agentsStates: { child: { status: "running" } },
+        },
+      });
+      connection.emit("turn/completed", {
+        threadId: "child",
+        turn: { id: "child-turn", status: "completed" },
+      });
+      expect(session.busy).toBe(true);
+      connection.emit("turn/completed", {
+        threadId: "thread-1",
+        turn: { id: "turn-1", status: "completed" },
+      });
+      expect(await events(iterator, 1)).toEqual([{ type: "turn_complete" }]);
+      expect(session.busy).toBe(false);
+    } finally {
+      await session.end();
+      writeProof.mockRestore();
+    }
+  });
+
   it("stages explicit access separately and restores the verified course policy", async () => {
     const { connection, session } = setup();
     connection.responses.set("turn/start", { turn: { id: "access-turn", status: "completed" } });

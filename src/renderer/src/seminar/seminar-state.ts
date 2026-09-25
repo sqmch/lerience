@@ -1,4 +1,9 @@
-import type { AgentErrorCode, AgentEvent } from "../../../shared/seminar";
+import type {
+  AgentErrorCode,
+  AgentEvent,
+  BackgroundTask,
+  TaskOutcome,
+} from "../../../shared/seminar";
 import type { SeminarLifecycle, SeminarSnapshot } from "../../../shared/session";
 
 export type SeminarPhase =
@@ -52,6 +57,8 @@ export interface SeminarState {
   recoveryStartIndex: number | null;
   recoveryHandoff: RecoveryHandoff;
   toolActivity: ToolActivity | null;
+  backgroundTasks: BackgroundTask[];
+  taskNotice: TaskOutcome | null;
   approval: SeminarApproval | null;
   totalCostUsd: number;
   limitWarning: Extract<AgentEvent, { type: "limit_warning" }> | null;
@@ -69,6 +76,7 @@ export interface SeminarState {
    *  it looks exactly like success to every other signal (no error, a cost, a
    *  completion), so only the absence of content reveals it. */
   turnProducedContent: boolean;
+  pendingSubmissionId: string | null;
 }
 
 export type SeminarAction =
@@ -78,7 +86,8 @@ export type SeminarAction =
   | { type: "open_failed"; message: string }
   | { type: "retry_started" }
   | { type: "submit_learner"; id: string; text: string }
-  | { type: "submit_failed"; id: string; message: string }
+  | { type: "submit_failed"; id: string; message: string; retained?: boolean }
+  | { type: "request_failed"; message: string }
   /** A learner message accepted INTO the running turn: it joins the
    *  transcript without starting a turn, so the phase, the live line, and
    *  any approval card stay exactly as they were. */
@@ -104,6 +113,8 @@ export function createSeminarState(): SeminarState {
     recoveryStartIndex: null,
     recoveryHandoff: "none",
     toolActivity: null,
+    backgroundTasks: [],
+    taskNotice: null,
     approval: null,
     totalCostUsd: 0,
     limitWarning: null,
@@ -112,6 +123,7 @@ export function createSeminarState(): SeminarState {
     nextItemId: 1,
     steerable: false,
     turnProducedContent: false,
+    pendingSubmissionId: null,
   };
 }
 
@@ -172,6 +184,43 @@ function failureKind(code: AgentErrorCode): SeminarFailureKind {
 }
 
 function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
+  if (
+    [
+      "turn_started",
+      "message_delta",
+      "tool_activity",
+      "approval_request",
+      "turn_complete",
+      "session_ended",
+      "error",
+    ].includes(event.type)
+  ) {
+    state = { ...state, pendingSubmissionId: null };
+  }
+  if (event.type === "background_tasks") {
+    return {
+      ...state,
+      backgroundTasks: event.tasks,
+      taskNotice: event.tasks.some(
+        (task) => !state.backgroundTasks.some((old) => old.id === task.id),
+      )
+        ? null
+        : state.taskNotice,
+    };
+  }
+  if (event.type === "task_notification") {
+    return { ...state, taskNotice: event.status };
+  }
+  if (event.type === "turn_started") {
+    return {
+      ...state,
+      phase: "thinking",
+      toolActivity: null,
+      approval: null,
+      failure: null,
+      turnProducedContent: false,
+    };
+  }
   if (event.type === "message_delta") return appendTutorDelta(state, event.delta);
 
   if (event.type === "tool_activity") {
@@ -240,6 +289,8 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
       ...state,
       phase: "closed",
       lifecycle: "closed",
+      backgroundTasks: [],
+      taskNotice: null,
       recoveryHandoff: "none",
       items: finalizeStreamingTutor(state.items),
       toolActivity: null,
@@ -274,6 +325,7 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
     // session" over a session that is opening — and since auto-start only fires
     // once, the surface would then wait forever for a tutor already at work.
     if (state.phase === "opening" && snapshot.lifecycle === "closed") return state;
+    state = { ...state, pendingSubmissionId: null };
     const items = snapshot.messages.map((message) => ({
       id: message.id,
       role: message.role,
@@ -352,6 +404,8 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       toolActivity: null,
       approval: null,
       totalCostUsd: snapshot.totalCostUsd,
+      backgroundTasks: snapshot.backgroundTasks ?? [],
+      taskNotice: snapshot.taskNotice ?? null,
       failure,
       nextItemId: largestSeenId + 1,
       steerable: snapshot.steerable,
@@ -381,7 +435,13 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
   }
 
   if (action.type === "retry_started") {
-    return { ...state, phase: "thinking", failure: null, turnProducedContent: false };
+    return {
+      ...state,
+      phase: "thinking",
+      failure: null,
+      turnProducedContent: false,
+      pendingSubmissionId: "retry",
+    };
   }
 
   if (action.type === "open_succeeded") {
@@ -405,6 +465,7 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
   if (action.type === "submit_learner") {
     return {
       ...state,
+      pendingSubmissionId: action.id,
       phase: "thinking",
       lifecycle: "open",
       recoveryHandoff: "none",
@@ -425,12 +486,21 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
   }
 
   if (action.type === "submit_failed") {
+    const ownsPhase = state.pendingSubmissionId === action.id;
     return {
       ...state,
-      phase: "idle",
+      phase: ownsPhase ? "idle" : state.phase,
+      pendingSubmissionId: ownsPhase ? null : state.pendingSubmissionId,
       items: state.items.filter((item) => item.id !== action.id),
-      failure: { kind: "unavailable", message: action.message },
+      failure:
+        action.retained || !ownsPhase
+          ? state.failure
+          : { kind: "unavailable", message: action.message },
     };
+  }
+
+  if (action.type === "request_failed") {
+    return { ...state, failure: { kind: "unavailable", message: action.message } };
   }
 
   if (action.type === "steer_learner") {

@@ -14,14 +14,15 @@ LB-016 also includes a read-only course inspection on 2026-09-25, against app so
 ## Pick the next session
 
 LB-001 has a source fix and disposable regression evidence in [PR #88](https://github.com/sqmch/lerience/pull/88).
-An app release and explicit existing-course update remain separate. Next investigate the
-session states in **LB-002 and LB-003**. Small interface fixes can proceed
+An app release and explicit existing-course update remain separate. The
+session states in **LB-002 and LB-003** have a shared source fix implemented in
+[PR #89](https://github.com/sqmch/lerience/pull/89), with native Claude and renderer evidence below. Small interface fixes can proceed
 independently; they do not need to wait for the recovery investigation.
 
 | Order | Session scope | Deliverable and stopping point |
 | --- | --- | --- |
 | 1 | LB-001, QA cleanup | Source fix and regression in PR #88. Release and existing-course update remain separate. |
-| 2 | LB-002 + LB-003, Claude activity | Trace completion and review events together. Establish whether the symptoms share a cause; implement separately if they do not. |
+| 2 | LB-002 + LB-003, Claude activity | Implemented in source. PR #89 records CI and merge; native Claude and renderer evidence is recorded. Release remains separate. |
 | 3 | LB-006, usage warnings | Verify provider units and limit categories, then correct mapping and copy with fixture evidence. |
 | 4 | LB-004 + LB-005, recovery and journal | Measure where recovery time and context go. End the first session with a supported cause or a bounded follow-up, before changing lifecycle rules. |
 | 5 | LB-010, duplicate labs | Establish lab identity and fix repeated choices without merging distinct module configurations. |
@@ -45,8 +46,8 @@ and "discovery" needs a product or provider-contract decision before implementat
 | ID | Item | Kind | Priority | Evidence | Intake | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | [LB-001](reliability.md#lb-001) | QA may delete real scaffold dependencies | Bug | P1 | Reproduced under Windows Electron; regression passes | S16 | Implemented |
-| [LB-002](reliability.md#lb-002) | Claude stays Thinking after apparent completion | Bug | P1 | Reported | S02, S07 | Open |
-| [LB-003](reliability.md#lb-003) | Cold review appears idle while work continues | Bug / missing activity state | P1 | Reported | S09 | Open |
+| [LB-002](reliability.md#lb-002) | Claude stays Thinking after apparent completion | Bug | P1 | Reproduced; source regression and native Claude pass | S02, S07 | Implemented |
+| [LB-003](reliability.md#lb-003) | Cold review appears idle while work continues | Bug / missing activity state | P1 | Native background sequence; renderer states verified | S09 | Implemented |
 | [LB-004](reliability.md#lb-004) | Slow recovery, including after Tutor not available | Reliability investigation | P1 | Reported | S10, S14 | Open |
 | [LB-005](reliability.md#lb-005) | Journal growth and repeated recovery overhead | Investigation | P2 | Reported; opener bound observed | S14 | Open |
 | [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Reported; mapping observed | S02, S11 | Open |

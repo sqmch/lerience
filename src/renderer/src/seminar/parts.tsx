@@ -181,6 +181,39 @@ export function ConversationTranscript({ state }: { state: SeminarState }): Reac
   );
 }
 
+/** Background work survives a foreground result but does not keep its timer
+ * or block the learner's next message. Labels come from provider task state. */
+export function BackgroundActivity({ state }: { state: SeminarState }): React.JSX.Element | null {
+  if (state.backgroundTasks.length === 0 && state.taskNotice === null) return null;
+  return (
+    <div role="status" className="text-ink-dim flex flex-col gap-1 text-sm">
+      {state.backgroundTasks.length === 0 ? null : (
+        <>
+          <span>
+            {state.backgroundTasks.length === 1
+              ? "1 background task running"
+              : `${String(state.backgroundTasks.length)} background tasks running`}
+          </span>
+          {state.backgroundTasks.map((task) => (
+            <span key={task.id} className="text-ink-faint text-xs break-words">
+              {task.description || "Background work"}
+            </span>
+          ))}
+        </>
+      )}
+      {state.taskNotice === null ? null : (
+        <span>
+          {state.taskNotice === "completed"
+            ? "Task completed"
+            : state.taskNotice === "failed"
+              ? "Task failed"
+              : "Task stopped"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function conversationThinkingLabel(state: SeminarState): string {
   if (state.recoveryHandoff === "finishing-previous") {
     return "Finishing your previous session";
@@ -551,6 +584,7 @@ export function Composer({
   controlNotice,
   queued,
   onUnqueue,
+  onRetryQueued,
   steerable = false,
 }: {
   draft: string;
@@ -567,6 +601,7 @@ export function Composer({
   controlNotice?: SeminarState["controlNotice"];
   queued?: string | null;
   onUnqueue?: () => void;
+  onRetryQueued?: (() => void) | undefined;
 }): React.JSX.Element {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -598,9 +633,23 @@ export function Composer({
             <i className="bg-attention animate-dot size-1.5 rounded-pill" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="text-ink-faint block text-2xs">Sending when the tutor finishes</span>
+            <span className="text-ink-faint block text-2xs">
+              {onRetryQueued
+                ? "Message kept. Retry when ready."
+                : "Sending when the tutor finishes"}
+            </span>
             <span className="line-clamp-2 whitespace-pre-wrap">{queued}</span>
           </span>
+          {onRetryQueued === undefined ? null : (
+            <button
+              type="button"
+              disabled={busy}
+              className="text-ink-faint hover:text-hi shrink-0 text-2xs underline underline-offset-4 disabled:opacity-50"
+              onClick={onRetryQueued}
+            >
+              Retry
+            </button>
+          )}
           {onUnqueue === undefined ? null : (
             <button
               type="button"
