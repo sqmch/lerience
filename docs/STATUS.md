@@ -1,5 +1,9 @@
 # Project status
 
+For learner bug reports, feature discussions, and the next focused work session, start with
+the [learner backlog](backlog/README.md). It tracks reported symptoms separately from verified
+causes and shipped fixes.
+
 Last reviewed: 2026-08-20
 
 Public unsigned Windows x64 community releases are available from
