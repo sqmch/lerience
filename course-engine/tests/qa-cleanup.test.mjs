@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { URL, fileURLToPath, pathToFileURL } from "node:url";
 import { copyNpmTree, writeJavaScriptToolShims } from "../../scripts/assemble-runtime.mjs";
 
 const require = createRequire(import.meta.url);
