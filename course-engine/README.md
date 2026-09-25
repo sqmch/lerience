@@ -19,6 +19,12 @@ previews only provenance-bound engine paths, refuses learner edits/collisions, a
 validated engine commit only from a future learner action. Increment `engineVersion` whenever a
 reviewed template delta should become such an offered update.
 
+Engine 0.2.1 fixes Windows QA cleanup under Electron by removing temporary files and links
+without recursive deletion through junctions. Dependencies remain shared to avoid copying or
+reinstalling them for each check run. Cleanup failures leave a warning and retain the remaining
+temporary files. This does not sandbox course-authored check scripts. Existing courses require
+the explicit engine update described above; an app update alone does not replace their scripts.
+
 Engine 0.2.0 replaces sealed hint files with three assistance levels given live, and requires a
 learner's-eye `REVIEW.md` before handover, cross-checked by QA where a structured answer file
 exists (ADR-041). Course format 0, schemas and record locations are unchanged; `hintsUsed` keeps

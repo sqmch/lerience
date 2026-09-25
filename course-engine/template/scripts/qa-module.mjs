@@ -8,10 +8,11 @@
 // answer file lied about its own types, a refusal-contract hole. This is the
 // mechanical check that prose couldn't be.
 //
-// It is READ-ONLY on the course: static lints read files and `git ls-files`;
-// dynamic runs copy the scaffold+checks into a throwaway temp dir (never in
-// place) and run there. The module's own node_modules is reused via a directory
-// junction — never copied, never written.
+// Static lints read course files and `git ls-files`; dynamic runs copy the
+// scaffold+checks into a throwaway temp dir and run there. Dependencies are
+// reused via a directory junction. Cleanup removes links without traversing
+// their targets. Course-authored checks still run as trusted code and can write
+// through that shared install; the temporary workspace is not a sandbox.
 //
 // Usage:  node scripts/qa-module.mjs <module-dir-or-id> [--reference <dir>] [--json] [--skip-run]
 //   <module-dir-or-id>   a path to a module dir, or a bare id (02-vector-store)
@@ -598,7 +599,7 @@ function runDynamic() {
 }
 
 // Copy scaffold(sans node_modules)+checks to a temp dir, junction node_modules
-// back to the original (never copied, never written), optionally overlay a
+// back to the original (not copied), optionally overlay a
 // reference, run `npm run check`. Returns captured output or a reason it couldn't.
 function runChecks(overlayDir) {
   let tmp;
@@ -650,23 +651,28 @@ function safeJson(text) {
     return null;
   }
 }
-// Remove a temp tree. Unlink any node_modules junction FIRST so a recursive
-// delete can never reach the real install it points at.
+// Remove only entries owned by the temporary tree. Electron 43.4.0 on Windows
+// follows junctions in recursive rmSync, unlike standalone Node 24.18.0.
+// Handle every link, including dangling or check-created links, with unlink.
+// Never fall back to recursive removal after a failed unlink or inspection.
 function safeRemove(dir) {
-  try {
-    const link = path.join(dir, "scaffold", "node_modules");
-    if (fs.existsSync(link)) {
-      try {
-        const st = fs.lstatSync(link);
-        if (st.isSymbolicLink() || st.isDirectory())
-          fs.rmSync(link, { recursive: true, force: true });
-      } catch {
-        /* fall through to the whole-tree remove */
-      }
+  function removeEntry(entry) {
+    const st = fs.lstatSync(entry);
+    if (st.isSymbolicLink() || !st.isDirectory()) {
+      fs.unlinkSync(entry);
+      return;
     }
-    fs.rmSync(dir, { recursive: true, force: true });
-  } catch {
-    /* best-effort cleanup */
+    for (const name of fs.readdirSync(entry)) removeEntry(path.join(entry, name));
+    fs.rmdirSync(entry);
+  }
+  try {
+    removeEntry(dir);
+  } catch (err) {
+    add(
+      "cleanup",
+      "warn",
+      `temporary QA files may remain at ${dir}: ${err?.message ?? String(err)}`,
+    );
   }
 }
 
