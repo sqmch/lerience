@@ -85,6 +85,10 @@ permission storage or broader settings UI is needed.
 
 P3, product discovery. Source S15. No feature set is committed.
 
+[LB-016](assessment.md#lb-016) separately covers answering exercises and recording assessment
+attempts. Coordinate lesson selection and tutor context where useful, but annotation and
+assessment have different completion criteria.
+
 The concrete behavior behind this idea is selecting sentences while reading. Persistent
 highlighting could make those selections useful later. The learner also wonders about talking
 to the tutor about a selection, notes/comments, editing lessons, collapsing sections, and

@@ -4,10 +4,11 @@ Intake: 2026-09-25. Source baseline inspected: `0023ff9`, app 0.0.14, Course Eng
 Reported versions are less precise: the notes describe use after 0.0.14, but do not establish
 the exact app, installed provider, or course-engine version for every incident.
 
-This is the working catalogue for the [original notes](intake-2026-09-25.md). All 16 source
-bullets are accounted for below in 15 work items. Repeated symptoms are consolidated, while
-potentially related failures retain separate acceptance criteria. No reported bug has been
+This is the working catalogue for the [intake notes](intake-2026-09-25.md). The original 16
+bullets and one follow-up are accounted for below in 16 work items. Repeated symptoms are
+consolidated, while potentially related failures retain separate acceptance criteria. No reported bug has been
 reproduced or fixed by this catalogue. Code observations identify starting points, not causes.
+LB-016 also includes a read-only course inspection on 2026-09-25, against app source `704e358`.
 
 ## Pick the next session
 
@@ -28,7 +29,8 @@ independently; they do not need to wait for the recovery investigation.
 | 8 | LB-007, then LB-008, tutor controls | Verify effort capabilities, then provide an explicit model choice before the opening turn. These can be separate sessions. |
 | 9 | LB-014, Windows window flashes | Identify the process that opens a console, then fix that launch path if unintended. |
 | 10 | LB-009, context visibility | Establish available context telemetry and implement an honest readout. Can move earlier if it helps LB-004. |
-| 11 | LB-015, interactive reading | Choose or reject a small learner-useful experiment. Discovery does not commit to building every idea. |
+| 11 | LB-016, in-app assessment | Define how learners answer non-code exercises, compare standard and tutor-authored interactions, and select one bounded prototype. |
+| 12 | LB-015, interactive reading | Choose or reject a small learner-useful experiment. Discovery does not commit to building every idea. |
 
 These are work packages, not estimates or a promise to finish each package in one sitting.
 
@@ -56,12 +58,13 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | Requested; suffix observed | S04 | Open |
 | [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Reported on Windows | S12 | Open |
 | [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | Ideas, not committed scope | S15 | Open |
+| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | Requested; 13-module course inspected | S17 | Open |
 
 ## Source coverage
 
-The S identifiers follow the original bullet order, including the final quoted tutor diagnosis.
-The source archive preserves the wording and uncertainty; read only the relevant report when
-starting an item.
+S01-S16 follow the original bullet order, including the quoted tutor diagnosis. S17 is the
+follow-up about answer files. The source archive preserves wording and uncertainty, with its
+stated path redaction; read only the relevant report when starting an item.
 
 | Source | Captured concern | Work item |
 | --- | --- | --- |
@@ -81,6 +84,7 @@ starting an item.
 | S14 | Seven modules, 37 journal entries, 20-minute recovery after unavailability | LB-004, LB-005 |
 | S15 | Highlights, selection-to-tutor, editing, comments, folding, learning value | LB-015 |
 | S16 | Repeated dependency deletion and tutor's claimed junction diagnosis | LB-001 |
+| S17 | Repeated answers.json editing, in-app questions, and tutor-authored assessment | LB-016 |
 
 ## Continue in another session
 
