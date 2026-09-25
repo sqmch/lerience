@@ -6,20 +6,21 @@ the exact app, installed provider, or course-engine version for every incident.
 
 This is the working catalogue for the [intake notes](intake-2026-09-25.md). The original 16
 bullets and one follow-up are accounted for below in 16 work items. Repeated symptoms are
-consolidated, while potentially related failures retain separate acceptance criteria. No reported bug has been
-reproduced or fixed by this catalogue. Code observations identify starting points, not causes.
+consolidated, while potentially related failures retain separate acceptance criteria. The initial
+catalogue did not reproduce or fix reported bugs. Subsequent investigation evidence is recorded
+under each item; initial code observations identify starting points, not causes.
 LB-016 also includes a read-only course inspection on 2026-09-25, against app source `704e358`.
 
 ## Pick the next session
 
-Start with **LB-001**, the reported deletion of scaffold dependencies during QA. Its impact
-justifies investigating first even though the tutor's explanation remains unverified.
-Then investigate the session states in LB-002 and LB-003. Small interface fixes can proceed
+LB-001 has a source fix and disposable regression evidence in [PR #88](https://github.com/sqmch/lerience/pull/88).
+An app release and explicit existing-course update remain separate. Next investigate the
+session states in **LB-002 and LB-003**. Small interface fixes can proceed
 independently; they do not need to wait for the recovery investigation.
 
 | Order | Session scope | Deliverable and stopping point |
 | --- | --- | --- |
-| 1 | LB-001, QA cleanup | Disposable reproduction, established cause, then a focused fix if confirmed. Preserve real course dependencies throughout. |
+| 1 | LB-001, QA cleanup | Source fix and regression in PR #88. Release and existing-course update remain separate. |
 | 2 | LB-002 + LB-003, Claude activity | Trace completion and review events together. Establish whether the symptoms share a cause; implement separately if they do not. |
 | 3 | LB-006, usage warnings | Verify provider units and limit categories, then correct mapping and copy with fixture evidence. |
 | 4 | LB-004 + LB-005, recovery and journal | Measure where recovery time and context go. End the first session with a supported cause or a bounded follow-up, before changing lifecycle rules. |
@@ -43,7 +44,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 
 | ID | Item | Kind | Priority | Evidence | Intake | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| [LB-001](reliability.md#lb-001) | QA may delete real scaffold dependencies | Bug investigation | P1 | Reported; cleanup code observed | S16 | Open |
+| [LB-001](reliability.md#lb-001) | QA may delete real scaffold dependencies | Bug | P1 | Reproduced under Windows Electron; regression passes | S16 | Implemented |
 | [LB-002](reliability.md#lb-002) | Claude stays Thinking after apparent completion | Bug | P1 | Reported | S02, S07 | Open |
 | [LB-003](reliability.md#lb-003) | Cold review appears idle while work continues | Bug / missing activity state | P1 | Reported | S09 | Open |
 | [LB-004](reliability.md#lb-004) | Slow recovery, including after Tutor not available | Reliability investigation | P1 | Reported | S10, S14 | Open |
@@ -90,7 +91,7 @@ stated path redaction; read only the relevant report when starting an item.
 
 Use a request such as:
 
-> Work on LB-001 from docs/backlog/README.md. Reproduce it safely, fix it if confirmed,
+> Work on the next open item from docs/backlog/README.md. Reproduce it safely, fix it if confirmed,
 > run the relevant checks, and update the item with evidence and remaining limits.
 
 At pickup, read repository guidance, refresh the branch and relevant PR state, and read the

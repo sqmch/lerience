@@ -6,7 +6,7 @@ Evidence is from intake on 2026-09-25 and static inspection at `0023ff9` unless 
 <a id="lb-001"></a>
 ## LB-001: QA may delete scaffold dependencies
 
-P1, bug investigation. Source S16. Investigate first.
+P1, bug. Source S16. Implemented in source, unreleased; see the evidence below.
 
 The learner reports `node_modules` disappearing more than once during one session. The quoted
 tutor claims three occurrences and a deterministic Windows Node 24 junction-cleanup cause.
@@ -23,7 +23,7 @@ recursive removal and a later whole-tree removal. The text alone does not establ
 affected runtime handles junctions. The tutor also says it cannot patch engine-owned files and
 has been reinstalling dependencies after QA. Preserve this as history, not the product remedy.
 
-Next: record the affected engine copy, Node patch version, OS, and actual QA launch path. Use
+Initial investigation plan: record the affected engine copy, Node patch version, OS, and actual QA launch path. Use
 disposable fixtures with sentinel files both in the target install and beside it; reproduce
 the complete QA success and failure cleanup paths. A standalone junction experiment may
 isolate a cause, but does not alone validate the QA workflow. If deletion does not reproduce,
@@ -36,6 +36,72 @@ path under [ADR-027](../DECISIONS/ADR-027-explicit-course-engine-update-core.md)
 does not silently fix older course copies. Start with
 [`qa.test.mjs`](../../course-engine/tests/qa.test.mjs). No real learner dependency tree is a
 reproduction fixture.
+
+### Investigation and fix, 2026-09-25
+
+Owner: `codex/lb-001-qa-dependency-preservation`. Source baseline `a8ade1f`, Course Engine
+0.2.0. Implementation: [PR #88](https://github.com/sqmch/lerience/pull/88), source commit
+[`678ac6e`](https://github.com/sqmch/lerience/commit/678ac6e1e891b34e57ed6d5ada47bb52ed5cd269).
+The PR records the CI and merge outcome separately from the unreleased engine change.
+Read-only inspection found the affected course's QA script byte-identical to the
+canonical script, SHA-256 `4801a74510f2c547aa5d7819b5c03fce91925de68c1d45e88bd5b52f618c1b3d`.
+Its course-level QA command is `node scripts/qa-module.mjs`. The installed app carries engine
+0.2.0 and launches Node/npm through Electron shims. Journal entries identify bundled-runtime
+failures and both Node 24.18.0 and 24.18.1, but are tutor accounts, not captured process traces.
+No QA, install, cleanup, engine update, or learning-record writes were run against that course.
+
+Disposable sentinel experiments on Windows 11 build 26200 established the failure under the
+installed Electron 43.4.0 / Node 24.18.1 runtime in `ELECTRON_RUN_AS_NODE=1` mode. Both recursive
+removal of the junction and recursive removal of its parent deleted target contents. Direct
+`unlinkSync` and `rmdirSync` preserved them. Standalone Node 24.18.0 preserved the same targets
+for all four operations. The tutor's broad claim about Node 24 is therefore too imprecise; the
+reproduced runtime is Electron's bundled Node. This does not establish an upstream Node or
+Electron source regression or reconstruct every historical incident.
+
+The complete QA CLI reproduced the dependency deletion before the fix, including after check
+crashes and simulated spawn/timeout failures. The check fixture only reads its synthetic
+dependency, so neither npm installation nor check-code deletion is needed to cause the loss.
+The old cleanup's recursive fallback also makes replacing only the first removal insufficient
+when unlinking fails. Check-created links elsewhere in the temporary tree need the same care.
+
+Engine 0.2.1 removes each temporary entry using `lstatSync`, unlinks files and links without
+traversing link targets, and removes emptied ordinary directories with `rmdirSync`. It never
+falls back to recursive removal. A failure retains remaining temporary files and emits a
+cleanup warning. Reusing installed dependencies still avoids a copy or install for each QA run.
+This is cleanup protection, not a sandbox: course-authored checks remain trusted code and can
+write through the shared dependency link. No broader isolation or speed claim is made.
+
+Regression command: `node --test course-engine/tests/qa-cleanup.test.mjs`. The fixture covers
+as-is assertion failures plus a passing reference, crashing checks, overlay-copy failure,
+injected timeout and spawn errors, failed unlink, dangling junctions, nested check-created
+links, neighboring sentinels, and temporary-tree removal or deliberate retention. Windows tests
+run under standalone Node and the pinned Electron binary. Electron cases use the production
+Node/npm shims with host Node excluded from PATH. OS/process failures are injected to exercise
+the cleanup branches; they do not prove termination of a real hung process tree.
+
+Validation: the 14 regression cases pass with both the pinned development Electron and the
+installed app executable and npm shims. The latter run uses only disposable fixtures. Two
+Windows runtime assemblies produced identical manifests, SHA-256
+`2f2325e92b82c3dec4b869d1164bb12bcc7b2576177efa3b09f0b91544391f96`, with 2,356 inventoried
+files and zero violations. Focused assembled-runtime, engine-ledger, and updater tests pass
+16/16. The engine manifest is bumped with course format 0 unchanged. All three accepted engine
+tree hashes are updated; Mac hashes use tracked file modes and a hashing model checked against
+the previous accepted hashes, not a native Mac run.
+
+The linked PR records required `pnpm check`, publication-prose, dependency-audit, and final-head
+CI results before merge. Initial local full-suite attempts hit the existing packaged-npm launch
+timeout and, on one run, a Vitest worker-start timeout. The local follow-up limits Vitest to two
+workers without changing tests or timeout limits. Hosted Windows CI passed the application and
+all 61 engine tests before identifying a missing explicit `URL` import in the new fixture;
+commit `240b913` supplies that import. These validation failures are separate from the
+dependency-deletion reproduction.
+
+Delivery boundary: merging this change does not update the installed app or existing course.
+A future app release must carry engine 0.2.1. An existing course then requires ADR-027's separate
+explicit, provenance-bound preview/apply operation after the tutor session is closed, with a
+clean named branch and no conflicting engine edits. The updater core exists, but this change
+adds no learner update UI and applies no update. Previously deleted dependencies are not
+restored by replacing the script.
 
 <a id="lb-002"></a>
 ## LB-002: Claude remains Thinking after apparent completion
