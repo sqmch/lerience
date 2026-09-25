@@ -50,7 +50,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-003](reliability.md#lb-003) | Cold review appears idle while work continues | Bug / missing activity state | P1 | Native background sequence; renderer states verified | S09 | Implemented |
 | [LB-004](reliability.md#lb-004) | Slow recovery, including after Tutor not available | Reliability investigation | P1 | Reported | S10, S14 | Open |
 | [LB-005](reliability.md#lb-005) | Journal growth and repeated recovery overhead | Investigation | P2 | Reported; opener bound observed | S14 | Open |
-| [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Reported; mapping observed | S02, S11 | Open |
+| [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Contract and mapping investigation | S02, S11 | Investigating |
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Reported; filtering observed | S06 | Open |
 | [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | Requested | S08 | Open |
 | [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | Requested; telemetry discovery needed | S13 | Open |

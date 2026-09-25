@@ -262,6 +262,9 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
   if (event.type === "limit_warning") {
     return { ...state, limitWarning: event };
   }
+  if (event.type === "limit_cleared") {
+    return { ...state, limitWarning: null };
+  }
 
   if (event.type === "turn_complete") {
     // The close ritual's own turns are the conductor's business and end the

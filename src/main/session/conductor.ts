@@ -832,7 +832,7 @@ function transcriptEntry(event: AgentEvent): TranscriptEntryInput | null {
   }
   // Rolling subscription limits are transient account state, not course or
   // session evidence. The renderer receives them live; transcripts do not.
-  if (event.type === "limit_warning") return null;
+  if (event.type === "limit_warning" || event.type === "limit_cleared") return null;
   if (event.type === "turn_complete") return { kind: "turn_complete" };
   if (event.type === "session_ended") return { kind: "agent_ended", reason: event.reason };
   return {

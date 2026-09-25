@@ -413,9 +413,12 @@ export function LimitNotice({
   const reset =
     warning.resetsAt === null
       ? null
-      : new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(
-          new Date(warning.resetsAt * 1_000),
-        );
+      : new Intl.DateTimeFormat(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(warning.resetsAt * 1_000));
   return (
     <div
       className="border-warn bg-surface-panel flex items-baseline gap-2 rounded-md border px-3 py-2 text-xs"
@@ -423,11 +426,10 @@ export function LimitNotice({
     >
       <span className="text-hi font-medium">{warning.label}</span>
       <span className="text-ink-dim ml-auto text-right">
+        {warning.status === "rejected" ? "Limit reached" : "Approaching limit"}
         {warning.usedPercent === null
-          ? warning.status === "rejected"
-            ? "Limit reached"
-            : "Nearly reached"
-          : `${String(Math.round(warning.usedPercent))}% used`}
+          ? null
+          : ` · ${String(Math.round(warning.usedPercent))}% used`}
         {reset === null ? null : ` · resets ${reset}`}
       </span>
     </div>
