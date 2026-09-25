@@ -29,6 +29,7 @@ import {
   ApprovalCard,
   Composer,
   ConversationTranscript,
+  BackgroundActivity,
   FailureNotice,
   LimitNotice,
   ScrollEdgeFade,
@@ -459,6 +460,7 @@ function ConnectedOnboardingSurface({
                   modules={data.modules}
                   activity={state.toolActivity}
                 >
+                  <BackgroundActivity state={state} />
                   <BuildConversation
                     seminar={seminar}
                     since={buildFromIndex}
@@ -505,6 +507,7 @@ function ConnectedOnboardingSurface({
                   ) : null}
 
                   <ConversationTranscript state={state} />
+                  <BackgroundActivity state={state} />
 
                   {hasArc && !arcRevealed ? (
                     <SysLine>

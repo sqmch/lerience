@@ -183,6 +183,12 @@ renderer consumes one pushed IPC stream regardless). The opener is simply the fi
 conductor checks before persisting a learner message, so the durable transcript never
 records a message the provider refused.
 
+Providers may also initiate a foreground continuation without a new `send`. The adapter
+announces its actual start and completes it at the provider result. Background tasks have
+separate live membership and outcome events; they do not extend the foreground timer or
+change the existing message queue. Live task state is included in reconnect snapshots and
+cleared when the runtime ends, rather than restored from a transcript (ADR-043).
+
 Claude first via the supported Agent SDK / `claude -p --output-format stream-json`
 (ADR-004). The Codex adapter (App Server) is implemented behind the same interface; the normalized
 `AgentEvent` vocabulary is the compatibility surface, and the renderer never sees provider

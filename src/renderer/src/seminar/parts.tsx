@@ -181,6 +181,39 @@ export function ConversationTranscript({ state }: { state: SeminarState }): Reac
   );
 }
 
+/** Background work survives a foreground result but does not keep its timer
+ * or block the learner's next message. Labels come from provider task state. */
+export function BackgroundActivity({ state }: { state: SeminarState }): React.JSX.Element | null {
+  if (state.backgroundTasks.length === 0 && state.taskNotice === null) return null;
+  return (
+    <div role="status" className="text-ink-dim flex flex-col gap-1 text-sm">
+      {state.backgroundTasks.length === 0 ? null : (
+        <>
+          <span>
+            {state.backgroundTasks.length === 1
+              ? "1 background task running"
+              : `${String(state.backgroundTasks.length)} background tasks running`}
+          </span>
+          {state.backgroundTasks.map((task) => (
+            <span key={task.id} className="text-ink-faint text-xs break-words">
+              {task.description || "Background work"}
+            </span>
+          ))}
+        </>
+      )}
+      {state.taskNotice === null ? null : (
+        <span>
+          {state.taskNotice === "completed"
+            ? "Task completed"
+            : state.taskNotice === "failed"
+              ? "Task failed"
+              : "Task stopped"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function conversationThinkingLabel(state: SeminarState): string {
   if (state.recoveryHandoff === "finishing-previous") {
     return "Finishing your previous session";

@@ -66,6 +66,8 @@ interface ActiveRuntime {
   /** Update handoff waits here while a learner-approved provider turn finishes.
    * Resolved by turn completion or process end; never persisted. */
   idleWaiters: Set<() => void>;
+  backgroundTasks: NonNullable<SeminarSnapshot["backgroundTasks"]>;
+  taskNotice: NonNullable<SeminarSnapshot["taskNotice"]> | null;
   /** The pump's own completion — the only truthful "all trailing events are
    *  persisted" signal. Replacement and abandon must await it before another
    *  store instance may touch the same JSONL. */
@@ -421,6 +423,8 @@ export class SessionConductor {
       autoAllowCourseEdits: false,
       remembered: new Set(),
       idleWaiters: new Set(),
+      backgroundTasks: [],
+      taskNotice: null,
       pump: Promise.resolve(),
     };
     this.active = active;
@@ -446,6 +450,19 @@ export class SessionConductor {
     try {
       for await (const event of active.session.events) {
         if (this.active?.id !== active.id) return;
+        if (event.type === "background_tasks") {
+          if (
+            event.tasks.some((task) => !active.backgroundTasks.some((old) => old.id === task.id))
+          ) {
+            active.taskNotice = null;
+          }
+          active.backgroundTasks = event.tasks;
+        }
+        if (event.type === "task_notification") active.taskNotice = event.status;
+        if (event.type === "session_ended") {
+          active.backgroundTasks = [];
+          active.taskNotice = null;
+        }
         // Once doctor has verified the close, the JSONL artifact is immutable.
         // Provider adapters may still drain a final usage/error/end frame while
         // their process exits; those are runtime cleanup, not logical-session
@@ -643,6 +660,8 @@ export class SessionConductor {
       totalCostUsd: latestUsage(snapshot),
       turnInProgress: knownTurnInProgress ?? runtime?.session.busy ?? false,
       steerable: runtime?.session.steerable ?? false,
+      backgroundTasks: runtime?.backgroundTasks ?? [],
+      taskNotice: runtime?.taskNotice ?? null,
       ...(latestLifecycle?.kind === "lifecycle" && latestLifecycle.detail !== undefined
         ? { detail: latestLifecycle.detail }
         : {}),
@@ -733,6 +752,13 @@ function closeVerdict(inspection: CourseContextInspection): { clean: boolean; de
 }
 
 function transcriptEntry(event: AgentEvent): TranscriptEntryInput | null {
+  // Live activity is not learning evidence and must not revive after restart.
+  if (
+    event.type === "turn_started" ||
+    event.type === "background_tasks" ||
+    event.type === "task_notification"
+  )
+    return null;
   if (event.type === "message_delta") return { kind: "tutor_delta", delta: event.delta };
   if (event.type === "tool_activity") {
     return {

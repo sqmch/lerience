@@ -21,6 +21,7 @@ import { CloseGlyph } from "../components/glyphs";
 import { Notice } from "../components/notice";
 import {
   ApprovalCard,
+  BackgroundActivity,
   Composer,
   ConversationTranscript,
   FailureNotice,
@@ -128,6 +129,7 @@ export function SeminarColumn({
           ) : null}
 
           <ConversationTranscript state={state} />
+          <BackgroundActivity state={state} />
 
           {busy ? (
             <Thinking label={conversationThinkingLabel(state)} activity={state.toolActivity} />

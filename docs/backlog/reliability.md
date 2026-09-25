@@ -108,6 +108,10 @@ restored by replacing the script.
 
 P1, bug. Sources S02 and S07 are consolidated here.
 
+Investigation owner, 2026-09-25: task `01a0d98e-2e1d-77b3-b590-0d493b1bb779`, branch
+`codex/lb-002-003-session-activity`, baseline `2b67c62`. Tracing provider terminal events,
+background tasks, conductor state, renderer state, and reconnect snapshots alongside LB-003.
+
 After course or module generation, Claude appears to have written the expected material and
 sent the course-start messages, but the Thinking loader and timer continue indefinitely. One
 report reached 207 minutes. A yellow weekly-limit banner was also visible. Its causal role is
@@ -126,10 +130,106 @@ Done when a completed or failed turn clears the busy state and timer, while real
 remains truthfully represented. Verify the event sequence in adapter/state tests and a native
 Claude run. An arbitrary timeout that hides the loader is not evidence of completion.
 
+### Shared LB-002 / LB-003 findings, 2026-09-25
+
+Source implementation is ready for review on `codex/lb-002-003-session-activity`, pending PR
+review and merge. App 0.0.14 and Course Engine 0.2.1 remain unchanged and unreleased by this
+work. No installed app or course was updated. The private course and its learning history were
+not used as a reproduction fixture or edited.
+
+Pinned and installed SDK: `@anthropic-ai/claude-agent-sdk` 0.3.233. Installed provider:
+Claude Code 2.1.282 on Windows. The SDK's `SDKBackgroundTasksChangedMessage` documents a full,
+replace-only live task list whose ordering against task-start/notification edges is unspecified.
+`SDKTaskNotificationMessage` carries completed, failed, and stopped outcomes. The current
+[official streaming docs](https://code.claude.com/docs/en/agent-sdk/streaming-output) distinguish
+root message starts from final results and child messages;
+[subagent docs](https://code.claude.com/docs/en/agent-sdk/subagents) describe background execution.
+The actual installed types and native event sequence, not assumptions about prose, determine
+the mapping in this fix.
+
+Two disposable synthetic lesson/brief runs established this sanitized sequence, first through
+the SDK and then through the production adapter and conductor in Electron:
+
+```text
+app send
+root Agent tool call
+background_tasks_changed: one live task
+root text, result success                  -> foreground idle, task still running
+child Read calls and child reply
+background_tasks_changed: empty
+task_notification: completed
+root message_start, root reply            -> automatic foreground turn
+result success                            -> foreground idle, no tasks
+```
+
+The adapter previously ignored background membership and outcomes. After the first result,
+`turnInFlight` was false. The automatic reply still reached the renderer, making it busy, but
+`finishTurn()` suppressed the second `turn_complete`. The renderer could therefore remain
+busy indefinitely. The background work before that reply was invisible. This is a supported
+shared cause for LB-002 and LB-003, not proof that every historical 207-minute incident followed
+that sequence or that a subscription warning caused it. LB-006 remains separate.
+
+The fix reports genuine automatic root turns and completes them at their result. It reports
+background membership separately, without extending Thinking or disabling the composer after
+a foreground result. The conductor includes live task state in snapshots and clears it when
+the runtime ends. Child text, task output files, and task result summaries are not added to the
+learner transcript. See [ADR-043](../DECISIONS/ADR-043-provider-initiated-turns-and-background-activity.md).
+The engine's learner-side review requirement and existing queue/steering behavior are preserved.
+
+Validation:
+
+- `pnpm exec vitest run tests/claude-agent.test.ts -t provider-initiated` failed before the fix
+  because the resumed root turn was not busy. The fixed focused suite passes 76 tests across
+  the adapter, conductor and renderer. It covers independent multiple tasks, edge/level order,
+  child-message exclusion, interrupted late results, failed turns, process death, snapshot
+  rehydration, transcript finalization, and one-time queued-message delivery.
+- A guarded native Electron 43.4.0 / Node 24.18.1 probe used the production Claude adapter,
+  SessionConductor, transcript store and renderer reducer with synthetic lesson/brief files and
+  temporary app data. The provider performed a real background read review. Two results and
+  one automatic turn start produced an idle final reducer and reconnect snapshot, zero tasks,
+  and two finalized tutor messages. Read and Agent were allowed only in the disposable probe.
+  Provider authentication and configuration were neither copied nor changed. No generated
+  module, installed package, macOS acceptance, or historical course reproduction is claimed.
+- The first native launch attempt failed to build its entry and mistakenly launched Electron,
+  producing a visible missing-entry dialog. That was a verification failure. Subsequent launches
+  checked build success and entry files separately and installed no-dialog error handlers. An
+  initial top-level-await probe stalled before provider work; a corrected guarded entry passed.
+- `pnpm check` passed publication preflight, type checks, renderer harness build, 485 application
+  tests with 6 skipped, all 61 engine tests, lint/format, and production build. An additional
+  Codex boundary assessment test then passed with all 19 Codex adapter tests.
+- Headless Chromium inspection of the production renderer harness verified `background`,
+  `continuing`, and `settled`: two named tasks without Thinking/Stop, automatic Thinking/Stop,
+  then finalized reply without Thinking/Stop. Screenshots were visually inspected. Component
+  checks cover task failure and disappearance. These synthetic UI states are separate from
+  the native provider evidence.
+- `pnpm dev --entry <temporary guarded entry>` booted the actual application main process,
+  preload and renderer with isolated app data. Provider choice rendered, the IPC ping passed,
+  and `currentSeminar()` returned a closed snapshot through the preload API. The entry showed
+  the window without activation; no desktop mouse or keyboard automation was used. A prior
+  NODE_OPTIONS preload attempt failed before app startup and is not counted as acceptance.
+
+Codex assessment is separate. Installed Codex is 0.155.1; the repository minimum is 0.144.6.
+The [official App Server documentation](https://developers.openai.com/codex/app-server) and
+`codex app-server generate-json-schema` for 0.155.1 confirm thread/turn boundaries and
+`collabAgentToolCall` items with receiver IDs and agent states. The adapter currently maps
+collaboration starts to generic tool activity and settles only its matched parent turn.
+The added assessment test verifies that a completed collaboration item and child-thread
+completion do not end that parent turn. No native Codex background-review run was performed;
+automatic parent continuation and detached-task visibility remain unverified there. This
+change neither claims provider parity nor applies Claude's event mapping to Codex.
+
+Delivery: source and native evidence are ready; PR CI and merge are recorded on the PR.
+Release, installer publication, and installed-course updates are separate and not performed.
+
 <a id="lb-003"></a>
 ## LB-003: Cold review has no visible waiting state
 
 P1, activity-state bug or missing behavior. Source S09.
+
+Investigation owner, 2026-09-25: task `01a0d98e-2e1d-77b3-b590-0d493b1bb779`, branch
+`codex/lb-002-003-session-activity`, baseline `2b67c62`. Shares investigation with LB-002;
+the shared event-lifetime cause and validation are recorded under LB-002 above. Source fix is
+ready for review; no merge or release is claimed.
 
 Claude announces a cold-read review, then the turn appears to end. Minutes later, Thinking
 returns and work resumes. The learner suspects a background subagent; its actual execution

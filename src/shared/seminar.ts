@@ -19,7 +19,20 @@ export type AgentErrorCode =
   | "turn-failed" // the turn errored; message kept, retry is sane
   | "process-exited"; // the agent process died outside a turn
 
+export interface BackgroundTask {
+  id: string;
+  description: string;
+}
+
+export type TaskOutcome = "completed" | "failed" | "stopped";
+
 export type AgentEvent =
+  /** A provider-initiated foreground turn, without a new learner send. */
+  | { type: "turn_started" }
+  /** Authoritative live background membership; replace rather than pair edges. */
+  | { type: "background_tasks"; tasks: BackgroundTask[] }
+  /** A task outcome is separate from completion of the foreground turn. */
+  | { type: "task_notification"; taskId: string; status: TaskOutcome }
   /** A chunk of the tutor's streaming reply text. */
   | { type: "message_delta"; delta: string }
   /** The tutor is doing tool work. Rendered as the live line of the waiting

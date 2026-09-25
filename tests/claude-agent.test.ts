@@ -118,6 +118,156 @@ async function closeSession(
 }
 
 describe("ClaudeTutorAgent", () => {
+  it("uses replace-only background membership independently of task outcomes and root turns", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery).startSession({ courseDir: "C:/course" });
+    const received: AgentEvent[] = [];
+    const drain = (async () => {
+      for await (const event of session.events) received.push(event);
+    })();
+    sdkQuery.push(
+      sdkMessage({
+        type: "system",
+        subtype: "background_tasks_changed",
+        tasks: [
+          { task_id: "a", task_type: "local_agent", description: "Read the lesson" },
+          { task_id: "b", task_type: "local_agent", description: "Read the brief" },
+        ],
+      }),
+    );
+    sdkQuery.push(
+      sdkMessage({
+        type: "system",
+        subtype: "task_notification",
+        task_id: "b",
+        status: "failed",
+        summary: "private output",
+        output_file: "private/path",
+      }),
+    );
+    sdkQuery.push(
+      sdkMessage({
+        type: "assistant",
+        parent_tool_use_id: "child-tool",
+        message: { content: [{ type: "text", text: "child answer" }] },
+      }),
+    );
+    sdkQuery.push(sdkMessage({ type: "system", subtype: "background_tasks_changed", tasks: [] }));
+    await vi.waitFor(() => expect(received).toHaveLength(3));
+    expect(received).toEqual([
+      {
+        type: "background_tasks",
+        tasks: [
+          { id: "a", description: "Read the lesson" },
+          { id: "b", description: "Read the brief" },
+        ],
+      },
+      { type: "task_notification", taskId: "b", status: "failed" },
+      { type: "background_tasks", tasks: [] },
+    ]);
+    expect(session.busy).toBe(false);
+    await closeSession(session, sdkQuery);
+    await drain;
+  });
+
+  it.each(["error", "interrupt", "death"])(
+    "settles an automatic continuation on %s",
+    async (outcome) => {
+      const sdkQuery = new FakeClaudeQuery();
+      const session = new ClaudeTutorAgent(() => sdkQuery, 5).startSession({
+        courseDir: "C:/course",
+      });
+      const received: AgentEvent[] = [];
+      const drain = (async () => {
+        for await (const event of session.events) received.push(event);
+      })();
+      sdkQuery.push(
+        sdkMessage({
+          type: "stream_event",
+          parent_tool_use_id: null,
+          event: { type: "message_start" },
+        }),
+      );
+      await vi.waitFor(() => expect(session.busy).toBe(true));
+      if (outcome === "death") sdkQuery.end();
+      else if (outcome === "interrupt") {
+        await session.interrupt();
+        // A late assistant frame belongs to the stopped turn, not a new one.
+        sdkQuery.push(
+          sdkMessage({ type: "assistant", parent_tool_use_id: null, message: { content: [] } }),
+        );
+        sdkQuery.push(
+          sdkMessage({
+            type: "result",
+            subtype: "error_during_execution",
+            errors: ["interrupted"],
+            total_cost_usd: 0.01,
+          }),
+        );
+      } else
+        sdkQuery.push(
+          sdkMessage({
+            type: "result",
+            subtype: "error_during_execution",
+            errors: ["failed"],
+            total_cost_usd: 0.01,
+          }),
+        );
+      await vi.waitFor(() => expect(session.busy).toBe(false));
+      await closeSession(session, sdkQuery);
+      await drain;
+      expect(received.filter((e) => e.type === "turn_started")).toHaveLength(1);
+      expect(received.filter((e) => e.type === "turn_complete")).toHaveLength(1);
+      expect(received.filter((e) => e.type === "error")).toHaveLength(
+        outcome === "interrupt" ? 0 : 1,
+      );
+    },
+  );
+
+  it("settles a provider-initiated continuation after the foreground result", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery).startSession({ courseDir: "C:/course" });
+    const received: AgentEvent[] = [];
+    const drain = (async () => {
+      for await (const event of session.events) received.push(event);
+    })();
+    session.send("review the module");
+    sdkQuery.push(sdkMessage({ type: "result", subtype: "success", total_cost_usd: 0.01 }));
+    await vi.waitFor(() => expect(session.busy).toBe(false));
+    sdkQuery.push(
+      sdkMessage({
+        type: "stream_event",
+        parent_tool_use_id: null,
+        event: { type: "message_start" },
+      }),
+    );
+    sdkQuery.push(
+      sdkMessage({
+        type: "assistant",
+        parent_tool_use_id: null,
+        message: { content: [{ type: "text", text: "The review is complete." }] },
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(received.some((event) => event.type === "message_delta")).toBe(true),
+    );
+    expect(session.busy).toBe(true);
+    sdkQuery.push(
+      sdkMessage({
+        type: "rate_limit_event",
+        rate_limit_info: { status: "allowed_warning", rateLimitType: "seven_day", utilization: 77 },
+      }),
+    );
+    sdkQuery.push(sdkMessage({ type: "result", subtype: "success", total_cost_usd: 0.02 }));
+    await vi.waitFor(() =>
+      expect(received.filter((event) => event.type === "turn_complete")).toHaveLength(2),
+    );
+    expect(session.busy).toBe(false);
+    expect(received.filter((event) => event.type === "limit_warning")).toHaveLength(1);
+    await closeSession(session, sdkQuery);
+    await drain;
+  });
+
   it("starts one streaming-input query with canonical CLI settings and no capability overrides", async () => {
     const sdkQuery = new FakeClaudeQuery();
     let captured: CapturedQueryOptions | null = null;

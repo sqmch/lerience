@@ -1,4 +1,9 @@
-import type { AgentErrorCode, AgentEvent } from "../../../shared/seminar";
+import type {
+  AgentErrorCode,
+  AgentEvent,
+  BackgroundTask,
+  TaskOutcome,
+} from "../../../shared/seminar";
 import type { SeminarLifecycle, SeminarSnapshot } from "../../../shared/session";
 
 export type SeminarPhase =
@@ -52,6 +57,8 @@ export interface SeminarState {
   recoveryStartIndex: number | null;
   recoveryHandoff: RecoveryHandoff;
   toolActivity: ToolActivity | null;
+  backgroundTasks: BackgroundTask[];
+  taskNotice: TaskOutcome | null;
   approval: SeminarApproval | null;
   totalCostUsd: number;
   limitWarning: Extract<AgentEvent, { type: "limit_warning" }> | null;
@@ -104,6 +111,8 @@ export function createSeminarState(): SeminarState {
     recoveryStartIndex: null,
     recoveryHandoff: "none",
     toolActivity: null,
+    backgroundTasks: [],
+    taskNotice: null,
     approval: null,
     totalCostUsd: 0,
     limitWarning: null,
@@ -172,6 +181,30 @@ function failureKind(code: AgentErrorCode): SeminarFailureKind {
 }
 
 function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
+  if (event.type === "background_tasks") {
+    return {
+      ...state,
+      backgroundTasks: event.tasks,
+      taskNotice: event.tasks.some(
+        (task) => !state.backgroundTasks.some((old) => old.id === task.id),
+      )
+        ? null
+        : state.taskNotice,
+    };
+  }
+  if (event.type === "task_notification") {
+    return { ...state, taskNotice: event.status };
+  }
+  if (event.type === "turn_started") {
+    return {
+      ...state,
+      phase: "thinking",
+      toolActivity: null,
+      approval: null,
+      failure: null,
+      turnProducedContent: false,
+    };
+  }
   if (event.type === "message_delta") return appendTutorDelta(state, event.delta);
 
   if (event.type === "tool_activity") {
@@ -240,6 +273,8 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
       ...state,
       phase: "closed",
       lifecycle: "closed",
+      backgroundTasks: [],
+      taskNotice: null,
       recoveryHandoff: "none",
       items: finalizeStreamingTutor(state.items),
       toolActivity: null,
@@ -352,6 +387,8 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       toolActivity: null,
       approval: null,
       totalCostUsd: snapshot.totalCostUsd,
+      backgroundTasks: snapshot.backgroundTasks ?? [],
+      taskNotice: snapshot.taskNotice ?? null,
       failure,
       nextItemId: largestSeenId + 1,
       steerable: snapshot.steerable,

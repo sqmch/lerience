@@ -267,6 +267,36 @@ export function normalizeClaudeMessage(
   message: SDKMessage,
   { includeAssistantText = false }: { includeAssistantText?: boolean } = {},
 ): AgentEvent[] {
+  if (message.type === "system" && message.subtype === "background_tasks_changed") {
+    if (
+      !Array.isArray(message.tasks) ||
+      message.tasks.some(
+        (task) =>
+          !isRecord(task) ||
+          nonEmptyString(task.task_id) === null ||
+          typeof task.description !== "string",
+      )
+    )
+      throw new Error("Claude emitted malformed background activity.");
+    return [
+      {
+        type: "background_tasks",
+        tasks: message.tasks.map((task) => ({
+          id: task.task_id,
+          description: task.description,
+        })),
+      },
+    ];
+  }
+  if (message.type === "system" && message.subtype === "task_notification") {
+    if (
+      nonEmptyString(message.task_id) === null ||
+      !["completed", "failed", "stopped"].includes(message.status)
+    ) {
+      throw new Error("Claude emitted a malformed task outcome.");
+    }
+    return [{ type: "task_notification", taskId: message.task_id, status: message.status }];
+  }
   if (message.type === "rate_limit_event") {
     const info = message.rate_limit_info;
     if (info.status === "allowed") return [];
@@ -358,11 +388,11 @@ class ClaudeAgentSession implements AgentSession {
    *  assistant messages (text, tool use, text again), and each one has to be
    *  judged on whether ITS words reached the learner. */
   private streamedSinceAssistant = false;
-  /** Monotonic turn number; result frames map to sends FIFO, which is what
+  /** Monotonic turn number; results map to foreground turns FIFO, which is what
    *  lets the pump tell a stale interrupted-turn result from the live turn's. */
   private turnCounter = 0;
   private currentTurnNumber = 0;
-  /** How many result frames the pump has consumed (FIFO cursor into sends). */
+  /** How many results the pump consumed, including automatic continuations. */
   private resultCursor = 0;
   /** Turns interrupt's bounded fallback already completed: their late result
    *  frame must not complete (or fail-banner) a NEWER turn. */
@@ -628,7 +658,27 @@ class ClaudeAgentSession implements AgentSession {
 
     try {
       for await (const message of this.sdkQuery) {
-        // Result frames map to sends FIFO. One whose turn the interrupt
+        // A background task can wake Claude after its previous result, with
+        // no new app send. Root message frames establish that new foreground
+        // turn; child messages, task notices and prose never do. While an
+        // interrupted result is outstanding, trailing frames belong to it.
+        const rootMessage =
+          (message.type === "stream_event" &&
+            message.parent_tool_use_id === null &&
+            message.event.type === "message_start") ||
+          (message.type === "assistant" && message.parent_tool_use_id === null);
+        if (
+          rootMessage &&
+          !this.turnInFlight &&
+          !this.endRequested &&
+          this.fallbackCompleted.size === 0
+        ) {
+          this.turnInFlight = true;
+          this.currentTurnNumber = ++this.turnCounter;
+          this.streamedSinceAssistant = false;
+          this.output.push({ type: "turn_started" });
+        }
+        // Result frames map to foreground turns FIFO. One whose turn the interrupt
         // fallback already completed is STALE: its turn_complete must not
         // end the live turn, and its error is not the live turn's fault.
         // The init frame is how the app learns what the learner's own config

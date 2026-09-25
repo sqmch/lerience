@@ -192,6 +192,32 @@ async function settleUntil(predicate: () => boolean | Promise<boolean>): Promise
 }
 
 describe("SessionConductor", () => {
+  it("rehydrates background activity only while its provider runtime is alive", async () => {
+    const { conductor, courseDir, agent, events } = harness({});
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    const session = agent.sessions[0]!;
+    session.emit({ type: "background_tasks", tasks: [{ id: "a", description: "Review lesson" }] });
+    session.emit({ type: "task_notification", taskId: "b", status: "failed" });
+    session.emit({ type: "message_delta", delta: "Review pending" });
+    session.emit({ type: "turn_complete" });
+    await settleUntil(() => events.some((event) => event.type === "turn_complete"));
+    expect(await conductor.current(courseDir)).toMatchObject({
+      turnInProgress: false,
+      backgroundTasks: [{ id: "a", description: "Review lesson" }],
+      taskNotice: "failed",
+    });
+    session.busy = true;
+    session.emit({ type: "turn_started" });
+    await settleUntil(() => events.some((event) => event.type === "turn_started"));
+    expect((await conductor.current(courseDir)).turnInProgress).toBe(true);
+    await expect(conductor.send("queued elsewhere")).rejects.toThrow("already in progress");
+    await conductor.abandon();
+    const restored = await conductor.current(courseDir);
+    expect(restored.backgroundTasks).toEqual([]);
+    expect(restored.taskNotice).toBeNull();
+    expect(restored.messages.map((message) => message.content)).toEqual(["Review pending"]);
+  });
+
   it("creates identity/transcript before a normal opener and rehydrates persisted turns", async () => {
     const { conductor, courseDir, agent } = harness({});
 

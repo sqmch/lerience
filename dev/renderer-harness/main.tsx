@@ -208,6 +208,33 @@ const WORKING: { events: AgentEvent[]; busy: boolean } = {
   busy: true,
 };
 
+type ActivityFixture = "background" | "continuing" | "settled";
+function activityScript(fixture: ActivityFixture): { events: AgentEvent[]; busy: boolean } {
+  const events: AgentEvent[] = [
+    { type: "message_delta", delta: "The lesson and brief are being reviewed." },
+    {
+      type: "background_tasks",
+      tasks: [
+        { id: "lesson-review", description: "Review the lesson from the learner's perspective" },
+        { id: "brief-review", description: "Check the brief against the lesson" },
+      ],
+    },
+    { type: "turn_complete" },
+  ];
+  if (fixture !== "background")
+    events.push(
+      { type: "background_tasks", tasks: [] },
+      { type: "task_notification", taskId: "lesson-review", status: "completed" },
+      { type: "turn_started" },
+    );
+  if (fixture === "settled")
+    events.push(
+      { type: "message_delta", delta: "The review is complete. The exercise is ready." },
+      { type: "turn_complete" },
+    );
+  return { events, busy: fixture === "continuing" };
+}
+
 /** The update notice's fixtures. `available` runs the whole Windows flow from
  *  the offer: Download animates to a verified download, Restart to update
  *  waits for the turn and then — since the harness cannot quit — ends in the
@@ -315,6 +342,7 @@ function installBridge(
    *  every other value here — no machine on this repository is required to
    *  have or lack a provider for the screen to be inspectable. */
   providerFault = false,
+  activityFixture: ActivityFixture | null = null,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -327,7 +355,12 @@ function installBridge(
       { id: "zed", label: "Zed" },
     ],
   };
-  const script = working ? WORKING : scriptFor(stage);
+  const script =
+    activityFixture !== null
+      ? activityScript(activityFixture)
+      : working
+        ? WORKING
+        : scriptFor(stage);
 
   const snapshot: SeminarSnapshot = {
     lifecycle: "open",
@@ -563,6 +596,7 @@ const STAGES: Stage[] = ["opening", "interview", "arc", "building", "ready", "si
  *  run — the one state on that surface that earns colour. */
 type Screen =
   | Stage
+  | ActivityFixture
   | "choose-tutor"
   | "tutor-repair"
   | "first-run"
@@ -578,6 +612,9 @@ const SCREENS: Screen[] = [
   "courses",
   "course",
   "working",
+  "background",
+  "continuing",
+  "settled",
   "control-error",
   "connect",
   ...STAGES,
@@ -598,6 +635,7 @@ function Harness(): React.JSX.Element {
     screen === "working",
     update,
     screen === "tutor-repair",
+    screen === "background" || screen === "continuing" || screen === "settled" ? screen : null,
   );
 
   if (!bar) {
@@ -707,7 +745,14 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
 
   /* The course view brings its OWN AppShell — it is a surface that owns its
      frame contents (ADR-019), not a child of someone else's. */
-  if (screen === "course" || screen === "working" || screen === "control-error") {
+  if (
+    screen === "course" ||
+    screen === "working" ||
+    screen === "control-error" ||
+    screen === "background" ||
+    screen === "continuing" ||
+    screen === "settled"
+  ) {
     return (
       <CourseView
         key={`${COURSE_ROOT}:${screen}`}

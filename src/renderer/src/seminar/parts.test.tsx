@@ -3,7 +3,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { ApprovalCard, ConversationTranscript } from "./parts";
+import { ApprovalCard, BackgroundActivity, ConversationTranscript } from "./parts";
 import { createSeminarState } from "./seminar-state";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -26,6 +26,31 @@ afterEach(() => {
 });
 
 describe("ConversationTranscript", () => {
+  it("shows running task descriptions and terminal outcomes without a Thinking timer", () => {
+    const host = document.createElement("div");
+    root = createRoot(host);
+    const state = {
+      ...createSeminarState(),
+      backgroundTasks: [
+        { id: "a", description: "Review lesson" },
+        { id: "b", description: "Review brief" },
+      ],
+    };
+    act(() => root?.render(<BackgroundActivity state={state} />));
+    expect(host.textContent).toContain("2 background tasks running");
+    expect(host.textContent).toContain("Review lesson");
+    expect(host.textContent).toContain("Review brief");
+    expect(host.textContent).not.toContain("Thinking");
+    act(() =>
+      root?.render(
+        <BackgroundActivity state={{ ...state, backgroundTasks: [], taskNotice: "failed" }} />,
+      ),
+    );
+    expect(host.textContent).toBe("Task failed");
+    act(() => root?.render(<BackgroundActivity state={createSeminarState()} />));
+    expect(host.textContent).toBe("");
+  });
+
   it("keeps the recovered reply readable until the learner hides it", () => {
     const state = {
       ...createSeminarState(),
