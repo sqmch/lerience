@@ -11,6 +11,16 @@ function reduce(state: SeminarState, actions: readonly SeminarAction[]): Seminar
 }
 
 describe("seminarReducer", () => {
+  it("preserves provider activity when a concurrent retry or close is refused", () => {
+    const state = reduce(createSeminarState(), [
+      { type: "retry_started" },
+      { type: "event", event: { type: "turn_started" } },
+      { type: "submit_failed", id: "retry", message: "busy" },
+      { type: "request_failed", message: "still working" },
+    ]);
+    expect(state.phase).toBe("thinking");
+    expect(state.failure?.message).toBe("still working");
+  });
   it("keeps background tasks separate from foreground completion and automatic continuation", () => {
     let state = reduce(createSeminarState(), [
       { type: "submit_learner", id: "learner", text: "Review" },

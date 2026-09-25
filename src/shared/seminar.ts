@@ -158,9 +158,8 @@ export interface AgentSession {
   /** Every event the session emits, in order, for its whole lifetime.
    *  Completes after `session_ended`. Iterate once (the conductor does). */
   readonly events: AsyncIterable<AgentEvent>;
-  /** True while a turn is in flight. The conductor checks this BEFORE
-   *  persisting a learner message, so the durable transcript never records
-   *  a message the provider refused to accept. */
+  /** True while a turn is in flight. The conductor obtains synchronous send
+   *  acceptance before saving the request, and gates output until it is saved. */
   readonly busy: boolean;
   /** Send a learner message (the opener included — ADR-014's
    *  buildSessionOpener output is just the first send). One turn at a time:

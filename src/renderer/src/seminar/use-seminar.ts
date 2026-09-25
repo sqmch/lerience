@@ -22,6 +22,8 @@ export interface SeminarController {
   queued: string | null;
   /** Drop the queued message before it is sent. */
   unqueue: () => void;
+  /** A refused queued send stays available for a deliberate retry. */
+  retryQueued?: () => void;
   /** A turn is in flight: the composer is closed and Stop is offered. */
   busy: boolean;
   /** The previous session never reached a verified close (ADR-009), so the
@@ -51,6 +53,7 @@ export function useSeminar({
   const [answering, setAnswering] = useState(false);
   const [controls, setControlsState] = useState<SessionControls | null>(null);
   const [queued, setQueued] = useState<string | null>(null);
+  const [queueBlocked, setQueueBlocked] = useState(false);
   const autoStarted = useRef(false);
 
   const busy =
@@ -83,6 +86,7 @@ export function useSeminar({
 
   useEffect(() => {
     const unsubscribeEvent = window.praxeum.onSeminarEvent((event) => {
+      if (event.type === "turn_complete") setQueueBlocked(false);
       dispatch({ type: "event", event });
     });
     const unsubscribeSnapshot = window.praxeum.onSeminarSnapshot((snapshot) => {
@@ -159,7 +163,7 @@ export function useSeminar({
      queue is a waiting room, not a second way to talk. */
   const flushing = useRef(false);
   useEffect(() => {
-    if (queued === null || state.phase !== "idle" || flushing.current) return;
+    if (queued === null || queueBlocked || state.phase !== "idle" || flushing.current) return;
     flushing.current = true;
     const message = queued;
     setQueued(null);
@@ -169,16 +173,19 @@ export function useSeminar({
       try {
         await window.praxeum.sendSeminarMessage(message);
       } catch (error) {
+        setQueueBlocked(true);
+        setQueued((pending) => (pending === null ? message : `${message}\n\n${pending}`));
         dispatch({
           type: "submit_failed",
           id,
           message: failed(error, "That message could not be sent."),
+          retained: true,
         });
       } finally {
         flushing.current = false;
       }
     })();
-  }, [failed, queued, state.phase]);
+  }, [failed, queued, queueBlocked, state.phase]);
 
   const retry = useCallback(async (): Promise<void> => {
     if (state.phase !== "idle") return;
@@ -187,12 +194,9 @@ export function useSeminar({
       await window.praxeum.retrySeminarTurn();
     } catch (error) {
       dispatch({
-        type: "event",
-        event: {
-          type: "error",
-          code: "turn-failed",
-          message: failed(error, "That request could not be sent again."),
-        },
+        type: "submit_failed",
+        id: "retry",
+        message: failed(error, "That request could not be sent again."),
       });
     }
   }, [failed, state.phase]);
@@ -293,12 +297,8 @@ export function useSeminar({
       await window.praxeum.endSeminar();
     } catch (error) {
       dispatch({
-        type: "event",
-        event: {
-          type: "error",
-          code: "turn-failed",
-          message: failed(error, "The session could not be closed."),
-        },
+        type: "request_failed",
+        message: failed(error, "The session could not be closed."),
       });
     }
   }, [failed, state.phase]);
@@ -309,8 +309,16 @@ export function useSeminar({
     controls,
     setControls,
     queued,
+    ...(queueBlocked
+      ? {
+          retryQueued: () => {
+            setQueueBlocked(false);
+          },
+        }
+      : {}),
     unqueue: () => {
       setQueued(null);
+      setQueueBlocked(false);
     },
     recoveryPending: state.lifecycle === "recoverable" || state.lifecycle === "close-failed",
     answering,

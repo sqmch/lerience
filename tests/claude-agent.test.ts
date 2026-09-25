@@ -118,6 +118,46 @@ async function closeSession(
 }
 
 describe("ClaudeTutorAgent", () => {
+  it("retires ambiguous root output after an interrupt loses its result", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery, 5).startSession({
+      courseDir: "C:/course",
+    });
+    const received: AgentEvent[] = [];
+    const drain = (async () => {
+      for await (const event of session.events) received.push(event);
+    })();
+    session.send("first");
+    await session.interrupt();
+    sdkQuery.push(sdkMessage({ type: "system", subtype: "background_tasks_changed", tasks: [] }));
+    sdkQuery.push(
+      sdkMessage({
+        type: "stream_event",
+        parent_tool_use_id: null,
+        event: { type: "message_start" },
+      }),
+    );
+    sdkQuery.push(
+      sdkMessage({
+        type: "assistant",
+        parent_tool_use_id: null,
+        message: { content: [{ type: "text", text: "untracked reply" }] },
+      }),
+    );
+    sdkQuery.push(sdkMessage({ type: "result", subtype: "success", total_cost_usd: 0.02 }));
+    sdkQuery.end();
+    await drain;
+    expect(received.filter((event) => event.type === "message_delta")).toEqual([]);
+    expect(received.filter((event) => event.type === "turn_complete")).toHaveLength(1);
+    expect(received).toContainEqual(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("interrupted turn"),
+      }),
+    );
+    expect(received.at(-1)).toEqual({ type: "session_ended", reason: "died" });
+    expect(session.busy).toBe(false);
+  });
   it("uses replace-only background membership independently of task outcomes and root turns", async () => {
     const sdkQuery = new FakeClaudeQuery();
     const session = new ClaudeTutorAgent(() => sdkQuery).startSession({ courseDir: "C:/course" });
@@ -192,10 +232,7 @@ describe("ClaudeTutorAgent", () => {
       if (outcome === "death") sdkQuery.end();
       else if (outcome === "interrupt") {
         await session.interrupt();
-        // A late assistant frame belongs to the stopped turn, not a new one.
-        sdkQuery.push(
-          sdkMessage({ type: "assistant", parent_tool_use_id: null, message: { content: [] } }),
-        );
+        // A late result settles the stopped turn before any new root output.
         sdkQuery.push(
           sdkMessage({
             type: "result",

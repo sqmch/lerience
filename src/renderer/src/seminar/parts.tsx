@@ -584,6 +584,7 @@ export function Composer({
   controlNotice,
   queued,
   onUnqueue,
+  onRetryQueued,
   steerable = false,
 }: {
   draft: string;
@@ -600,6 +601,7 @@ export function Composer({
   controlNotice?: SeminarState["controlNotice"];
   queued?: string | null;
   onUnqueue?: () => void;
+  onRetryQueued?: (() => void) | undefined;
 }): React.JSX.Element {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -631,9 +633,23 @@ export function Composer({
             <i className="bg-attention animate-dot size-1.5 rounded-pill" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="text-ink-faint block text-2xs">Sending when the tutor finishes</span>
+            <span className="text-ink-faint block text-2xs">
+              {onRetryQueued
+                ? "Message kept. Retry when ready."
+                : "Sending when the tutor finishes"}
+            </span>
             <span className="line-clamp-2 whitespace-pre-wrap">{queued}</span>
           </span>
+          {onRetryQueued === undefined ? null : (
+            <button
+              type="button"
+              disabled={busy}
+              className="text-ink-faint hover:text-hi shrink-0 text-2xs underline underline-offset-4 disabled:opacity-50"
+              onClick={onRetryQueued}
+            >
+              Retry
+            </button>
+          )}
           {onUnqueue === undefined ? null : (
             <button
               type="button"

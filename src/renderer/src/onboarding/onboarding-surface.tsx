@@ -615,6 +615,7 @@ function ConnectedOnboardingSurface({
                   controlNotice={state.controlNotice}
                   queued={seminar.queued}
                   onUnqueue={seminar.unqueue}
+                  onRetryQueued={seminar.retryQueued}
                   steerable={state.steerable}
                   placeholder="Reply to your tutor…"
                 />

@@ -28,6 +28,23 @@ snapshots. It is not learning evidence, so it does not enter the durable transcr
 or revive after process death. Existing transcript turn boundaries remain unchanged.
 The canonical learner-side review requirement remains unchanged.
 
+Foreground sends, retries, and closing requests obtain provider acceptance before
+awaiting persistence. The conductor drains the previous result first and gates new
+output until the accepted request is saved. Closing state belongs only to an accepted
+closing request. An admission refusal writes nothing. A save failure after acceptance
+stops the runtime and reports the unsaved message; the IPC call does not reject as if
+retrying were safe. This amends the idle-send ordering in ADR-042.
+
+A queued message rejected when an automatic turn wins is retained. A later real
+completion or an explicit Retry can send it again; rejection cannot start a retry loop
+or clear a newer foreground state.
+
+After the interrupt fallback, a late old result arriving before new root output is
+still consumed as stale. If root output arrives first, the runtime stops with a
+recoverable error before forwarding it. SDK 0.3.233 has no input identifier on partial
+assistant frames or error results, so such output cannot be safely attributed to the
+stopped turn or a new continuation. Elapsed time cannot resolve that ambiguity.
+
 ## Evidence and scope
 
 Windows native Claude Code 2.1.282 emitted a foreground result, background review

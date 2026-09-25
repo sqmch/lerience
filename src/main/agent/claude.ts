@@ -24,6 +24,7 @@ import { AsyncQueue } from "./async-queue";
 
 interface ClaudeQuery extends AsyncIterable<SDKMessage> {
   interrupt(): Promise<unknown>;
+  close?(): void;
   /* The runtime-control surface this adapter uses. Declared structurally
      rather than by importing `Query`, so a test double stays small and the
      adapter depends only on what it actually calls. */
@@ -661,12 +662,27 @@ class ClaudeAgentSession implements AgentSession {
         // A background task can wake Claude after its previous result, with
         // no new app send. Root message frames establish that new foreground
         // turn; child messages, task notices and prose never do. While an
-        // interrupted result is outstanding, trailing frames belong to it.
+        // interrupted result is outstanding, root output is ambiguous.
         const rootMessage =
           (message.type === "stream_event" &&
             message.parent_tool_use_id === null &&
             message.event.type === "message_start") ||
           (message.type === "assistant" && message.parent_tool_use_id === null);
+        const rootStream = message.type === "stream_event" && message.parent_tool_use_id === null;
+        if ((rootMessage || rootStream) && this.fallbackCompleted.size > 0) {
+          // The pinned SDK cannot correlate every root frame/error result to
+          // an input. A dropped interrupted result must not consume a new
+          // result or let untracked output reach the learner.
+          failure = {
+            code: "process-exited",
+            message:
+              "The interrupted turn did not report its result, so the tutor session stopped before an uncertain reply could be shown. Reopen the session to recover the saved conversation.",
+          };
+          this.turnInFlight = false;
+          for (const waiter of this.turnFinishWaiters.splice(0)) waiter();
+          this.sdkQuery.close?.();
+          break;
+        }
         if (
           rootMessage &&
           !this.turnInFlight &&
@@ -719,7 +735,8 @@ class ClaudeAgentSession implements AgentSession {
         }
       }
 
-      if (!this.endRequested) failure = { code: "process-exited", message: PROCESS_ERROR };
+      if (!this.endRequested && failure === null)
+        failure = { code: "process-exited", message: PROCESS_ERROR };
     } catch (error) {
       failure = normalizeClaudeError(error);
     } finally {

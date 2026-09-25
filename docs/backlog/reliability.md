@@ -132,9 +132,10 @@ Claude run. An arbitrary timeout that hides the loader is not evidence of comple
 
 ### Shared LB-002 / LB-003 findings, 2026-09-25
 
-Source implementation is ready for review in [PR #89](https://github.com/sqmch/lerience/pull/89),
+Implemented in source in [PR #89](https://github.com/sqmch/lerience/pull/89),
 source commit [`76bc9a2`](https://github.com/sqmch/lerience/commit/76bc9a25715386f9ac94ac66d653a53e3c1787b1)
-on `codex/lb-002-003-session-activity`, pending review and merge.
+on `codex/lb-002-003-session-activity`. PR #89 records final CI, review, and merge outcomes;
+source implementation alone is not a merge or release claim.
 App 0.0.14 and Course Engine 0.2.1 remain unchanged and unreleased by this
 work. No installed app or course was updated. The private course and its learning history were
 not used as a reproduction fixture or edited.
@@ -185,6 +186,17 @@ Validation:
   the adapter, conductor and renderer. It covers independent multiple tasks, edge/level order,
   child-message exclusion, interrupted late results, failed turns, process death, snapshot
   rehydration, transcript finalization, and one-time queued-message delivery.
+- Review reproduced foreground admission races in send, retry, and End, lost queued text,
+  and untracked root output after a missing interrupted result. Regression tests failed before
+  their repairs. Provider acceptance now precedes saving, with output held until the request
+  is durable; save failure after acceptance stops the runtime without inviting resubmission.
+  Queued text survives rejection, with a manual retry and no retry loop. Ambiguous post-interrupt
+  root output retires the runtime before display because the pinned SDK cannot correlate it.
+  The late-old-result-first path remains supported. ADR-043 records these boundaries.
+- The new Codex routing fixture hit its 5-second CI timeout because its shared setup launches
+  a real PowerShell write probe. That event-routing test now stubs only the write-verification
+  dependency and always closes its session; the separate sandbox tests retain real probes.
+  Its timeout was not raised. Final-head CI remains required for this repair.
 - A guarded native Electron 43.4.0 / Node 24.18.1 probe used the production Claude adapter,
   SessionConductor, transcript store and renderer reducer with synthetic lesson/brief files and
   temporary app data. The provider performed a real background read review. Two results and
@@ -220,7 +232,7 @@ completion do not end that parent turn. No native Codex background-review run wa
 automatic parent continuation and detached-task visibility remain unverified there. This
 change neither claims provider parity nor applies Claude's event mapping to Codex.
 
-Delivery: source and native evidence are ready; PR CI and merge are recorded on the PR.
+Delivery: implemented in source with native evidence; PR #89 records CI and merge outcomes.
 Release, installer publication, and installed-course updates are separate and not performed.
 
 <a id="lb-003"></a>
@@ -230,8 +242,8 @@ P1, activity-state bug or missing behavior. Source S09.
 
 Investigation owner, 2026-09-25: task `01a0d98e-2e1d-77b3-b590-0d493b1bb779`, branch
 `codex/lb-002-003-session-activity`, baseline `2b67c62`. Shares investigation with LB-002;
-the shared event-lifetime cause and validation are recorded under LB-002 above. Source fix is
-ready for review; no merge or release is claimed.
+the shared event-lifetime cause and validation are recorded under LB-002 above. Implemented in
+source; PR #89 records CI and merge outcomes. No release is claimed.
 
 Claude announces a cold-read review, then the turn appears to end. Minutes later, Thinking
 returns and work resumes. The learner suspects a background subagent; its actual execution

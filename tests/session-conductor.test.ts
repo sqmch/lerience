@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { FileTranscriptStore } from "../src/main/session/transcript-store";
 import { AsyncQueue } from "../src/main/agent/async-queue";
 import type { CourseContextInspection } from "../src/main/scripts/engine-script-service";
 import { SessionConductor } from "../src/main/session/conductor";
@@ -28,6 +29,7 @@ function temporaryRoot(): string {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   // Stop the conductors BEFORE the directories they write into go away. A
   // test that ends mid-stream leaves a pump still draining queued events into
   // the transcript; delete the tree under it and the append fails with ENOENT
@@ -192,6 +194,152 @@ async function settleUntil(predicate: () => boolean | Promise<boolean>): Promise
 }
 
 describe("SessionConductor", () => {
+  it.each(["send", "retry", "end"] as const)(
+    "stops after an accepted %s cannot be saved without inviting a duplicate",
+    async (operation) => {
+      const { conductor, courseDir, agent, events } = harness({});
+      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      const session = agent.sessions[0]!;
+      session.emit({ type: "turn_complete" });
+      await settleUntil(() => events.some((event) => event.type === "turn_complete"));
+      vi.spyOn(FileTranscriptStore.prototype, "append").mockRejectedValueOnce(
+        new Error("disk full"),
+      );
+      await expect(
+        operation === "send"
+          ? conductor.send("keep this unsaved message")
+          : operation === "retry"
+            ? conductor.retry()
+            : conductor.end(),
+      ).resolves.toBeUndefined();
+      expect(session.sent).toHaveLength(2);
+      expect(session.ended).toBe(true);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "error",
+          message: expect.stringContaining("received your message"),
+        }),
+      );
+      expect(events.at(-1)).toEqual({ type: "session_ended", reason: "died" });
+      await conductor.abandon();
+      expect((await conductor.current(courseDir)).lifecycle).toBe("recoverable");
+      expect((await conductor.current(courseDir)).messages).toEqual([]);
+    },
+  );
+
+  it("drains the previous result before a closing request can own completion", async () => {
+    const { conductor, courseDir, agent, events } = harness({});
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    const session = agent.sessions[0]!;
+    const originalAppend = FileTranscriptStore.prototype.append;
+    let release!: () => void;
+    let blocked = false;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(FileTranscriptStore.prototype, "append").mockImplementation(async function (
+      this: FileTranscriptStore,
+      input,
+    ) {
+      if (input.kind === "turn_complete" && !blocked) {
+        blocked = true;
+        await gate;
+      }
+      return originalAppend.call(this, input);
+    });
+    session.emit({ type: "turn_complete" });
+    await settleUntil(() => blocked);
+    const ending = conductor.end();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(session.sent).toHaveLength(1);
+    release();
+    await ending;
+    expect(events.filter((event) => event.type === "turn_complete")).toHaveLength(1);
+    expect(session.ended).toBe(false);
+    expect((await conductor.current(courseDir)).lifecycle).toBe("wrapping");
+    session.emit({ type: "turn_complete" });
+    await settleUntil(() => session.ended);
+    expect((await conductor.current(courseDir)).lifecycle).toBe("closed");
+  });
+  it.each(["send", "retry", "end"] as const)(
+    "admits %s before its persistence await and gates the reply",
+    async (operation) => {
+      const { conductor, courseDir, agent, events } = harness({});
+      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      const session = agent.sessions[0]!;
+      session.emit({ type: "turn_complete" });
+      await settleUntil(() => events.some((event) => event.type === "turn_complete"));
+      const originalSend = session.send.bind(session);
+      session.send = (text) => {
+        if (session.busy) throw new Error("A tutor turn is already in progress.");
+        session.busy = true;
+        originalSend(text);
+      };
+      const originalAppend = FileTranscriptStore.prototype.append;
+      let release!: () => void;
+      let blocked = false;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      vi.spyOn(FileTranscriptStore.prototype, "append").mockImplementation(async function (
+        this: FileTranscriptStore,
+        input,
+      ) {
+        if (
+          !blocked &&
+          (input.kind === "learner" || input.kind === "operator" || input.kind === "lifecycle")
+        ) {
+          blocked = true;
+          await gate;
+        }
+        return originalAppend.call(this, input);
+      });
+      const command = (
+        operation === "send"
+          ? conductor.send("new question")
+          : operation === "retry"
+            ? conductor.retry()
+            : conductor.end()
+      ).then(
+        () => "accepted",
+        () => "rejected",
+      );
+      await settleUntil(() => blocked);
+      const admittedBeforeWrite = session.sent.length === 2;
+      session.busy = true;
+      session.emit({ type: "turn_started" });
+      session.emit({ type: "message_delta", delta: "reply" });
+      session.busy = false;
+      session.emit({ type: "turn_complete" });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const replyEscapedGate = events.some((event) => event.type === "message_delta");
+      release();
+      const outcome = await command;
+      await settleUntil(() => events.some((event) => event.type === "message_delta"));
+      expect(admittedBeforeWrite).toBe(true);
+      expect(replyEscapedGate).toBe(false);
+      expect(outcome).toBe("accepted");
+      if (operation === "send")
+        expect(
+          (await conductor.current(courseDir)).messages.map((message) => message.role),
+        ).toEqual(["learner", "tutor"]);
+    },
+  );
+
+  it("writes nothing when automatic activity wins synchronous admission", async () => {
+    const { conductor, courseDir, agent, events } = harness({});
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    const session = agent.sessions[0]!;
+    session.emit({ type: "turn_complete" });
+    await settleUntil(() => events.some((event) => event.type === "turn_complete"));
+    session.send = () => {
+      session.busy = true;
+      throw new Error("A tutor turn is already in progress.");
+    };
+    await expect(conductor.send("not accepted")).rejects.toThrow("already in progress");
+    expect((await conductor.current(courseDir)).messages).toEqual([]);
+  });
+
   it("rehydrates background activity only while its provider runtime is alive", async () => {
     const { conductor, courseDir, agent, events } = harness({});
     await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
@@ -239,10 +387,11 @@ describe("SessionConductor", () => {
     ]);
   });
 
-  it("persists learner input before sending it through the agent pipe", async () => {
+  it("persists accepted learner input before allowing replies through", async () => {
     const { conductor, courseDir, agent } = harness({});
     await conductor.start({ courseDir, currentModuleId: null, onboarding: true });
     expect(agent.sessions[0]?.sent[0]).toMatch(/new course$/);
+    agent.sessions[0]?.emit({ type: "turn_complete" });
 
     await conductor.send("I want to learn compilers");
     expect(agent.sessions[0]?.sent[1]).toBe("I want to learn compilers");
@@ -393,6 +542,7 @@ describe("SessionConductor", () => {
     // The refusal must leave the lifecycle untouched: still open, not wrapping.
     expect((await conductor.current(courseDir)).lifecycle).toBe("open");
     session.busy = false;
+    session.emit({ type: "turn_complete" });
     await expect(conductor.send("now it lands")).resolves.toBeUndefined();
   });
 
@@ -496,6 +646,7 @@ describe("SessionConductor", () => {
     const agent = new FakeAgent();
     const first = harness({ courseDir, userData, agent, inspections: [inspection()] });
     await first.conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    agent.sessions[0]?.emit({ type: "turn_complete" });
     await first.conductor.send("I was halfway through chunking");
     agent.sessions[0]?.emit({ type: "message_delta", delta: "Let's continue" });
     agent.sessions[0]?.emit({ type: "turn_complete" });
