@@ -132,8 +132,10 @@ Claude run. An arbitrary timeout that hides the loader is not evidence of comple
 
 ### Shared LB-002 / LB-003 findings, 2026-09-25
 
-Source implementation is ready for review on `codex/lb-002-003-session-activity`, pending PR
-review and merge. App 0.0.14 and Course Engine 0.2.1 remain unchanged and unreleased by this
+Source implementation is ready for review in [PR #89](https://github.com/sqmch/lerience/pull/89),
+source commit [`76bc9a2`](https://github.com/sqmch/lerience/commit/76bc9a25715386f9ac94ac66d653a53e3c1787b1)
+on `codex/lb-002-003-session-activity`, pending review and merge.
+App 0.0.14 and Course Engine 0.2.1 remain unchanged and unreleased by this
 work. No installed app or course was updated. The private course and its learning history were
 not used as a reproduction fixture or edited.
 

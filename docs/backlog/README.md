@@ -16,13 +16,13 @@ LB-016 also includes a read-only course inspection on 2026-09-25, against app so
 LB-001 has a source fix and disposable regression evidence in [PR #88](https://github.com/sqmch/lerience/pull/88).
 An app release and explicit existing-course update remain separate. The
 session states in **LB-002 and LB-003** have a shared source fix ready for review on
-`codex/lb-002-003-session-activity`, with native Claude and renderer evidence below. Small interface fixes can proceed
+[PR #89](https://github.com/sqmch/lerience/pull/89), with native Claude and renderer evidence below. Small interface fixes can proceed
 independently; they do not need to wait for the recovery investigation.
 
 | Order | Session scope | Deliverable and stopping point |
 | --- | --- | --- |
 | 1 | LB-001, QA cleanup | Source fix and regression in PR #88. Release and existing-course update remain separate. |
-| 2 | LB-002 + LB-003, Claude activity | Trace completion and review events together. Establish whether the symptoms share a cause; implement separately if they do not. |
+| 2 | LB-002 + LB-003, Claude activity | Shared event-lifetime fix in PR #89, ready for review. Native Claude and renderer checks pass; merge and release remain separate. |
 | 3 | LB-006, usage warnings | Verify provider units and limit categories, then correct mapping and copy with fixture evidence. |
 | 4 | LB-004 + LB-005, recovery and journal | Measure where recovery time and context go. End the first session with a supported cause or a bounded follow-up, before changing lifecycle rules. |
 | 5 | LB-010, duplicate labs | Establish lab identity and fix repeated choices without merging distinct module configurations. |
