@@ -193,6 +193,11 @@ Validation:
   Queued text survives rejection, with a manual retry and no retry loop. Ambiguous post-interrupt
   root output retires the runtime before display because the pinned SDK cannot correlate it.
   The late-old-result-first path remains supported. ADR-043 records these boundaries.
+- A further review fixture reproduced a complete automatic reply buffered behind an earlier
+  result's disk write. Claude now refuses admission while old foreground boundaries remain
+  queued; the conductor already waits for handed-off results to finish saving. The production
+  Claude adapter and real conductor regression verifies both cases and permits closure only
+  after the closing request's own result. No new event protocol was introduced.
 - The new Codex routing fixture hit its 5-second CI timeout because its shared setup launches
   a real PowerShell write probe. That event-routing test now stubs only the write-verification
   dependency and always closes its session; the separate sandbox tests retain real probes.

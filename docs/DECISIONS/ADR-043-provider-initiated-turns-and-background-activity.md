@@ -35,6 +35,11 @@ closing request. An admission refusal writes nothing. A save failure after accep
 stops the runtime and reports the unsaved message; the IPC call does not reject as if
 retrying were safe. This amends the idle-send ordering in ADR-042.
 
+Claude also refuses a send while an earlier foreground boundary remains in its
+normalized output queue. The conductor waits for handed-off results to finish saving.
+Together these checks prevent an already-buffered automatic reply from completing a
+later closing request. Background membership and outcome events alone do not block admission.
+
 A queued message rejected when an automatic turn wins is retained. A later real
 completion or an explicit Retry can send it again; rejection cannot start a retry loop
 or clear a newer foreground state.

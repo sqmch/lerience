@@ -366,8 +366,8 @@ export class SessionConductor {
     this.followOnEpoch += 1;
     const active = this.active;
     if (active === null) return;
-    await active.admission;
     active.suppressEndedUi = true;
+    if (active.admission !== null) await active.admission;
     await active.session.end();
     // end() resolves when the adapter has QUEUED its trailing events; only the
     // pump's completion proves they are persisted. A second store instance on

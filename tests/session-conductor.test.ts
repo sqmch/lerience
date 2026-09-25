@@ -1,9 +1,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FileTranscriptStore } from "../src/main/session/transcript-store";
 import { AsyncQueue } from "../src/main/agent/async-queue";
+import { ClaudeTutorAgent } from "../src/main/agent/claude";
 import type { CourseContextInspection } from "../src/main/scripts/engine-script-service";
 import { SessionConductor } from "../src/main/session/conductor";
 import { FileControlMemory, type ControlMemory } from "../src/main/session/control-memory";
@@ -194,6 +196,107 @@ async function settleUntil(predicate: () => boolean | Promise<boolean>): Promise
 }
 
 describe("SessionConductor", () => {
+  it.each([false, true])(
+    "keeps prior Claude results separate from closing with a buffered continuation: %s",
+    async (buffered) => {
+      const courseDir = temporaryRoot();
+      const sdk = new AsyncQueue<SDKMessage>();
+      const inputs: SDKUserMessage[] = [];
+      const events: AgentEvent[] = [];
+      let consumedFrames = 0;
+      const agent = new ClaudeTutorAgent(({ prompt }) => {
+        if (typeof prompt === "string") throw new Error("Expected streaming input");
+        void (async () => {
+          for await (const input of prompt) inputs.push(input);
+          sdk.end();
+        })();
+        return {
+          interrupt: async () => undefined,
+          async *[Symbol.asyncIterator]() {
+            for await (const frame of sdk) {
+              yield frame;
+              consumedFrames++;
+            }
+          },
+        };
+      });
+      let session!: AgentSession;
+      const conductor = new SessionConductor({
+        createAgent: () => ({
+          providerId: "claude",
+          startSession: (options) => (session = agent.startSession(options)),
+        }),
+        userDataPath: temporaryRoot(),
+        scripts: {
+          inspectContext: async () => inspection(),
+          runChecks: async () => ({ outcome: "pass", total: 1, passed: 1, failed: 0 }),
+        },
+        emitAgentEvent: (event) => events.push(event),
+        emitSnapshot: () => undefined,
+      });
+      conductors.push(conductor);
+      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      const originalAppend = FileTranscriptStore.prototype.append;
+      let release!: () => void;
+      let blocked = false;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      vi.spyOn(FileTranscriptStore.prototype, "append").mockImplementation(async function (
+        this: FileTranscriptStore,
+        input,
+      ) {
+        if (input.kind === "turn_complete" && !blocked) {
+          blocked = true;
+          await gate;
+        }
+        return originalAppend.call(this, input);
+      });
+      const result = (): void => {
+        sdk.push({ type: "result", subtype: "success", total_cost_usd: 0.02 } as SDKMessage);
+      };
+      result();
+      await settleUntil(() => blocked);
+      if (buffered) {
+        sdk.push({
+          type: "stream_event",
+          parent_tool_use_id: null,
+          event: { type: "message_start" },
+        } as SDKMessage);
+        sdk.push({
+          type: "assistant",
+          parent_tool_use_id: null,
+          message: { content: [{ type: "text", text: "Background conclusion" }] },
+        } as SDKMessage);
+        result();
+        await settleUntil(() => consumedFrames === 4);
+      }
+      expect(session.busy).toBe(false);
+      const ending = conductor.end().then(
+        () => "accepted",
+        () => "rejected",
+      );
+      await Promise.resolve();
+      release();
+      expect(await ending).toBe(buffered ? "rejected" : "accepted");
+      await settleUntil(
+        () =>
+          events.filter((event) => event.type === "turn_complete").length === (buffered ? 2 : 1),
+      );
+      if (buffered) {
+        expect(inputs).toHaveLength(1);
+        expect((await conductor.current(courseDir)).lifecycle).toBe("open");
+        expect(events.some((event) => event.type === "session_ended")).toBe(false);
+        await conductor.end();
+      }
+      expect(inputs.at(-1)?.message.content).toBe("end session");
+      expect(session.busy).toBe(true);
+      expect((await conductor.current(courseDir)).lifecycle).toBe("wrapping");
+      result();
+      await settleUntil(() => events.some((event) => event.type === "session_ended"));
+      expect((await conductor.current(courseDir)).lifecycle).toBe("closed");
+    },
+  );
   it.each(["send", "retry", "end"] as const)(
     "stops after an accepted %s cannot be saved without inviting a duplicate",
     async (operation) => {

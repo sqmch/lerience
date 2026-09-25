@@ -458,7 +458,18 @@ class ClaudeAgentSession implements AgentSession {
 
   send(message: string): void {
     if (this.endRequested || this.terminal) throw new Error("The tutor session has ended.");
-    if (this.turnInFlight) throw new Error("A tutor turn is already in progress.");
+    // An automatic turn may already have finished in the SDK while its root
+    // events still await the conductor. Do not admit another request until
+    // those boundaries are delivered. Handed-off results are gated by the
+    // conductor until their persistence finishes.
+    if (
+      this.turnInFlight ||
+      this.output.hasBuffered(
+        (event) => event.type === "turn_started" || event.type === "turn_complete",
+      )
+    ) {
+      throw new Error("A tutor turn is already in progress.");
+    }
 
     this.turnInFlight = true;
     this.currentTurnNumber = ++this.turnCounter;

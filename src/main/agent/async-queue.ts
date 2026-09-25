@@ -4,6 +4,10 @@ export class AsyncQueue<T> implements AsyncIterable<T> {
   private readonly waiters: Array<(result: IteratorResult<T>) => void> = [];
   private closed = false;
 
+  hasBuffered(predicate: (value: T) => boolean): boolean {
+    return this.buffered.some(predicate);
+  }
+
   push(value: T): boolean {
     if (this.closed) return false;
 
