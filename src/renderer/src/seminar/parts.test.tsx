@@ -3,7 +3,14 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { ApprovalCard, BackgroundActivity, ConversationTranscript, LimitNotice } from "./parts";
+import type { SessionControls } from "../../../shared/seminar";
+import {
+  ApprovalCard,
+  BackgroundActivity,
+  ConversationTranscript,
+  LimitNotice,
+  SessionControlBar,
+} from "./parts";
 import { createSeminarState } from "./seminar-state";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -23,6 +30,59 @@ afterEach(() => {
     act(() => root?.unmount());
     root = null;
   }
+});
+
+describe("SessionControlBar", () => {
+  const controls: SessionControls = {
+    models: [{ id: "fixture", label: "Fixture model", efforts: ["low", "high"] }],
+    autonomy: [
+      { id: "never", label: "Never ask", description: "No approval prompts" },
+      { id: "on-request", label: "Decide for me", description: "Ask when needed" },
+    ],
+    access: [
+      { id: "danger-full-access", label: "Full access", description: "Outside the course too" },
+      { id: "workspace-write", label: "Course folder", description: "Within the course" },
+    ],
+    current: { model: "fixture", effort: "high", autonomy: "never", access: "danger-full-access" },
+    remembered: ["model", "effort", "autonomy", "access"],
+  };
+
+  it("shows restored choices with their actual values and no restoration suffix", () => {
+    const host = document.createElement("div");
+    root = createRoot(host);
+    act(() => root?.render(<SessionControlBar controls={controls} onChange={() => undefined} />));
+    expect([...host.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+      "Full access",
+      "Never ask",
+      "Fixture model",
+      "High effort",
+    ]);
+  });
+
+  it("labels only pending values as next reply, including null and unknown model values", () => {
+    const host = document.createElement("div");
+    root = createRoot(host);
+    const render = (pending: SessionControls["pending"]): void => {
+      act(() =>
+        root?.render(
+          <SessionControlBar controls={{ ...controls, pending }} onChange={() => undefined} />,
+        ),
+      );
+    };
+    render({ access: "workspace-write", autonomy: "on-request", effort: null });
+    expect([...host.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+      "Course folder · next reply",
+      "Decide for me · next reply",
+      "Fixture model",
+      "Default effort · next reply",
+    ]);
+    render({ model: "provider-reported-model" });
+    expect([...host.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+      "Full access",
+      "Never ask",
+      "provider-reported-model · next reply",
+    ]);
+  });
 });
 
 describe("ConversationTranscript", () => {

@@ -1,6 +1,8 @@
-# ADR-040 — Session controls are remembered per course, visibly
+# ADR-040 — Session controls are remembered per course
 
 Date: 2026-09-11 · Status: accepted · Amends ADR-018 and ADR-037
+
+Presentation amended 2026-09-26 by [LB-013](../backlog/experience.md#lb-013).
 
 ## Decision
 
@@ -21,12 +23,13 @@ and per provider, and re-applied when a tutor runtime starts for that course.
    forgets the key rather than storing a value. A course created tomorrow starts with nothing
    remembered, and Codex's course-scoped startup check (ADR-036) runs unchanged before any
    remembered access is staged.
-3. **A restored value says so on screen.** The session bar's pill reads "· remembered" until the
-   learner changes that control, at which point it is their live choice again. This is the
-   condition ADR-018 set for any cross-session memory: an explicit, visible preference, never a
-   silent memory of the last session. It matters most for Full access, which ADR-037 described
-   as "for this session only": under this decision a remembered Full access is re-armed each
-   session, labelled, and one click from Course folder.
+3. **The actual selected value stays visible; restoration needs no suffix.** The session bar
+   shows model, effort, autonomy, and access labels without "· remembered". Full access and
+   Never ask remain plainly named and changeable. A remembered Full access is re-armed each
+   session and remains one menu choice from Course folder. Values staged for the next turn
+   retain "· next reply" until provider confirmation. This amends ADR-018's presentation
+   condition: explicit saved choices and their actual permission values remain visible, while
+   the fact that a value was restored is quiet.
 4. **App-initiated runtime replacement carries the choices too.** The conductor replaces the
    provider runtime on recovery of an unverified close and on the wrap's follow-on open. Both
    now restore from the same memory, so a choice no longer dies at a module boundary the
@@ -50,14 +53,19 @@ and Full access are trust statements about a course build, not about Codex in ge
 course must start course-scoped under ADR-036. Model and effort follow the same key for one
 rule's sake; an app-wide default remains a Settings candidate if anyone asks for it.
 
+LB-013 reported that the restoration suffix widened controls and wrapped the row. The learner
+requested its removal while keeping saved choices. The visible Full access and Never ask
+values communicate the permission; repeating how they were restored adds no needed state.
+
 ## Rejected
 
-- **Remember silently.** ADR-018 rejected it and this decision keeps that: a sandbox policy that
-  quietly comes back is the one setting the learner must see is in force.
+- **Hide the actual permission value.** A restored sandbox policy must remain visible through
+  its selected label. The original restoration suffix requirement was superseded by LB-013;
+  restoration itself no longer needs a separate label.
 - **Exclude Full access from memory.** Considered, because a remembered Full access plus Never
   ask is an unattended agent with the learner's whole filesystem and network every time the
-  course opens. The maintainer chose to remember it on the condition that it is visibly
-  labelled and their own prior choice. ADR-018's own reasoning applies: withholding the rung
+  course opens. The maintainer chose to remember their own prior choice with its actual access
+  value visibly labelled. ADR-018's own reasoning applies: withholding the rung
   did not make anyone safer, it made a course build an approval queue.
 - **Per-provider memory in `settings.json`.** Loses the course boundary that makes remembering
   an access grant defensible.
@@ -68,11 +76,13 @@ rule's sake; an app-wide default remains a Settings candidate if anyone asks for
 
 Deterministic tests cover: an applied choice is remembered and a default forgets it; the next
 runtime for the course applies the memory before its opener and reports the keys as remembered;
-a learner change clears the label and updates memory; memory is isolated per course and
-provider; a provider that refuses the restore still opens the session. Native acceptance:
+a learner change clears the restoration metadata and updates memory; memory is isolated per
+course and provider; a provider that refuses the restore still opens the session. Renderer
+checks cover restored values without the suffix and staged values with "· next reply" in
+narrow layouts. Native acceptance for restoration mechanics:
 choose Never ask and Full access in a disposable Codex course, end the session, reopen, and see
-both pills read "remembered" before the first reply; return to Course folder and confirm a fresh
-open no longer restores access.
+both controls show their actual values, with "· next reply" only while staged; return to Course
+folder and confirm a fresh open no longer restores access.
 
 ## Reopens if
 
