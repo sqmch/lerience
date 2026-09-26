@@ -242,12 +242,9 @@ const AUTONOMY: {
   },
 ];
 
-const EFFORTS: SessionEffort[] = ["low", "medium", "high", "xhigh", "max"];
-
 function knownEfforts(model: ModelInfo): SessionEffort[] {
   if (model.supportsEffort !== true) return [];
-  const offered = model.supportedEffortLevels ?? [];
-  return EFFORTS.filter((level) => offered.includes(level));
+  return [...(model.supportedEffortLevels ?? [])];
 }
 
 function resultError(message: Extract<SDKMessage, { type: "result" }>): NormalizedError {
@@ -594,18 +591,45 @@ class ClaudeAgentSession implements AgentSession {
     if (this.endRequested || this.terminal) throw new Error("The tutor session has ended.");
     if (patch.access !== undefined) throw new Error("That access setting is not available.");
 
+    await this.describeControls();
+    const selectedId = patch.model === undefined ? this.selectedModelId() : patch.model;
+    const selected = this.models?.find(
+      (model) => model.id === (selectedId ?? "default") || model.resolved === selectedId,
+    );
+    if (patch.model != null && selected === undefined) {
+      throw new Error("That model is not available in this session.");
+    }
+    if (patch.effort != null && !selected?.efforts.includes(patch.effort)) {
+      throw new Error("That effort level is not available for this model.");
+    }
+    if (patch.autonomy !== undefined && !AUTONOMY.some((mode) => mode.id === patch.autonomy)) {
+      throw new Error("That autonomy setting is not available.");
+    }
+
+    // Clear the real flag-layer override, not just the displayed value. Without
+    // this it comes back when another effort-capable model is selected later.
+    const resetEffort =
+      patch.model !== undefined &&
+      patch.effort === undefined &&
+      this.currentEffort !== null &&
+      !selected?.efforts.includes(this.currentEffort);
+    if (resetEffort) {
+      if (this.sdkQuery.applyFlagSettings === undefined)
+        throw new Error("Effort control is unavailable.");
+      await this.sdkQuery.applyFlagSettings({ effortLevel: null });
+      this.currentEffort = null;
+    }
+
     if (patch.model !== undefined) {
-      await this.sdkQuery.setModel?.(patch.model ?? undefined);
+      if (this.sdkQuery.setModel === undefined) throw new Error("Model control is unavailable.");
+      await this.sdkQuery.setModel(patch.model ?? undefined);
       this.currentModel = patch.model;
       this.modelPinned = patch.model !== null;
-      // A model change can invalidate the current effort: levels are per-model.
-      const model = this.models?.find((candidate) => candidate.id === patch.model);
-      if (this.currentEffort !== null && model !== undefined) {
-        if (!model.efforts.includes(this.currentEffort)) this.currentEffort = null;
-      }
     }
     if (patch.effort !== undefined) {
-      await this.sdkQuery.applyFlagSettings?.({ effortLevel: patch.effort });
+      if (this.sdkQuery.applyFlagSettings === undefined)
+        throw new Error("Effort control is unavailable.");
+      await this.sdkQuery.applyFlagSettings({ effortLevel: patch.effort });
       this.currentEffort = patch.effort;
     }
     if (patch.autonomy !== undefined) {

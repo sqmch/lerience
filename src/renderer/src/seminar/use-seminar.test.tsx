@@ -204,11 +204,14 @@ describe("useSeminar session controls", () => {
     expect(observed.current?.controls?.pending).toBeUndefined();
   });
 
-  it.each(["rejected", "unavailable"])(
+  it.each(["rejected", "unavailable", "partly accepted"])(
     "keeps %s controls local and preserves the confirmed controls",
     async (result) => {
+      let confirmed = controls;
       const setSeminarControls = vi.fn(async () => {
         if (result === "unavailable") return null;
+        if (result === "partly accepted")
+          confirmed = { ...controls, current: { ...controls.current, effort: null } };
         throw new Error("Error invoking remote method: Codex rejected the request.");
       });
       const bridge = {
@@ -220,7 +223,7 @@ describe("useSeminar session controls", () => {
           turnInProgress: false,
           steerable: false,
         }),
-        seminarControls: async () => controls,
+        seminarControls: async () => confirmed,
         setSeminarControls,
         onSeminarEvent: () => () => undefined,
         onSeminarSnapshot: () => () => undefined,
@@ -252,13 +255,13 @@ describe("useSeminar session controls", () => {
       });
 
       expect(setSeminarControls).toHaveBeenCalledWith({ effort: "high" });
-      expect(seminar().controls).toEqual(controls);
+      expect(seminar().controls).toEqual(confirmed);
       expect(seminar().state.failure).toBeNull();
       expect(seminar().state.phase).toBe("idle");
       expect(seminar().state.controlNotice).toEqual({
         kind: "error",
         message:
-          "That change didn't apply. Your tutor is still connected, and your previous settings are still active.",
+          "That change couldn't be completed. Your tutor is still connected. Check the settings shown and try again.",
       });
     },
   );

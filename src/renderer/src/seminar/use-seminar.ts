@@ -269,10 +269,18 @@ export function useSeminar({
       dispatch({ type: "control_change_succeeded" });
       return true;
     } catch {
+      // Claude controls are separate acknowledged calls. If a later call fails,
+      // re-read any earlier accepted change instead of leaving a stale pill.
+      try {
+        const next = await window.praxeum.seminarControls();
+        if (next !== null) setControlsState(next);
+      } catch {
+        /* Keep the last confirmed controls if the read also fails. */
+      }
       dispatch({
         type: "control_change_failed",
         message:
-          "That change didn't apply. Your tutor is still connected, and your previous settings are still active.",
+          "That change couldn't be completed. Your tutor is still connected. Check the settings shown and try again.",
       });
       return false;
     }

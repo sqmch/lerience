@@ -457,7 +457,7 @@ describe("CodexAgentSession", () => {
           id: "gpt-5.6-codex",
           label: "GPT-5.6 Codex",
           description: "Most capable",
-          efforts: ["high", "xhigh"],
+          efforts: ["minimal", "high", "xhigh"],
         },
       ],
       autonomy: expect.arrayContaining([
@@ -508,6 +508,113 @@ describe("CodexAgentSession", () => {
       expect(applied).not.toHaveProperty("pending");
     });
     await session.end();
+  });
+
+  it("preserves offered effort ids and resets an incompatible model switch with its advertised default", async () => {
+    const proof = vi.spyOn(courseWrite, "verifyCodexCourseWrite").mockResolvedValue(undefined);
+    const { connection, session } = setup();
+    try {
+      connection.responses.set("model/list", {
+        data: [
+          {
+            id: "gpt-5.6-codex",
+            model: "gpt-5.6-codex",
+            displayName: "Wide",
+            defaultReasoningEffort: "low",
+            supportedReasoningEfforts: ["low", "high", "ultra", "future-effort"].map(
+              (reasoningEffort) => ({ reasoningEffort }),
+            ),
+          },
+          {
+            id: "narrow",
+            model: "narrow-wire",
+            displayName: "Narrow",
+            defaultReasoningEffort: "medium",
+            supportedReasoningEfforts: [{ reasoningEffort: "medium" }],
+          },
+        ],
+      });
+      expect((await session.describeControls()).models[0]?.efforts).toEqual([
+        "low",
+        "high",
+        "ultra",
+        "future-effort",
+      ]);
+      await session.applyControls({ effort: "ultra" });
+      await expect(session.applyControls({ effort: "not-offered" })).rejects.toThrow(/effort/);
+      expect((await session.describeControls()).pending).toEqual({ effort: "ultra" });
+      const staged = await session.applyControls({ model: "narrow" });
+      expect(staged.current).toMatchObject({ model: "gpt-5.6-codex", effort: "high" });
+      expect(staged.pending).toEqual({ model: "narrow", effort: "medium" });
+      await expect(session.applyControls({ model: "narrow", effort: "ultra" })).rejects.toThrow(
+        /effort/,
+      );
+      expect((await session.describeControls()).pending).toEqual(staged.pending);
+
+      const request = connection.request.bind(connection);
+      const mock = vi.spyOn(connection, "request").mockImplementation(async (method, params) => {
+        if (method === "turn/start") throw new Error("provider refused");
+        return request(method, params);
+      });
+      await session.send("refused turn");
+      await vi.waitFor(() => expect(session.busy).toBe(false));
+      expect((await session.describeControls()).current).toEqual(staged.current);
+      expect((await session.describeControls()).pending).toEqual(staged.pending);
+      mock.mockRestore();
+      await session.send("accepted turn");
+      await vi.waitFor(async () =>
+        expect((await session.describeControls()).pending).toBeUndefined(),
+      );
+      expect(connection.calls.find((call) => call.method === "turn/start")?.params).toMatchObject({
+        model: "narrow-wire",
+        effort: "medium",
+      });
+      expect((await session.describeControls()).current).toMatchObject({
+        model: "narrow",
+        effort: "medium",
+      });
+      // A null model selection restores the startup model with a supported
+      // default, not a null wire override that would keep the narrow model.
+      expect((await session.applyControls({ model: null })).pending).toEqual({
+        model: "gpt-5.6-codex",
+        effort: "low",
+      });
+    } finally {
+      await session.end();
+      proof.mockRestore();
+    }
+  });
+
+  it("sends a concrete default effort and refuses a reset when discovery cannot supply one", async () => {
+    const proof = vi.spyOn(courseWrite, "verifyCodexCourseWrite").mockResolvedValue(undefined);
+    const { connection, session } = setup();
+    try {
+      connection.responses.set("model/list", {
+        data: [
+          {
+            id: "gpt-5.6-codex",
+            model: "gpt-5.6-codex",
+            displayName: "Wide",
+            defaultReasoningEffort: "low",
+            supportedReasoningEfforts: [{ reasoningEffort: "low" }, { reasoningEffort: "high" }],
+          },
+          {
+            id: "missing-default",
+            model: "missing-default",
+            displayName: "No default",
+            supportedReasoningEfforts: [{ reasoningEffort: "medium" }],
+          },
+        ],
+      });
+      expect((await session.applyControls({ effort: null })).pending).toEqual({ effort: "low" });
+      await expect(session.applyControls({ model: "missing-default" })).rejects.toThrow(
+        /default effort/,
+      );
+      expect((await session.describeControls()).pending).toEqual({ effort: "low" });
+    } finally {
+      await session.end();
+      proof.mockRestore();
+    }
   });
 
   it("steers a running turn through turn/steer aimed at the live turn id", async () => {

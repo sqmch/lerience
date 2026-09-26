@@ -783,10 +783,73 @@ describe("Claude adapter normalization", () => {
     expect(controls.current.autonomy).toBe("default");
     // Effort levels come from the provider's own per-model capability list.
     expect(controls.models).toEqual([
-      { id: "sonnet", label: "Sonnet", description: "Balanced", efforts: ["low", "high"] },
+      { id: "sonnet", label: "Sonnet", description: "Balanced", efforts: ["high", "low"] },
       { id: "haiku", label: "Haiku", description: "Fast", efforts: [] },
     ]);
 
+    await closeSession(session, sdkQuery);
+  });
+
+  it("rejects an unoffered effort before changing either control", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery).startSession({ courseDir: "C:/course" });
+    await session.applyControls({ model: "sonnet", effort: "high" });
+    await expect(session.applyControls({ model: "haiku", effort: "high" })).rejects.toThrow(
+      /effort/,
+    );
+    expect(sdkQuery.setModels).toEqual(["sonnet"]);
+    expect((await session.describeControls()).current).toMatchObject({
+      model: "sonnet",
+      effort: "high",
+    });
+    await closeSession(session, sdkQuery);
+  });
+
+  it("validates a remembered wire model id through its advertised alias", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery).startSession({ courseDir: "C:/course" });
+    await session.applyControls({ model: "claude-sonnet-5", effort: "high" });
+    expect(sdkQuery.setModels).toEqual(["claude-sonnet-5"]);
+    expect((await session.describeControls()).current).toMatchObject({
+      model: "sonnet",
+      effort: "high",
+    });
+    await closeSession(session, sdkQuery);
+  });
+
+  it("clears the provider effort override when switching to a model without that level", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery).startSession({ courseDir: "C:/course" });
+    await session.applyControls({ model: "sonnet", effort: "high" });
+    await session.applyControls({ model: "haiku" });
+    expect(sdkQuery.flagSettings).toEqual([{ effortLevel: "high" }, { effortLevel: null }]);
+    expect((await session.describeControls()).current).toMatchObject({
+      model: "haiku",
+      effort: null,
+    });
+    await closeSession(session, sdkQuery);
+  });
+
+  it("preserves confirmed controls after a refused effort reset and reports partial acceptance", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const session = new ClaudeTutorAgent(() => sdkQuery).startSession({ courseDir: "C:/course" });
+    await session.applyControls({ model: "sonnet", effort: "high" });
+    const settings = vi
+      .spyOn(sdkQuery, "applyFlagSettings")
+      .mockRejectedValueOnce(new Error("refused"));
+    await expect(session.applyControls({ model: "haiku" })).rejects.toThrow("refused");
+    expect((await session.describeControls()).current).toMatchObject({
+      model: "sonnet",
+      effort: "high",
+    });
+    expect(sdkQuery.setModels).toEqual(["sonnet"]);
+    settings.mockRestore();
+    vi.spyOn(sdkQuery, "setModel").mockRejectedValueOnce(new Error("model refused"));
+    await expect(session.applyControls({ model: "haiku" })).rejects.toThrow("model refused");
+    expect((await session.describeControls()).current).toMatchObject({
+      model: "sonnet",
+      effort: null,
+    });
     await closeSession(session, sdkQuery);
   });
 

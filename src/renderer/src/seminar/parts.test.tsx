@@ -47,6 +47,24 @@ describe("SessionControlBar", () => {
     remembered: ["model", "effort", "autonomy", "access"],
   };
 
+  it.each([
+    ["xhigh", "Extra high effort"],
+    ["ultra", "Ultra effort"],
+    ["future-effort", "future-effort effort"],
+  ])("shows provider effort %s without losing its identity", (effort, label) => {
+    const host = document.createElement("div");
+    root = createRoot(host);
+    act(() =>
+      root?.render(
+        <SessionControlBar
+          controls={{ ...controls, current: { ...controls.current, effort } }}
+          onChange={() => undefined}
+        />,
+      ),
+    );
+    expect(host.textContent).toContain(label);
+  });
+
   it("shows restored choices with their actual values and no restoration suffix", () => {
     const host = document.createElement("div");
     root = createRoot(host);
