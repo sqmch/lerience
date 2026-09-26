@@ -1,6 +1,7 @@
 // Portable optional assessment. All mutations use this course-local writer.
 // CLI: node scripts/assessment.mjs <course-root> <module-id> <operation>
 // Request JSON is read from stdin; Electron uses --ipc and parentPort instead.
+/* global structuredClone */
 import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -9,6 +10,7 @@ import { validate } from "./validate.mjs";
 
 const engineRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MAX = 2 * 1024 * 1024;
+const MAX_REPLY = 1536 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MODULE = /^[0-9]{2}-[a-z0-9-]{1,80}$/;
 const HELP = ["unknown", "none", "hint-1", "hint-2", "hint-3", "outside"];
@@ -233,17 +235,35 @@ function withLock(root, action) {
     fd = fs.openSync(lock, "wx", 0o600);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const owner = json(root, "tutor/assessments/.writer-lock");
-    if (!Number.isInteger(owner.pid) || owner.pid < 1)
-      fail("Assessment storage lock is unreadable.");
+    const reclaim = contained(root, "tutor/assessments/.reclaim-lock", true);
+    let reclaimFd;
     try {
-      process.kill(owner.pid, 0);
-      fail("Assessment storage is busy. Retry shortly.");
-    } catch (probe) {
-      if (probe.code !== "ESRCH") throw probe;
+      reclaimFd = fs.openSync(reclaim, "wx", 0o600);
+    } catch {
+      fail(
+        "Assessment lock recovery is busy. Retry shortly; if it persists, preserve the records and inspect the recovery lock.",
+      );
     }
-    fs.unlinkSync(contained(root, "tutor/assessments/.writer-lock"));
-    fd = fs.openSync(lock, "wx", 0o600);
+    try {
+      // Re-read only AFTER exclusively owning reclaim. A second reclaimer
+      // must never unlink the replacement lock created by the first.
+      const owner = json(root, "tutor/assessments/.writer-lock", true);
+      if (owner !== null) {
+        if (!Number.isInteger(owner.pid) || owner.pid < 1)
+          fail("Assessment storage lock is unreadable.");
+        try {
+          process.kill(owner.pid, 0);
+          fail("Assessment storage is busy. Retry shortly.");
+        } catch (probe) {
+          if (probe.code !== "ESRCH") throw probe;
+        }
+        fs.unlinkSync(contained(root, "tutor/assessments/.writer-lock"));
+      }
+      fd = fs.openSync(lock, "wx", 0o600);
+    } finally {
+      fs.closeSync(reclaimFd);
+      fs.unlinkSync(contained(root, "tutor/assessments/.reclaim-lock"));
+    }
   }
   try {
     fs.writeFileSync(fd, JSON.stringify({ pid: process.pid }));
@@ -365,6 +385,14 @@ export function assessmentOperation(courseRoot, request, { beforeCommit } = {}) 
         if ((record?.revision ?? 0) !== request.revision)
           fail("This draft changed. Your input is kept; reopen to reconcile it.");
         if (!record) {
+          if (
+            attempts.length >= 100 ||
+            fs.readdirSync(contained(root, "tutor/assessments")).filter((f) => f.endsWith(".json"))
+              .length >= 1000
+          )
+            fail(
+              "Assessment history is full. Existing answers remain readable; no new draft was written.",
+            );
           const parent =
             request.revisesAttemptId === null
               ? null
@@ -447,9 +475,12 @@ export function assessmentOperation(courseRoot, request, { beforeCommit } = {}) 
           )
         )
           fail("Feedback is not bound to this question and attempt.");
-        for (const c of feedback.criteria)
+        for (const c of feedback.criteria) {
+          if (c.state === "supported" && !c.excerpt.trim())
+            fail("Supported reasoning feedback requires a submitted excerpt.");
           if (c.excerpt && !Object.values(record.raw).some((v) => v.includes(c.excerpt)))
             fail("Feedback excerpt is not in the submitted response.");
+        }
         const prior = record.feedback.find((f) => f.id === feedback.id);
         if (prior) {
           if (!same(prior, feedback)) fail("Feedback ID conflicts with earlier feedback.");
@@ -489,6 +520,16 @@ export function assessmentOperation(courseRoot, request, { beforeCommit } = {}) 
         source(root, moduleId)?.digest !== record.sourceDigest
       )
         fail("Question changed while saving.");
+      const nextAttempts = [...attempts.filter((a) => a.id !== record.id), record].map(projection);
+      if (
+        Buffer.byteLength(
+          JSON.stringify({ ok: true, view: { ...view, attempts: nextAttempts } }),
+          "utf8",
+        ) > MAX_REPLY
+      )
+        fail(
+          "This assessment history has reached its storage display limit. No change was written; copy unsaved answers before leaving.",
+        );
       commit(root, record, existing, beforeCommit);
       return { ok: true, view: inspect(root, identity.courseId, moduleId).view };
     });
@@ -507,12 +548,13 @@ if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === imp
   const [root, moduleId, operation, mode] = process.argv.slice(2);
   const run = (input) => {
     const result = assessmentOperation(root, { ...input, moduleId, operation });
-    process.stdout.write(JSON.stringify(result) + "\n");
+    process.stdout.write(JSON.stringify(result) + "\n", () => {
+      if (mode === "--ipc") process.exit(0);
+    });
   };
   if (mode === "--ipc" && process.parentPort)
     process.parentPort.once("message", ({ data }) => {
       run(data);
-      process.exit(0);
     });
   else {
     let text = "";

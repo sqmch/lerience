@@ -138,6 +138,10 @@ export function validate(schema, value, at, errors) {
 
   // --- number: minimum / maximum ---
   if (typeof value === "number") {
+    if (typeof schema.exclusiveMinimum === "number" && value <= schema.exclusiveMinimum)
+      errors.push({ path: at, message: "number is below the exclusive minimum" });
+    if (typeof schema.exclusiveMaximum === "number" && value >= schema.exclusiveMaximum)
+      errors.push({ path: at, message: "number exceeds the exclusive maximum" });
     if (typeof schema.minimum === "number" && value < schema.minimum) {
       errors.push({ path: at, message: `${value} is below minimum ${schema.minimum}` });
     }

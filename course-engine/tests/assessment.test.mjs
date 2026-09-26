@@ -213,3 +213,126 @@ test("junctions and hard links are refused without touching their targets", (t) 
   fs.linkSync(sourceFile, path.join(outside, "question.json"));
   assert.equal(save(root).ok, false);
 });
+test("record and reply limits refuse before writing and preserve existing history", (t) => {
+  const root = fixture(t);
+  const first = save(root);
+  assert.equal(first.ok, true);
+  const original = first.view.attempts[0];
+  const directory = path.join(root, "tutor/assessments");
+  const bytes = JSON.parse(fs.readFileSync(path.join(directory, `${original.id}.json`), "utf8"));
+  for (let n = 1; n < 100; n++) {
+    const id = randomUUID();
+    fs.writeFileSync(path.join(directory, `${id}.json`), JSON.stringify({ ...bytes, id }));
+  }
+  const before = fs.readdirSync(directory).sort();
+  const refused = save(root);
+  assert.equal(refused.ok, false);
+  assert.match(refused.detail, /history is full/);
+  assert.deepEqual(fs.readdirSync(directory).sort(), before);
+  assert.equal(run(root, { operation: "read" }).view.attempts.length, 100);
+  for (const file of before.slice(1)) fs.unlinkSync(path.join(directory, file));
+  const record = JSON.parse(fs.readFileSync(path.join(directory, before[0]), "utf8"));
+  record.events = Array.from({ length: 100 }, () => ({
+    id: randomUUID(),
+    kind: "help",
+    text: "x".repeat(4000),
+    createdAt: new Date().toISOString(),
+  }));
+  for (let n = 0; n < 4; n++) {
+    const id = n === 0 ? record.id : randomUUID();
+    fs.writeFileSync(path.join(directory, `${id}.json`), JSON.stringify({ ...record, id }));
+  }
+  const storageBefore = fs
+    .readdirSync(directory)
+    .map((f) => [f, fs.readFileSync(path.join(directory, f), "utf8")]);
+  assert.equal(save(root).ok, false);
+  assert.deepEqual(
+    fs.readdirSync(directory).map((f) => [f, fs.readFileSync(path.join(directory, f), "utf8")]),
+    storageBefore,
+  );
+});
+test("cooperating processes reclaim a dead writer lock without removing a live replacement", async (t) => {
+  const { spawn } = await import("node:child_process");
+  const root = fixture(t);
+  save(root);
+  fs.writeFileSync(
+    path.join(root, "tutor/assessments/.writer-lock"),
+    JSON.stringify({ pid: 2147483647 }),
+  );
+  const request = () => ({
+    operation: "save",
+    moduleId,
+    id: randomUUID(),
+    sourceDigest: validateQuestion(question, key, moduleId),
+    revision: 0,
+    raw: { stored: "6", spill: "2", why: "Concurrent draft." },
+    help: "unknown",
+    revisesAttemptId: null,
+  });
+  const invoke = (input) =>
+    new Promise((resolve, reject) => {
+      const child = spawn(
+        process.execPath,
+        [path.resolve("course-engine/template/scripts/assessment.mjs"), root, moduleId, "save"],
+        { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] },
+      );
+      let output = "";
+      child.stdout.on("data", (c) => {
+        output += c;
+      });
+      child.on("error", reject);
+      child.on("close", () => {
+        try {
+          resolve({ input, result: JSON.parse(output) });
+        } catch (error) {
+          reject(error);
+        }
+      });
+      child.stdin.end(JSON.stringify(input));
+    });
+  const results = await Promise.all([invoke(request()), invoke(request())]);
+  const view = run(root, { operation: "read" });
+  assert.equal(view.ok, true);
+  for (const { input, result } of results)
+    if (result.ok) assert.ok(view.view.attempts.some((a) => a.id === input.id));
+  assert.ok(results.some((r) => r.result.ok));
+  assert.equal(fs.existsSync(path.join(root, "tutor/assessments/.writer-lock")), false);
+});
+test("supported feedback requires a nonblank submitted excerpt", (t) => {
+  const root = fixture(t),
+    id = randomUUID();
+  const first = save(root, { id });
+  run(root, { operation: "submit", id, revision: 1, sourceDigest: first.view.sourceDigest });
+  const feedback = {
+    id: randomUUID(),
+    attemptId: id,
+    sourceDigest: first.view.sourceDigest,
+    author: "tutor",
+    createdAt: new Date().toISOString(),
+    criteria: [
+      {
+        criterionId: "capacity",
+        state: "supported",
+        excerpt: "",
+        rationale: "Rationale without evidence.",
+      },
+    ],
+  };
+  for (const excerpt of ["", "   "])
+    assert.equal(
+      run(root, {
+        operation: "feedback",
+        id,
+        feedback: { ...feedback, criteria: [{ ...feedback.criteria[0], excerpt }] },
+      }).ok,
+      false,
+    );
+  assert.equal(
+    run(root, {
+      operation: "feedback",
+      id,
+      feedback: { ...feedback, criteria: [{ ...feedback.criteria[0], state: "uncertain" }] },
+    }).ok,
+    true,
+  );
+});

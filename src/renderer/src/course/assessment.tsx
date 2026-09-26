@@ -54,6 +54,7 @@ export function Assessment({
   const working = useRef(false);
   const unsaved = useRef(false);
   const latest = useRef<Draft | null>(null);
+  const uncertainSave = useRef<Draft | null>(null);
   const mounted = useRef(true);
   const generation = useRef(0);
   const initialized = useRef(false);
@@ -141,8 +142,40 @@ export function Assessment({
     generation.current++;
     setBusy(true);
     try {
+      if (uncertainSave.current && latest.current) {
+        const sent = uncertainSave.current;
+        const read = await window.praxeum.assessment(courseRoot, { operation: "read", moduleId });
+        if (!mounted.current) return false;
+        if (!read.ok) {
+          setError(read.detail);
+          return false;
+        }
+        const stored = read.view.attempts.find((a) => a.id === sent.id);
+        if (
+          stored &&
+          stored.revision === sent.revision + 1 &&
+          stored.status === "draft" &&
+          stored.sourceDigest === sent.sourceDigest &&
+          stored.help === sent.help &&
+          Object.keys(sent.raw).every((key) => stored.raw[key] === sent.raw[key])
+        ) {
+          applyDraft({ ...latest.current, revision: stored.revision });
+        } else if (
+          stored &&
+          (stored.revision !== sent.revision ||
+            stored.sourceDigest !== sent.sourceDigest ||
+            stored.status !== "draft")
+        ) {
+          setError(
+            "The saved draft differs from the unconfirmed save. Copy your answers before reloading saved answers to reconcile the external edit.",
+          );
+          return false;
+        }
+        uncertainSave.current = null;
+      }
       while (unsaved.current && latest.current) {
         const snapshot = latest.current;
+        uncertainSave.current = snapshot;
         const reply = await window.praxeum.assessment(courseRoot, {
           operation: "save",
           moduleId,
@@ -158,6 +191,7 @@ export function Assessment({
           setError(reply.detail);
           return false;
         }
+        uncertainSave.current = null;
         const saved = reply.view.attempts.find((a) => a.id === snapshot.id);
         if (!saved) {
           setError("Save acknowledgement was incomplete. Keep your answers and retry.");
@@ -287,6 +321,21 @@ export function Assessment({
                 }}
               >
                 Copy answers
+              </button>
+            ) : null}
+            {dirty ? (
+              <button
+                className={GHOST}
+                disabled={busy}
+                onClick={() => {
+                  uncertainSave.current = null;
+                  applyDraft(null);
+                  initialized.current = false;
+                  markDirty(false);
+                  void load();
+                }}
+              >
+                Discard unsaved edits and reload
               </button>
             ) : null}
           </div>

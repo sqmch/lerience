@@ -167,12 +167,15 @@ than treating a word count as proof of learning quality.
 - `LESSON.md` — the actual teaching: concepts explained properly, annotated examples, a fully
   **worked example** of the same kind of problem the task poses, and the "why is it built this
   way" reasoning. This is the textbook chapter; write it like one.
-- `BRIEF.md` — the task spec: build task, acceptance criteria, how to run checks. Short; it
-  references LESSON.md for the concepts.
-- `scaffold/` — a runnable setup where boilerplate is provided and the conceptually
+- `BRIEF.md` — the activity and expected demonstration, with acceptance criteria and check
+  instructions where artifact work calls for them. It references LESSON.md for concepts and
+  keeps arbitrary prose, code and commands beside any optional assessment.
+- `scaffold/`, for artifact work — a runnable setup where boilerplate is provided and the conceptually
   load-bearing parts are `// TODO(you):` gaps. It should compile but fail checks.
-- `checks/` — automated tests the learner runs themselves. Tests grade behavior, never
+- `checks/`, for executable artifacts — automated tests the learner runs themselves. Tests grade behavior, never
   implementation details.
+- `assessment.json` and its separate key, optionally — numeric prediction and explanation
+  under docs/ASSESSMENT.md. These can stand alone or supplement real artifact work.
 - `REVIEW.md` — the learner's-eye review (below): what a reader with none of your context
   found when they read only what the learner will have, and what you fixed. No hint files:
   help is given live, at the learner's actual stuck point (**Grading & assistance**).
@@ -205,7 +208,9 @@ consecutive modules of one course were handed over with exactly that defect, eac
 diagnosed and repaired only after the learner hit it, while the journal carried the rule
 forward every time. The fix is a reader without your context, not another rule for you. Before
 handover, a fresh context — a subagent where your provider offers one, otherwise a separate,
-deliberately cold pass — reads ONLY `LESSON.md`, `BRIEF.md`, the scaffold as handed over, and
+deliberately cold pass — reads ONLY `LESSON.md`, `BRIEF.md`, any scaffold as handed over,
+the rendered assessment question with its labels, units and criteria when present (without
+the objective key or earlier answers), and
 the learner's evidenced prerequisites from `progress.json` notes and `COURSE.md`, and writes
 `REVIEW.md` in the module directory under four headings, each answered per item and each
 ending in a location, "fixed: …", or "removed: …" — never "fine":
