@@ -101,3 +101,9 @@ Review added a deferred `turn/start` regression: reports from two older Codex tu
 populate the new session sample before acceptance. Early samples are buffered by turn ID and
 only the accepted turn's latest sample is released. The first full check caught an unsupported
 `leading-relaxed` token; it was replaced with the existing `leading-normal` design token.
+
+Corrected source `0a3f269` passed the complete `pnpm check` on Windows x64, Node 24.18.0 /
+pnpm 11.9.0: publication hygiene, both TypeScript projects, renderer harness, 591 application
+tests and 61 Course Engine tests, six platform skips, ESLint, formatting and production build.
+Both Standards and Spec correction reviews were clear. [PR #100](https://github.com/sqmch/lerience/pull/100)
+records final-head CI and eventual merge. This is source evidence, not installed-app acceptance.

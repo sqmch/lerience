@@ -30,7 +30,7 @@ independently; they do not need to wait for the recovery investigation.
 | 7 | LB-012, then LB-013, compact UI | LB-012 implemented in PR #95, merged at `715c559` after green CI. LB-013 implemented in [PR #96](https://github.com/sqmch/lerience/pull/96), merged at `406c399` after green CI, with renderer evidence and the ADR-040 amendment. Releases remain separate. |
 | 8 | LB-007, then LB-008, tutor controls | LB-007 implemented in [PR #97](https://github.com/sqmch/lerience/pull/97), merged at `4b0e5b0`. LB-008 implemented in [PR #98](https://github.com/sqmch/lerience/pull/98), merged at `4c0258c`. Both passed final-head Windows CI; release remains separate. |
 | 9 | LB-014, Windows window flashes | [Bounded native investigation](console-investigation-2026-09-26.md) found no visible console during the app-owned doctor run. No launch change justified. Capture an actual flash before reopening; proceed to LB-009. |
-| 10 | LB-009, context visibility | Establish available context telemetry and implement an honest readout. Can move earlier if it helps LB-004. |
+| 10 | LB-009, context visibility | Source ready in [PR #100](https://github.com/sqmch/lerience/pull/100), with both native samples, renderer checks and clear reviews. Final-head CI and merge tracked in the PR; release remains separate. |
 | 11 | LB-016, in-app assessment | Define how learners answer non-code exercises, compare standard and tutor-authored interactions, and select one bounded prototype. |
 | 12 | LB-015, interactive reading | Choose or reject a small learner-useful experiment. Discovery does not commit to building every idea. |
 
@@ -53,7 +53,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Pinned types, runtime schema, adapter and renderer fixtures | S02, S11 | Implemented |
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Native Claude/Codex transitions; capability and control regressions; PR #97 | S06 | Implemented |
 | [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | PR #98 merged at `4c0258c`; reviewed gate, native first-turn evidence and green Windows CI | S08 | Implemented |
-| [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | Finite inventory, both native samples and source regressions; task `01a0ddd5`, branch `codex/lb-009-context-usage` | S13 | In progress |
+| [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | PR #100; reviewed source, both native samples, renderer checks and passing pnpm check; task `01a0ddd5`, branch `codex/lb-009-context-usage` | S13 | Ready |
 | [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Reproduced ambiguous labels; identity regressions and renderer verified | S01 | Implemented |
 | [LB-011](experience.md#lb-011) | Streaming chat pulls the reader back down | Bug / behavior change | P2 | Reproduced snap-back; 12 hook regressions and both renderer consumers verified | S05 | Implemented |
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |
