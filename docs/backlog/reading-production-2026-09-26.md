@@ -2,7 +2,7 @@
 
 LB-015 owner task `01a0ddfc-3365-7a51-bc76-1503db3a117a`, branch
 `codex/lb-015-new-course-highlights`, baseline `d9d3d08bb1336dae4564e7677f18ef3f7c57c1b8`.
-Status: implemented for new courses, in review in [PR #106](https://github.com/sqmch/lerience/pull/106). ADR-045 accepts the narrow
+Status: implemented for new courses in [PR #106](https://github.com/sqmch/lerience/pull/106), merged at `e829979` after green final-head Windows CI. ADR-045 accepts the narrow
 new-course authority. Earlier PR #104 was a memory-only visual prototype.
 
 Engine 0.4.0 negotiates portable learner highlights separately from assessment. Production
