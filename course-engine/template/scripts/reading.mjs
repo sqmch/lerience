@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { URL, pathToFileURL } from "node:url";
 import { validate } from "./validate.mjs";
 import { EXTRACTION, extractPassages, matchPassage } from "./reading-extract.mjs";
 const MAX_STORE = 1024 * 1024,

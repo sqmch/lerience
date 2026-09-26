@@ -45,5 +45,21 @@ and quiz bytes stayed unchanged. The initial native probe caught a sandbox-incom
 import from the channel constant; the constant now uses the existing shared IPC module. Both
 attempts have persistent logs. No provider, private course, foreground takeover or release ran.
 
-Full local source gate, independent review and final-head hosted CI are pending. Evidence is
-bounded storage/interaction acceptance, not a claim of learning benefit or screen-reader acceptance.
+Independent Standards and Spec reviews cleared correction head `8434b4f`. Its hosted Windows
+run passed all 609 app tests with 6 skipped and all 76 engine tests, then found two lint issues.
+The correction imports Node URL explicitly and gives the read-generation cleanup a stable
+callback. Final-head CI remains the merge gate.
+
+The local full `pnpm check` attempt passed publication/type/harness checks but ended with
+580 app tests passed, 6 failed, 6 skipped and 4 worker-start errors. Failures included the
+existing piped PowerShell launcher, timeouts in provider/updater/runtime tests and a reading
+service case that had passed in isolation. No timeout or test configuration was weakened.
+Remaining engine, lint and build stages are recorded separately before handoff. This is
+bounded storage/interaction acceptance, not learning-benefit or screen-reader acceptance.
+
+The owned browser and port 5297 preview server were stopped; both hidden probes exited.
+Native logs and screenshots were retained outside the repository. Automatic approval review
+rejected deletion of two verified reading-only temporary fixtures with a generic policy block.
+They remain at `%TEMP%/lerience-reading-native-1o5veV` and
+`%TEMP%/lerience-reading-native-6y430f`; deletion was not retried. The six assessment fixtures
+were not touched.

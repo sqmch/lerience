@@ -106,12 +106,13 @@ export function ReadingLesson({
         setFailure("Highlights could not be read. Retry from the Lesson menu.");
     }
   }, [courseRoot, moduleId]);
+  const invalidateRead = useCallback(() => {
+    generation.current++;
+  }, []);
   useEffect(() => {
     void refresh();
-    return () => {
-      generation.current++;
-    };
-  }, [refresh, markdown]);
+    return invalidateRead;
+  }, [refresh, markdown, invalidateRead]);
   useEffect(() => {
     const prevent = (event: BeforeUnloadEvent): void => {
       if (busy || pending) {
