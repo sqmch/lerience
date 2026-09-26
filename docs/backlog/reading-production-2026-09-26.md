@@ -54,10 +54,10 @@ The local full `pnpm check` attempt passed publication/type/harness checks but e
 580 app tests passed, 6 failed, 6 skipped and 4 worker-start errors. Failures included the
 existing piped PowerShell launcher, timeouts in provider/updater/runtime tests and a reading
 service case that had passed in isolation. No timeout or test configuration was weakened.
-A separate local engine run passed 73 tests and hit timeouts in three existing Electron QA
-cleanup cases; all seven reading engine cases passed. No native matrix was repeated. ESLint
+A separate local engine run passed 73 tests and failed three existing Electron QA cleanup
+cases: two process timeouts and one cleanup EPERM. All seven reading engine cases passed. No native matrix was repeated. ESLint
 passed after the two corrections. Local formatter-only LF normalization produced no Git delta.
-Final formatting/build results and exact-head fullcheck CI are recorded in PR #106. This is
+Final local formatting and production build passed. Exact-head fullcheck CI is recorded in PR #106. This is
 bounded storage/interaction acceptance, not learning-benefit or screen-reader acceptance.
 
 The owned browser and port 5297 preview server were stopped; both hidden probes exited.
