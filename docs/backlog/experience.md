@@ -289,7 +289,7 @@ learner comparison. Durable marks belong to the learner; the proposed portable e
 would require a separate accepted ownership/compatibility decision before production writes.
 This proposal does not change lesson text, assessment records or progress authority.
 
-Discovery-ready means this recommendation can be reviewed. No sketch was built, no learner run
+At the discovery handoff, no sketch was built, no learner run
 was conducted, and no persistent highlighting or production authority has been implemented or
 accepted. The related LB-016 design merged in PR #101 at `f1c022f` with green final-head Windows
 CI; that merge accepts neither its assessment prototype nor its proposed portable-record authority.
@@ -298,3 +298,19 @@ Documentation validation on Windows x64, Node 24.18.0: publication preflight and
 checks passed; all 37 local links and anchors across the three changed documents resolved.
 Repository formatting excludes `docs/`. No full local `pnpm check` was needed for this docs-only
 change; final-head hosted CI remains the merge gate. No runtime or learner acceptance is claimed.
+
+### Authorized visual prototype, 2026-09-26
+
+The [reading preview](reading-preview-2026-09-26.md) implements the optional mark/return/remove
+interaction in a development-only synthetic Lesson. Owner task remains
+`01a0ddfc-3365-7a51-bc76-1503db3a117a`, now on `codex/lb-015-reading-visual-prototype` from
+`df8fc62`. The original discovery PR #102 merged at `f1f88a2`.
+
+Marks survive leaving and revisiting the Lesson within the mounted fixture, and reset on
+reload. They never write course files or learning progress. Original/inserted/changed/ambiguous/
+missing-passage variants, pointer selection, keyboard entry, tutor independence and light/dark
+views have renderer evidence. Production storage and the next-day learner comparison remain
+separate, as does native assistive-technology acceptance. The preview record names its limits.
+
+The related assessment visual preview PR #103 merged at `df8fc62`, with green final-head Windows
+CI. Its provisional appearance acceptance does not accept either feature's persistence authority.

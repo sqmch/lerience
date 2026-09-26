@@ -31,8 +31,8 @@ independently; they do not need to wait for the recovery investigation.
 | 8 | LB-007, then LB-008, tutor controls | LB-007 implemented in [PR #97](https://github.com/sqmch/lerience/pull/97), merged at `4b0e5b0`. LB-008 implemented in [PR #98](https://github.com/sqmch/lerience/pull/98), merged at `4c0258c`. Both passed final-head Windows CI; release remains separate. |
 | 9 | LB-014, Windows window flashes | [Bounded native investigation](console-investigation-2026-09-26.md) found no visible console during the app-owned doctor run. No launch change justified. Capture an actual flash before reopening; proceed to LB-009. |
 | 10 | LB-009, context visibility | Implemented in [PR #100](https://github.com/sqmch/lerience/pull/100), merged at `affd3a4` after green final-head Windows CI, with both native samples and renderer evidence. Release remains separate. |
-| 11 | LB-016, in-app assessment | Discovery PR #101 merged at `f1c022f`. The learner provisionally accepted the [visual preview](assessment-preview-2026-09-26.md) direction and clarified optional assessment alongside open-ended or mixed Briefs; portable-record authority remains separate. |
-| 12 | LB-015, interactive reading | [Discovery recommendation ready](reading-design-2026-09-26.md): one disposable Lesson-only saved-highlight experiment for returning to passages. Evaluate usefulness before accepting production storage authority or expanding the feature. |
+| 11 | LB-016, in-app assessment | Development-only [visual preview PR #103](https://github.com/sqmch/lerience/pull/103) merged at `df8fc62` after green final-head CI. The learner provisionally accepted the direction with optional, open-ended or mixed Briefs; portable-record authority and production implementation remain separate. |
+| 12 | LB-015, interactive reading | [Visual preview ready](reading-preview-2026-09-26.md): optional saved highlights in a synthetic Lesson, held in memory only. Review the interaction before production storage authority or next-day learner evaluation. |
 
 These are work packages, not estimates or a promise to finish each package in one sitting.
 
@@ -59,7 +59,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | PR #96 merged at `406c399`; renderer and CI verified | S04 | Implemented |
 | [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Native doctor/Git path observed; flash not reproduced; actual window ancestry missing | S12 | Blocked |
-| [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | [Design PR #102](https://github.com/sqmch/lerience/pull/102); owner task `01a0ddfc`, branch `codex/lb-015-reading-design`; learner evaluation and production authority remain | S15 | Discovery-ready |
+| [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | [Reading preview](reading-preview-2026-09-26.md); owner task `01a0ddfc`, branch `codex/lb-015-reading-visual-prototype`; no durable storage or learner-usefulness claim | S15 | Visual prototype ready |
 | [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | [Visual preview](assessment-preview-2026-09-26.md); owner task `01a0ddef`, branch `codex/lb-016-assessment-visual-prototype`; synthetic interaction verified, direction provisionally accepted with optional/mixed activities; portable-record authority remains separate | S17 | Visual prototype ready |
 
 ## Source coverage

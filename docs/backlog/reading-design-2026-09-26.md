@@ -4,6 +4,10 @@ LB-015, source [S15](intake-2026-09-25.md#s15). Baseline `f1c022fb517862205857f2
 Owner task `01a0ddfc-3365-7a51-bc76-1503db3a117a`, branch `codex/lb-015-reading-design`.
 Status: proposed experiment, ready for product review. No implementation or learner evidence.
 
+This is the original discovery record. The later authorized development-only
+[visual preview](reading-preview-2026-09-26.md) has separate evidence and limits; it does not
+accept the production persistence proposal below.
+
 ## Recommendation
 
 Try one disposable Lesson-only experiment: save a highlighted passage and return to it from a

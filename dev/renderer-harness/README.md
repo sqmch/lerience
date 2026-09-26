@@ -104,6 +104,35 @@ For a clean review, compare a 1440 by 1000 desktop with a 1100 by 1000 window wh
 pane reaches the supported 420-pixel floor. Use the existing separators to resize. The
 learner's content scrolls within its pane; primary actions remain in document order.
 
+## Reading interaction preview
+
+Open `/?screen=reading&bar=hidden&theme=light`, or select `reading` in the harness.
+The original parcel-tray lesson uses the production CourseView, Lesson pane, DocMarkdown and
+bundled fonts. Marking is optional; its Brief remains a sketch/discussion activity without a form.
+
+Select text within one prose paragraph and choose Highlight. The separate Highlights list
+opens the original passage or removes the mark. Highlight a passage offers the same operation
+with a paragraph picker and a read-only text field for keyboard selection. With no text selected
+in that field, Highlight passage saves the whole paragraph. Escape closes dialogs and restores
+focus. CSS Custom Highlight ranges paint a quiet fill and underline without rewriting markdown,
+links or normal selection. This preview requires a browser with that API, such as current Chromium.
+
+The small development menu changes the synthetic lesson between original, inserted, changed,
+ambiguous and missing-passage versions. First save a Collection passage in original, then change
+the version. Only the inserted variant can relocate that passage, with a lesson-changed notice.
+The other three keep its quote and context in the list without a false jump target. Returning to
+original restores the match. Tutor ready/busy/unavailable examples change only the stub seminar;
+highlight actions never send messages. Version changes preserve the viewport's scroll offset.
+
+Marks live only in the mounted fixture's memory. Switching Lesson/Brief retains them; reload,
+leaving the fixture or toggling the general harness bar resets them. Nothing writes a course,
+app-data, browser storage, progress or assessment records. The fixture uses named revisions,
+not a production digest/format contract. The single-lesson preview places its list beside the
+reading entry point; a course-wide rail list and deleted-module recovery are not implemented.
+
+The [reading preview evidence](../../docs/backlog/reading-preview-2026-09-26.md) separates
+renderer verification, the existing shell's zoom limitation and the outstanding learner run.
+
 ## Tool adapter
 
 The `context-seminar` and `context-onboarding` fixtures show a synthetic provider context sample

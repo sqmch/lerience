@@ -234,6 +234,7 @@ function QuizSchedule({ items }: { items: CourseQuizItem[] }): React.JSX.Element
 }
 
 export function MaterialPane({
+  lessonPreview,
   activeModule,
   docs,
   quiz,
@@ -244,6 +245,7 @@ export function MaterialPane({
   onOpenLab,
   briefSupplement,
 }: {
+  lessonPreview?: React.ReactNode;
   activeModule: CourseModule | null;
   docs: CourseDocs;
   quiz: CourseQuizItem[];
@@ -380,10 +382,11 @@ export function MaterialPane({
         )}
 
         <Tabs.Content value="lesson">
-          {doc(lesson, activeModule.lessonPath !== null, {
-            title: "No lesson yet",
-            desc: "Your tutor writes this module's lesson when you start it.",
-          })}
+          {lessonPreview ??
+            doc(lesson, activeModule.lessonPath !== null, {
+              title: "No lesson yet",
+              desc: "Your tutor writes this module's lesson when you start it.",
+            })}
         </Tabs.Content>
 
         <Tabs.Content value="brief">
