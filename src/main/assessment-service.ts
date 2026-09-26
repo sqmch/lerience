@@ -100,6 +100,7 @@ export class AssessmentService {
       maxOutputBytes: 2 * 1024 * 1024,
       serviceName: "Lerience assessment",
       input: command,
+      ipcReply: true,
     });
     if (result.termination !== "exit" || result.exitCode !== 0)
       return {

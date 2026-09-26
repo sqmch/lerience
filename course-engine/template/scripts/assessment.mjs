@@ -548,9 +548,13 @@ if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === imp
   const [root, moduleId, operation, mode] = process.argv.slice(2);
   const run = (input) => {
     const result = assessmentOperation(root, { ...input, moduleId, operation });
-    process.stdout.write(JSON.stringify(result) + "\n", () => {
-      if (mode === "--ipc") process.exit(0);
-    });
+    const reply = JSON.stringify(result) + "\n";
+    if (mode === "--ipc" && process.parentPort) {
+      process.parentPort.once("message", ({ data }) => {
+        if (data === "reply-received") process.exit(0);
+      });
+      process.parentPort.postMessage(reply);
+    } else process.stdout.write(reply);
   };
   if (mode === "--ipc" && process.parentPort)
     process.parentPort.once("message", ({ data }) => {

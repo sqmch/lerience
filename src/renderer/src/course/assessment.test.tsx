@@ -44,10 +44,13 @@ async function fill(id: string, value: string) {
 it("real controls save raw edits, validate, submit once, reopen immutable history and revise", async () => {
   const store = createAssessmentFixtureStore();
   const command = vi.fn(store);
-  window.praxeum = {
-    assessment: command,
-    onCourseChanged: () => () => undefined,
-  } as unknown as typeof window.praxeum;
+  Object.defineProperty(window, "praxeum", {
+    configurable: true,
+    value: {
+      assessment: command,
+      onCourseChanged: () => () => undefined,
+    } as unknown as typeof window.praxeum,
+  });
   const dirty = vi.fn();
   await act(() =>
     root.render(
@@ -91,10 +94,13 @@ it("real controls save raw edits, validate, submit once, reopen immutable histor
 });
 it("failed save keeps input and blocks exit until retry is acknowledged", async () => {
   const store = createAssessmentFixtureStore("save-error");
-  window.praxeum = {
-    assessment: store,
-    onCourseChanged: () => () => undefined,
-  } as unknown as typeof window.praxeum;
+  Object.defineProperty(window, "praxeum", {
+    configurable: true,
+    value: {
+      assessment: store,
+      onCourseChanged: () => () => undefined,
+    } as unknown as typeof window.praxeum,
+  });
   const dirty = vi.fn();
   await act(() =>
     root.render(
@@ -115,15 +121,18 @@ it("failed save keeps input and blocks exit until retry is acknowledged", async 
 it("late response from an unmounted course cannot replace the new course view", async () => {
   let release!: (value: AssessmentReply) => void;
   const store = createAssessmentFixtureStore();
-  window.praxeum = {
-    assessment: (course: string, c: AssessmentCommand) =>
-      course === "old"
-        ? new Promise<AssessmentReply>((resolve) => {
-            release = resolve;
-          })
-        : store(course, c),
-    onCourseChanged: () => () => undefined,
-  } as unknown as typeof window.praxeum;
+  Object.defineProperty(window, "praxeum", {
+    configurable: true,
+    value: {
+      assessment: (course: string, c: AssessmentCommand) =>
+        course === "old"
+          ? new Promise<AssessmentReply>((resolve) => {
+              release = resolve;
+            })
+          : store(course, c),
+      onCourseChanged: () => () => undefined,
+    } as unknown as typeof window.praxeum,
+  });
   const dirty = () => undefined;
   await act(() =>
     root.render(
@@ -164,10 +173,13 @@ it("reconciles a committed save with lost acknowledgement before saving newer ty
     }
     return await store(course, c);
   });
-  window.praxeum = {
-    assessment: bridge,
-    onCourseChanged: () => () => undefined,
-  } as unknown as typeof window.praxeum;
+  Object.defineProperty(window, "praxeum", {
+    configurable: true,
+    value: {
+      assessment: bridge,
+      onCourseChanged: () => () => undefined,
+    } as unknown as typeof window.praxeum,
+  });
   const dirty = vi.fn();
   await act(() =>
     root.render(

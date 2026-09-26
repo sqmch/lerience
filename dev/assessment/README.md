@@ -2,7 +2,7 @@
 
 The probe creates a fresh synthetic course through CourseCreator and exercises the real
 preload, assessment service and Electron utility-process writer in hidden windows. It verifies
-large input transport, local save/submit/reopen, copied history and a near-limit flushed reply.
+large input transport, local save/submit/reopen, copied history and a near-limit acknowledged IPC reply.
 It makes no provider call and changes no installed app or private course.
 
 Build the app first so the real preload exists. Bundle `run.ts` with Vite SSR into
