@@ -149,3 +149,39 @@ test("extraction keeps UTF16 and inline link/emphasis text; teaching blocks rema
     { index: 0, heading: "Meaning", text: "A bold link, code, & \u{1f600}." },
   ]);
 });
+test("existing scalar JSON is corrupt, never missing; external edits and quota refusal preserve bytes", () => {
+  const { root, command } = fixture();
+  fs.mkdirSync(path.join(root, "tutor"));
+  const file = path.join(root, "tutor/reading-marks.json");
+  for (const bytes of ["null", "false", "0", '""']) {
+    fs.writeFileSync(file, bytes);
+    assert.equal(readingOperation(root, command).ok, false);
+    assert.equal(fs.readFileSync(file, "utf8"), bytes);
+  }
+  fs.unlinkSync(file);
+  const external = '{"external":true}';
+  assert.equal(
+    readingOperation(root, command, { beforeCommit: () => fs.writeFileSync(file, external) }).ok,
+    false,
+  );
+  assert.equal(fs.readFileSync(file, "utf8"), external);
+  fs.unlinkSync(file);
+  const saved = readingOperation(root, command);
+  assert.equal(saved.ok, true);
+  const record = JSON.parse(fs.readFileSync(file, "utf8"));
+  record.marks = Array.from({ length: 200 }, () => ({ ...record.marks[0], id: randomUUID() }));
+  fs.writeFileSync(file, JSON.stringify(record));
+  const before = fs.readFileSync(file, "utf8");
+  assert.equal(
+    readingOperation(root, {
+      ...command,
+      id: randomUUID(),
+      revision: 1,
+      start: 0,
+      end: 1,
+      quote: command.text.slice(0, 1),
+    }).ok,
+    false,
+  );
+  assert.equal(fs.readFileSync(file, "utf8"), before);
+});

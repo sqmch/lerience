@@ -1,3 +1,4 @@
+import { CourseMarkdown } from "../components/markdown-view";
 /* The course surface: the frame it wears, the three columns, and the two
  * course-scoped overlays (ADR-019).
  *
@@ -122,6 +123,7 @@ export function CourseView({
     readingUnsaved.current = value;
   }, []);
   const openReadingMark = useCallback((mark: ReadingMark) => {
+    if (readingUnsaved.current) return;
     setSelectedId(mark.moduleId);
     setTab("lesson");
     setReadingTarget(mark.id);
@@ -302,18 +304,24 @@ export function CourseView({
               )
             }
             lessonContent={
-              active && active.lessonPath && docs[active.lessonPath] !== undefined ? (
-                <ReadingLesson
-                  key={`${course.rootPath}:${active.id}`}
-                  markdown={docs[active.lessonPath]!}
-                  moduleId={active.id}
-                  courseRoot={course.rootPath}
-                  availableModules={data.modules.map((m) => m.id)}
-                  onOpenMark={openReadingMark}
-                  targetId={readingTarget}
-                  onUnsaved={onReadingUnsaved}
-                />
-              ) : undefined
+              <ReadingLesson
+                key={`${course.rootPath}:${active?.id ?? "archive"}`}
+                markdown={active?.lessonPath ? (docs[active.lessonPath] ?? null) : null}
+                moduleId={active?.id ?? null}
+                courseRoot={course.rootPath}
+                availableModules={data.modules.map((m) => m.id)}
+                onOpenMark={openReadingMark}
+                targetId={readingTarget}
+                onUnsaved={onReadingUnsaved}
+              >
+                {!active && data.courseDoc ? (
+                  <CourseMarkdown markdown={data.courseDoc} />
+                ) : (
+                  <p className="text-ink-dim text-sm">
+                    {active ? "The Lesson is not available." : "No modules are available."}
+                  </p>
+                )}
+              </ReadingLesson>
             }
             docs={docs}
             quiz={data.quiz}

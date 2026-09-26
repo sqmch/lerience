@@ -12,6 +12,7 @@
     "dev/recovery/run.ts",
     "dev/model-choice/run.ts",
     "dev/assessment/run.ts",
+    "dev/reading/run.ts",
     "electron.vite.config.ts",
     "vitest.config.ts",
     "eslint.config.js"

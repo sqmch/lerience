@@ -1,3 +1,4 @@
+export const READING_CHANNEL = "praxeum:reading";
 import type { ReadingCommand, ReadingReply } from "./reading";
 /* The IPC contract between renderer and main. Pattern: every channel gets a
    named constant and a typed reply here, the preload exposes a method per

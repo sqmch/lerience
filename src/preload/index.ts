@@ -1,4 +1,4 @@
-import { READING_CHANNEL } from "../shared/reading";
+import { READING_CHANNEL } from "../shared/ipc";
 import { contextBridge, ipcRenderer } from "electron";
 import {
   ASSESSMENT_CHANNEL,

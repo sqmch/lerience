@@ -117,14 +117,10 @@ The other three keep its quote and context in the list without a false jump targ
 original restores the match. Tutor ready/busy/unavailable examples change only the stub seminar;
 highlight actions never send messages. Version changes preserve the viewport's scroll offset.
 
-Marks live only in the mounted fixture's memory. Switching Lesson/Brief retains them; reload,
-leaving the fixture or toggling the general harness bar resets them. Nothing writes a course,
-app-data, browser storage, progress or assessment records. The fixture uses named revisions,
-not a production digest/format contract. The single-lesson preview opens its list contextually;
-a course-wide rail list and deleted-module recovery are not implemented.
-
-The [reading preview evidence](../../docs/backlog/reading-preview-2026-09-26.md) separates
-renderer verification, the existing shell's zoom limitation and the outstanding learner run.
+The harness uses the production ReadingLesson component and a memory-only storage adapter.
+Reloading clears this synthetic store. Production courses negotiate the engine-owned portable
+format under ADR-045; see [production evidence](../../docs/backlog/reading-production-2026-09-26.md).
+The original preview record is historical and does not describe production persistence.
 
 ## Tool adapter
 

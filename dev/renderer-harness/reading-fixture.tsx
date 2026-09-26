@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CourseView } from "../../src/renderer/src/course/course-view";
 import { Menu } from "../../src/renderer/src/components/menu";
 import { READING_COURSE } from "./reading-material";
-import { READING_REVISIONS } from "./reading-state";
+import { READING_REVISIONS, type ReadingRevision } from "./reading-state";
 import { readingPreviewStore } from "./reading-store";
 export type ReadingTutor = "ready" | "busy" | "unavailable";
 export const readingBridge: { setTutor: (state: ReadingTutor) => void } = {

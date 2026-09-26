@@ -1,3 +1,4 @@
+import { ReadingLesson } from "./course/reading";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CourseSnapshot, DashboardCourse, OpenCourseReply, PingReply } from "../../shared/ipc";
 import { CourseDashboard } from "./components/course-dashboard";
@@ -34,6 +35,10 @@ type Boot =
     };
 
 export function App(): React.JSX.Element {
+  const archiveUnsaved = useRef(false);
+  const setArchiveUnsaved = useCallback((value: boolean) => {
+    archiveUnsaved.current = value;
+  }, []);
   const [boot, setBoot] = useState<Boot>({ phase: "booting" });
   /* One probe for the window, rather than one per surface that happens to show
      a tutor control. The dashboard's menu reads it, and so does the first-run
@@ -230,13 +235,28 @@ export function App(): React.JSX.Element {
        window's title bar carries the way out and the course's name, and only
        the surface knows either of them. */
     return (
-      <OnboardingSurface
+      <ReadingLesson
         key={boot.course.rootPath}
-        course={boot.course}
-        justCreated={boot.justCreated}
-        onLeaveCourse={leaveCourse}
-        onEnterCourse={enterCourseView}
-      />
+        courseRoot={boot.course.rootPath}
+        moduleId={null}
+        markdown={null}
+        availableModules={[]}
+        onOpenMark={() => {}}
+        targetId={null}
+        onUnsaved={setArchiveUnsaved}
+      >
+        <OnboardingSurface
+          key={boot.course.rootPath}
+          course={boot.course}
+          justCreated={boot.justCreated}
+          onLeaveCourse={() => {
+            if (!archiveUnsaved.current) leaveCourse();
+          }}
+          onEnterCourse={() => {
+            if (!archiveUnsaved.current) enterCourseView();
+          }}
+        />
+      </ReadingLesson>
     );
   }
 

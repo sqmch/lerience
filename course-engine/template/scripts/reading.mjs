@@ -141,14 +141,26 @@ function checkRecord(record, courseId) {
       fail("A saved highlight is inconsistent. The file was preserved.");
   }
 }
+function storedRecord(root) {
+  try {
+    contained(root, RECORD);
+  } catch (error) {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  }
+  return json(root, RECORD);
+}
 function inspect(root, courseId, moduleId) {
-  const stored = json(root, RECORD, true);
-  const record = (stored ? JSON.parse(JSON.stringify(stored)) : null) ?? {
-    schemaVersion: 1,
-    courseId,
-    revision: 0,
-    marks: [],
-  };
+  const stored = storedRecord(root);
+  const record =
+    stored !== undefined
+      ? JSON.parse(JSON.stringify(stored))
+      : {
+          schemaVersion: 1,
+          courseId,
+          revision: 0,
+          marks: [],
+        };
   checkRecord(record, courseId);
   const current = moduleId ? source(root, moduleId) : null;
   const sources = new Map(moduleId ? [[moduleId, current]] : []);
@@ -279,7 +291,7 @@ export function readingOperation(courseRoot, request, { beforeCommit } = {}) {
       }
       try {
         beforeCommit?.();
-        if (!same(json(root, RECORD, true), stored))
+        if (!same(storedRecord(root), stored))
           fail("Highlights changed outside this window. No change was written.");
         if (
           request.operation === "add" &&

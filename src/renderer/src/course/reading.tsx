@@ -71,20 +71,23 @@ export function ReadingLesson({
   onOpenMark,
   targetId,
   onUnsaved,
+  children,
 }: {
-  markdown: string;
-  moduleId: string;
+  markdown: string | null;
+  moduleId: string | null;
   courseRoot: string;
   availableModules: readonly string[];
   onOpenMark: (mark: ReadingMark) => void;
   targetId: string | null;
   onUnsaved: (value: boolean) => void;
+  children?: ReactNode;
 }) {
   const [view, setView] = useState<ReadingView | null>(null);
   const [failure, setFailure] = useState("");
   const [pending, setPending] = useState<ReadingCommand | null>(null);
   const [busy, setBusy] = useState(false);
   const pendingRef = useRef<ReadingCommand | null>(null);
+  const inFlight = useRef(false);
   const generation = useRef(0);
   const marks = useMemo(() => view?.marks ?? [], [view]);
   const revision = view?.source?.digest ?? "";
@@ -109,9 +112,6 @@ export function ReadingLesson({
       generation.current++;
     };
   }, [refresh, markdown]);
-  useEffect(() => {
-    onUnsaved(busy || pending !== null);
-  }, [busy, pending, onUnsaved]);
   useEffect(() => {
     const prevent = (event: BeforeUnloadEvent): void => {
       if (busy || pending) {
@@ -154,6 +154,7 @@ export function ReadingLesson({
   const makeMark = useCallback(
     (passage: Passage, start: number, end: number): NewMark | null => {
       if (
+        !moduleId ||
         !supported ||
         view?.source?.markdown !== markdown ||
         start < 0 ||
@@ -193,8 +194,9 @@ export function ReadingLesson({
   );
 
   useEffect(() => {
-    const panel = root.current?.closest<HTMLElement>('[role="tabpanel"]');
-    if (!panel || (!supported && !failure)) return;
+    const panel = root.current?.closest<HTMLElement>('[role="tabpanel"]') ?? root.current;
+    if (!panel || (!supported && !failure) || (markdown === null && marks.length === 0 && !failure))
+      return;
     panel.setAttribute("aria-haspopup", "menu");
     panel.setAttribute("aria-keyshortcuts", "Shift+F10");
     const open = (event: MouseEvent | KeyboardEvent): void => {
@@ -234,7 +236,7 @@ export function ReadingLesson({
       panel.removeAttribute("aria-haspopup");
       panel.removeAttribute("aria-keyshortcuts");
     };
-  }, [supported, failure, passages, makeMark]);
+  }, [supported, failure, passages, makeMark, markdown, marks.length]);
 
   useLayoutEffect(() => {
     const button = popover.current;
@@ -319,7 +321,9 @@ export function ReadingLesson({
     });
   };
   const execute = async (command: ReadingCommand): Promise<void> => {
-    if (busy) return;
+    if (inFlight.current || (pendingRef.current && pendingRef.current !== command)) return;
+    inFlight.current = true;
+    onUnsaved(true);
     pendingRef.current = command;
     setPending(command);
     setBusy(true);
@@ -329,6 +333,7 @@ export function ReadingLesson({
       if (reply.ok) {
         setView(reply.view);
         pendingRef.current = null;
+        onUnsaved(false);
         setPending(null);
         setFailure("");
         setNotice(command.operation === "remove" ? "Highlight removed." : "Highlight saved.");
@@ -340,6 +345,7 @@ export function ReadingLesson({
       setFailure("Saving could not be confirmed. Retry the same action.");
       setDialog("failure");
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -350,11 +356,14 @@ export function ReadingLesson({
     setDialog(null);
     openingDialog.current = false;
     requestAnimationFrame(() =>
-      root.current?.closest<HTMLElement>('[role="tabpanel"]')?.focus({ preventScroll: true }),
+      (root.current?.closest<HTMLElement>('[role="tabpanel"]') ?? root.current)?.focus({
+        preventScroll: true,
+      }),
     );
   };
   const openPassage = useCallback(
     (mark: ReadingMark): void => {
+      if (pendingRef.current) return;
       const match = matchMark(mark);
       if (!match) {
         if (view?.matches[mark.id] && availableModules.includes(mark.moduleId)) onOpenMark(mark);
@@ -385,12 +394,22 @@ export function ReadingLesson({
   const paragraph = currentPassages.find((p) => p.index === chosen) ?? currentPassages[0];
 
   return (
-    <div ref={root} className="reading-marks">
+    <div
+      ref={root}
+      className={markdown === null ? "reading-marks h-full min-h-0" : "reading-marks"}
+      tabIndex={markdown === null ? 0 : undefined}
+      role={markdown === null ? "region" : undefined}
+      aria-label={markdown === null ? "Course reading" : undefined}
+    >
       <div role="status" className="sr-only">
         {notice}
       </div>
       <div onPointerUp={inspectSelection} onKeyUp={inspectSelection}>
-        <DocMarkdown markdown={markdown} moduleId={moduleId} className="prose max-w-none" />
+        {markdown !== null && moduleId ? (
+          <DocMarkdown markdown={markdown} moduleId={moduleId} className="prose max-w-none" />
+        ) : (
+          children
+        )}
       </div>
       {context && (
         <DropdownMenu.Root
@@ -417,9 +436,9 @@ export function ReadingLesson({
               onCloseAutoFocus={(event) => {
                 event.preventDefault();
                 if (!openingDialog.current)
-                  root.current
-                    ?.closest<HTMLElement>('[role="tabpanel"]')
-                    ?.focus({ preventScroll: true });
+                  (root.current?.closest<HTMLElement>('[role="tabpanel"]') ?? root.current)?.focus({
+                    preventScroll: true,
+                  });
               }}
             >
               {context.copy && (
@@ -508,7 +527,7 @@ export function ReadingLesson({
             {notice}
           </div>
           <p className="text-ink-dim mb-5 text-xs leading-normal">
-            The parcel tray · Held in preview memory. Reloading clears your marks.
+            Saved passages from this course.
           </p>
           {marks.length === 0 ? (
             <p className="font-course text-read leading-read">
@@ -526,7 +545,7 @@ export function ReadingLesson({
                   className="border-line-soft border-b py-4 first:pt-0 last:border-0 last:pb-0"
                 >
                   <p className="text-ink-dim mb-2 text-xs">
-                    {mark.moduleId} � {mark.heading.split(" / ").at(-1)}
+                    {mark.moduleId} / {mark.heading.split(" / ").at(-1)}
                   </p>
                   <p className="font-course text-read leading-read">{mark.quote}</p>
                   {!match ? (
@@ -547,6 +566,7 @@ export function ReadingLesson({
                       <button
                         type="button"
                         className={`${GHOST} -ml-2.5 text-xs`}
+                        disabled={busy || pending !== null}
                         onClick={() => openPassage(mark)}
                       >
                         Open passage
@@ -591,7 +611,7 @@ export function ReadingLesson({
       {dialog === "failure" && (
         <ReadingDialog title="Highlight storage" onClose={closeDialog}>
           <p role="alert" className="text-sm">
-            {failure || "Saving highlight�"}
+            {failure || "Saving highlight..."}
           </p>
           {pending?.operation === "add" && (
             <textarea
@@ -617,6 +637,7 @@ export function ReadingLesson({
               className={`${GHOST} text-sm`}
               onClick={() => {
                 pendingRef.current = null;
+                onUnsaved(false);
                 setPending(null);
                 void refresh();
                 closeDialog();

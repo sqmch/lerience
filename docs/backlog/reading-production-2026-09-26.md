@@ -20,3 +20,30 @@ Validation evidence will record focused engine/service/renderer cases, contextua
 checks, one disposable CourseCreator + real preload/utility save/reopen/copy run, full source
 checks, independent review and final-head hosted Windows CI. No provider matrix, private course
 inspection, existing-course migration, learner-benefit claim or distributable release is included.
+
+## Verification
+
+Windows x64, Node 24.18.0, pnpm 11.9.0. Seven engine cases cover portable save/remove,
+uncertain acknowledgement retry, duplicates/overlaps, source/revision/identity conflicts,
+conservative edited/missing anchors, linked paths, corrupt scalar records, external writes and
+quota refusal. Focused service tests cover inactive/legacy rejection and lost-reply recovery.
+Renderer regressions cover legacy reading, failed-write quote/ID retention, cross-module pending
+navigation, and the saved list after deleting the only lesson/module. A same-event navigation
+case verifies the synchronous guard before React commits its state update.
+
+Headless Chromium exercised 17 checks with the real production component: ordinary pointer
+selection/copy, actual right-click Copy/Highlight, unchanged lesson DOM, keyboard range saving,
+Shift+F10 / Context Menu, return focus, removal, Lesson reopen, conservative source changes,
+normal link context and zero tutor sends. Clean/selected/list screenshots were inspected.
+The harness storage adapter is memory-only; these checks do not prove persistence.
+
+The hidden native probe passed with Electron 43.4.0 / Node 24.18.1 after verified production and
+probe builds. It created a new CourseCreator course, used real preload and utility-process IPC,
+lost a post-commit acknowledgement and retried the same ID, reopened a renderer, copied the course
+without app-data, retained the missing-source quote, and removed it. Original lesson, progress
+and quiz bytes stayed unchanged. The initial native probe caught a sandbox-incompatible Zod
+import from the channel constant; the constant now uses the existing shared IPC module. Both
+attempts have persistent logs. No provider, private course, foreground takeover or release ran.
+
+Full local source gate, independent review and final-head hosted CI are pending. Evidence is
+bounded storage/interaction acceptance, not a claim of learning benefit or screen-reader acceptance.

@@ -1,3 +1,4 @@
+import type { ReadingCommand } from "../../src/shared/reading";
 import { readingPreviewStore } from "./reading-store";
 /* Mounts production renderer surfaces against a stubbed Lerience bridge.
 
@@ -554,7 +555,7 @@ function installBridge(
   };
   // @ts-expect-error — the harness supplies only what this surface touches.
   window.praxeum = {
-    reading: (_root, command) =>
+    reading: (_root: string, command: ReadingCommand) =>
       readingPreview
         ? readingPreviewStore.execute(command)
         : Promise.resolve({

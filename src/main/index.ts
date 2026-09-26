@@ -1,5 +1,5 @@
 import { ReadingService } from "./reading-service";
-import { READING_CHANNEL } from "../shared/reading";
+import { READING_CHANNEL } from "../shared/ipc";
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from "electron";
 import { spawn } from "node:child_process";
 import fs from "node:fs";

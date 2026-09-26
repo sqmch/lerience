@@ -1,5 +1,4 @@
 import { z } from "zod";
-export const READING_CHANNEL = "praxeum:reading";
 export const EXTRACTION_VERSION = "marked18-prose-v1" as const;
 const uuid = z.string().uuid();
 const moduleId = z.string().regex(/^[0-9]{2}-[a-z0-9-]{1,80}$/);

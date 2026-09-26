@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ReadingLesson } from "./reading";
-import type { ReadingCommand, ReadingView } from "../../../shared/reading";
+import type { ReadingCommand, ReadingView, ReadingMark } from "../../../shared/reading";
 const markdown = "# Rule\n\nA **bold** passage.\n";
 const base: ReadingView = {
   supported: true,
@@ -42,7 +42,10 @@ const tick = async () => {
     await new Promise((r) => setTimeout(r, 0));
   });
 };
-async function render(reading: (r: string, c: ReadingCommand) => Promise<unknown>) {
+async function render(
+  reading: (r: string, c: ReadingCommand) => Promise<unknown>,
+  options: { missing?: boolean; open?: (mark: ReadingMark) => void } = {},
+) {
   Object.defineProperty(window, "praxeum", {
     configurable: true,
     value: {
@@ -58,10 +61,10 @@ async function render(reading: (r: string, c: ReadingCommand) => Promise<unknown
       <div role="tabpanel" tabIndex={0}>
         <ReadingLesson
           courseRoot="fixture"
-          moduleId="00-rule"
-          markdown={markdown}
-          availableModules={["00-rule"]}
-          onOpenMark={() => {}}
+          moduleId={options.missing ? null : "00-rule"}
+          markdown={options.missing ? null : markdown}
+          availableModules={options.missing ? [] : ["00-rule", "01-other"]}
+          onOpenMark={options.open ?? (() => {})}
           targetId={null}
           onUnsaved={dirty}
         />
@@ -156,4 +159,123 @@ it("failed write retains quote and same ID for retry; only acknowledgement paint
   await new Promise((r) => setTimeout(r, 25));
   expect(document.activeElement?.tagName).toBe("P");
   expect(window.praxeum.sendSeminarMessage).not.toHaveBeenCalled();
+});
+const oldMark: ReadingMark = {
+  id: "00000000-0000-4000-8000-000000000016",
+  courseId: "00000000-0000-4000-8000-000000000015",
+  moduleId: "01-other",
+  lessonPath: "curriculum/01-other/LESSON.md",
+  sourceDigest: "b".repeat(64),
+  extractionVersion: "marked18-prose-v1",
+  index: 0,
+  heading: "Earlier",
+  text: "An earlier passage.",
+  quote: "earlier",
+  start: 3,
+  end: 10,
+  createdAt: "2026-09-26",
+};
+it("unconfirmed add cannot leave through another module; retry retains quote and identity", async () => {
+  const view = {
+    ...base,
+    marks: [oldMark],
+    matches: { [oldMark.id]: { index: 0, changed: false } },
+  };
+  const open = vi.fn(),
+    requests: ReadingCommand[] = [];
+  let finish: (reply: unknown) => void = () => {};
+  await render(
+    async (_r, c) => {
+      requests.push(c);
+      return c.operation === "read"
+        ? { ok: true, view }
+        : await new Promise((resolve) => {
+            finish = resolve;
+          });
+    },
+    { open },
+  );
+  await menu("Highlight a passage\u2026");
+  await click("Highlight passage");
+  await menu("Your highlights");
+  let button = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+    (b) => b.textContent === "Open passage",
+  )!;
+  expect(button.disabled).toBe(true);
+  await act(() => button.click());
+  expect(open).not.toHaveBeenCalled();
+  await act(() => finish({ ok: false, detail: "Acknowledgement lost." }));
+  await tick();
+  expect(document.querySelector("textarea")?.value).toBe("A bold passage.");
+  await click("Close");
+  await menu("Your highlights");
+  button = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+    (b) => b.textContent === "Open passage",
+  )!;
+  expect(button.disabled).toBe(true);
+  await act(() => button.click());
+  expect(open).not.toHaveBeenCalled();
+  await click("Close");
+  await menu("Highlight storage");
+  await click("Retry");
+  const writes = requests.filter((c) => c.operation === "add");
+  expect(writes).toHaveLength(2);
+  expect(writes[0]).toEqual(writes[1]);
+  await act(() => finish({ ok: false, detail: "Still pending." }));
+  await tick();
+});
+it("deleted only lesson/module retains contextual access to saved quote and removal", async () => {
+  let view: ReadingView = {
+    ...base,
+    source: null,
+    marks: [oldMark],
+    matches: { [oldMark.id]: null },
+  };
+  await render(
+    async (_r, c) => {
+      if (c.operation === "remove") view = { ...view, marks: [], matches: {}, revision: 1 };
+      return { ok: true, view };
+    },
+    { missing: true },
+  );
+  await menu("Your highlights");
+  expect(document.querySelector("dialog")?.textContent).toContain("earlier");
+  expect(document.querySelector("dialog")?.textContent).toContain("Passage changed or missing");
+  expect(document.querySelector("dialog")?.textContent).not.toContain("preview memory");
+  expect(
+    [...document.querySelectorAll("button")].some((b) => b.textContent === "Open passage"),
+  ).toBe(false);
+  await click("Remove");
+  expect(document.querySelectorAll("dialog article")).toHaveLength(0);
+});
+it("same-event removal and cross-module return cannot bypass the synchronous pending guard", async () => {
+  const view = {
+    ...base,
+    marks: [oldMark],
+    matches: { [oldMark.id]: { index: 0, changed: false } },
+  };
+  const open = vi.fn();
+  let finish: (value: unknown) => void = () => {};
+  await render(
+    async (_r, c) =>
+      c.operation === "read"
+        ? { ok: true, view }
+        : await new Promise((resolve) => {
+            finish = resolve;
+          }),
+    { open },
+  );
+  await menu("Your highlights");
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>("dialog button")];
+  const remove = buttons.find((b) => b.textContent === "Remove")!,
+    jump = buttons.find((b) => b.textContent === "Open passage")!;
+  await act(() => {
+    remove.click();
+    expect(dirty).toHaveBeenLastCalledWith(true);
+    jump.click();
+  });
+  expect(open).not.toHaveBeenCalled();
+  await act(() => finish({ ok: false, detail: "Not confirmed." }));
+  await tick();
+  expect(dirty).toHaveBeenLastCalledWith(true);
 });
