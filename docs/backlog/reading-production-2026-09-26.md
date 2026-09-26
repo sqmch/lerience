@@ -2,7 +2,7 @@
 
 LB-015 owner task `01a0ddfc-3365-7a51-bc76-1503db3a117a`, branch
 `codex/lb-015-new-course-highlights`, baseline `d9d3d08bb1336dae4564e7677f18ef3f7c57c1b8`.
-Status: production implementation and validation in progress. ADR-045 accepts the narrow
+Status: implemented for new courses, in review in [PR #106](https://github.com/sqmch/lerience/pull/106). ADR-045 accepts the narrow
 new-course authority. Earlier PR #104 was a memory-only visual prototype.
 
 Engine 0.4.0 negotiates portable learner highlights separately from assessment. Production
@@ -54,7 +54,10 @@ The local full `pnpm check` attempt passed publication/type/harness checks but e
 580 app tests passed, 6 failed, 6 skipped and 4 worker-start errors. Failures included the
 existing piped PowerShell launcher, timeouts in provider/updater/runtime tests and a reading
 service case that had passed in isolation. No timeout or test configuration was weakened.
-Remaining engine, lint and build stages are recorded separately before handoff. This is
+A separate local engine run passed 73 tests and hit timeouts in three existing Electron QA
+cleanup cases; all seven reading engine cases passed. No native matrix was repeated. ESLint
+passed after the two corrections. Local formatter-only LF normalization produced no Git delta.
+Final formatting/build results and exact-head fullcheck CI are recorded in PR #106. This is
 bounded storage/interaction acceptance, not learning-benefit or screen-reader acceptance.
 
 The owned browser and port 5297 preview server were stopped; both hidden probes exited.
