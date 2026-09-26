@@ -4,8 +4,8 @@ LB-016. Branch `codex/lb-016-assessment-visual-prototype`, owner task `01a0ddef`
 baseline `f1f88a243c23e57b913630d31b472f03e2dc1e38`.
 
 [PR #103](https://github.com/sqmch/lerience/pull/103) contains the recoverable visual preview.
-Independent Standards and Spec reviews cleared source `a76fbad`; the subsequent supplemental
-Brief adjustment is reviewed at the final PR head. The learner provisionally accepted the
+Independent Standards and Spec reviews cleared source `0f68024`, including the supplemental
+Brief adjustment. The learner provisionally accepted the
 visual direction and clarified that assessment must remain optional. Neither decision accepts
 production persistence or changes learner authority.
 
@@ -65,12 +65,12 @@ development harness as before.
 Screenshot names are `initial-light.png`, `feedback-dark.png`, `narrow-light.png` and
 `save-error-narrow-dark.png`, plus `mixed-brief-light.png`, retained in the task's local visualizations directory and linked
 in the handoff. They contain only synthetic course data. The feedback view is scrolled to its
-actions; the rest of the course remains visible. No native-provider, disk-persistence, learner
-acceptance or learning-quality result is claimed. Full local `pnpm check` passed on Windows x64,
-Node 24.18.0 and pnpm 11.9.0 before the supplemental Brief adjustment: 595 application tests
-passed with six platform skips, 61 Course
-Engine tests passed, plus publication hygiene, both typecheck projects, harness build,
-lint/format and production build. Final-head review and hosted CI are recorded in the PR.
+actions; the rest of the course remains visible. No native-provider, disk-persistence or
+learning-quality result is claimed. Full local `pnpm check` passed on Windows x64,
+Node 24.18.0 and pnpm 11.9.0 at source `0f68024`: 597 application tests passed with six platform
+skips, 61 Course Engine tests passed, plus publication hygiene, both typecheck projects,
+harness build, lint/format and production build. The production renderer bundle contains none
+of the assessment fixture content. Hosted CI is recorded in the PR.
 
 The [portable-record proposal](assessment-design-2026-09-26.md) remains a separate product and
 architecture decision. This preview does not amend ADR-002/010 or ADR-012. LB-015 reading work
