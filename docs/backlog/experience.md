@@ -174,7 +174,9 @@ Evidence from headless Chromium against the existing `building` renderer fixture
 - Source gate: `pnpm check` on Windows x64, Node 24.18.0, pnpm 11.9.0. The PR records the
   local result and CI for its final head.
 
-Ready for review on `codex/lb-012-duration-layout`; merge and release remain separate.
+Implemented in [PR #95](https://github.com/sqmch/lerience/pull/95), merged at
+`715c5593d4870d8f5ed69da27e735805596e6b5f` after green final-head Windows x64 CI.
+Release remains separate.
 This is production-renderer evidence with synthetic data. Native Electron, packaging, provider
 turns, releases, and private-course changes are outside this fix. LB-013 remains separate.
 
@@ -183,20 +185,46 @@ turns, releases, and private-course changes are outside this fix. LB-013 remains
 
 P2, explicit UX request. Source S04.
 
+Owner: task `01a0dd80-161b-71a3-bbc9-43e4bf0050fd`, branch
+`codex/lb-013-control-labels`, started from current `main` at `715c559` on 2026-09-26.
+
 Labels such as "Full access · remembered" widen the controls and wrap the row. Remove the
 remembered suffix quietly while preserving saved choices and the actual selected-value label.
 This request does not ask to remove the Full access or Never ask controls.
 
-Code observed: [`SessionControlBar`](../../src/renderer/src/seminar/parts.tsx) appends the suffix for
-restored values. [ADR-040](../DECISIONS/ADR-040-remembered-session-controls.md) explicitly requires
-that wording. The new request authorizes changing that presentation rule; update the decision
-and affected expectations as part of the implementation. It does not require asking the
-learner to approve the same request again.
+Initial code observation: [`SessionControlBar`](../../src/renderer/src/seminar/parts.tsx) appended
+the suffix for restored values, as the original [ADR-040](../DECISIONS/ADR-040-remembered-session-controls.md)
+required. The request authorizes changing that presentation rule and its affected expectations.
 
 Done when restored controls render without the suffix, persistence still works, and current
 versus pending values remain honest. Preserve "next reply" when a choice is only staged; that
 is a different state. Verify narrow layouts and the relevant control tests. No redesign of
 permission storage or broader settings UI is needed.
+
+### Source fix and renderer evidence, 2026-09-26
+
+The shared control bar now appends a suffix only for pending values. Saved choices still show
+their actual model, effort, autonomy, and access labels. Full access and Never ask remain
+available. Preference storage, restoration metadata, per-course/provider isolation, and the
+provider's current/pending state are unchanged. ADR-040 and DESIGN now distinguish visible
+permission values from the unnecessary restoration suffix.
+
+- The shared renderer tests cover all four restored labels and pending access, autonomy,
+  default effort, and an unknown provider-reported model. The existing conductor regressions
+  cover saving, forgetting, restoration before the opener, runtime replacement, provider
+  isolation, and refusal of a restored choice.
+- Headless Chromium inspected production controls through the `controls-restored` fixture at
+  960px and 1280px window widths. Restored and staged states had no clipped labels, overlapping
+  controls, or horizontal overflow. At 960px the 360px seminar gives the controls 258px beside
+  Send; all labels stay on one line while the group wraps. At 1280px all restored values fit
+  on one row. Selecting Course folder retains `· next reply` while Full access is current.
+- Browser runtime errors: none. These are synthetic renderer states, not native provider or
+  installed-app acceptance. No provider calls, private-course edits, packaging, or release.
+- Source gate: `pnpm check` on Windows x64, Node 24.18.0, pnpm 11.9.0. The PR records the local
+  result and CI for its final head.
+
+Source fix in [PR #96](https://github.com/sqmch/lerience/pull/96) on
+`codex/lb-013-control-labels`; merge and release remain separate.
 
 <a id="lb-015"></a>
 ## LB-015: Explore interactive lesson reading

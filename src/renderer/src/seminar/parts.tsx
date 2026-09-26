@@ -452,15 +452,9 @@ export function SessionControlBar({
   const selected = { ...controls.current, ...controls.pending };
   const model = controls.models.find((candidate) => candidate.id === selected.model);
   const efforts = model?.efforts ?? [];
-  /* A value the app restored from this course's memory (ADR-040) says so on
-     the pill. It matters most for access: a sandbox grant that quietly comes
-     back is the one setting the learner must be able to see is in force. */
+  // Saved choices use their actual labels; only staged values need a suffix (ADR-040).
   const suffix = (key: "model" | "effort" | "autonomy" | "access"): string =>
-    controls.pending?.[key] !== undefined
-      ? " · next reply"
-      : controls.remembered?.includes(key)
-        ? " · remembered"
-        : "";
+    controls.pending?.[key] !== undefined ? " · next reply" : "";
   if (controls.models.length === 0 && controls.autonomy.length === 0 && !controls.access?.length)
     return null;
 

@@ -242,7 +242,7 @@ their behavior.
   pending, not active.
 - Model, effort, autonomy, and access changes are learner-initiated. A session starts from the
   learner's provider configuration, then re-applies the explicit choices the learner made for this
-  course last time, and the pill says "remembered" until the learner changes it (ADR-040). The
+  course last time. Pills show the actual selected values without a restoration suffix (ADR-040). The
   file-edit grant stays session-scoped. The app never edits provider auth or settings files.
 - Dangerous autonomy must be named plainly with its shell/course scope. Convenience is not grounds
   for silent escalation.

@@ -346,6 +346,7 @@ function installBridge(
   providerFault = false,
   activityFixture: ActivityFixture | null = null,
   scrollFixture = false,
+  restoredControls = false,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -469,6 +470,12 @@ function installBridge(
       access: "workspace-write",
     },
   };
+
+  if (restoredControls) {
+    sessionControls.current.autonomy = "never";
+    sessionControls.current.access = "danger-full-access";
+    sessionControls.remembered = ["model", "effort", "autonomy", "access"];
+  }
 
   // @ts-expect-error — the harness supplies only what this surface touches.
   window.praxeum = {
@@ -623,6 +630,7 @@ type Screen =
   | "scroll-onboarding"
   | "working"
   | "control-error"
+  | "controls-restored"
   | "connect";
 const SCREENS: Screen[] = [
   "choose-tutor",
@@ -638,6 +646,7 @@ const SCREENS: Screen[] = [
   "continuing",
   "settled",
   "control-error",
+  "controls-restored",
   "connect",
   ...STAGES,
 ];
@@ -659,6 +668,7 @@ function Harness(): React.JSX.Element {
     screen === "tutor-repair",
     screen === "background" || screen === "continuing" || screen === "settled" ? screen : null,
     screen === "scroll-seminar" || screen === "scroll-onboarding",
+    screen === "controls-restored",
   );
 
   if (!bar) {
@@ -782,6 +792,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
     screen === "scroll-seminar" ||
     screen === "working" ||
     screen === "control-error" ||
+    screen === "controls-restored" ||
     screen === "background" ||
     screen === "continuing" ||
     screen === "settled"

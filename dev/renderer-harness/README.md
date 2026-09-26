@@ -63,6 +63,11 @@ add another chunk: the reading position should stay put and `Jump to latest` sho
 Expand `Expand synthetic rich content` to exercise late table layout independently of new tokens.
 Check both manual scrolling back to the bottom and the jump button before adding another chunk.
 
+The `controls-restored` fixture shows saved model, effort, Never ask, and Full access values
+in the production course composer. Labels show the actual values without a restoration suffix.
+Choose another option to see the stub provider stage it with `· next reply`. Inspect both states
+at narrow seminar widths; this fixture does not exercise persistence or contact a provider.
+
 ## Tool adapter
 
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is
