@@ -754,7 +754,7 @@ export function ContextReadout({
         Context ~{usage.usedTokens.toLocaleString("en-US")} /{" "}
         {usage.capacityTokens.toLocaleString("en-US")} tokens
       </summary>
-      <p className="text-ink-dim mt-1 max-w-prose leading-relaxed">
+      <p className="text-ink-dim mt-1 max-w-prose leading-normal">
         {usage.source === "current-context"
           ? "Estimated context after the latest reply. The window is reported by your tutor provider and may reflect its compaction policy."
           : "Latest reported context estimate, including input and output tokens. It is a sample from the latest request, not a live count."}{" "}

@@ -246,6 +246,7 @@ export class CodexAgentSession implements AgentSession {
   private turnStart: Promise<void> | null = null;
   private currentTurnId: string | null = null;
   private completedTurnId: string | null = null;
+  private readonly earlyContextUsage = new Map<string, unknown>();
   private contextVisible = false;
   private compacting = false;
   private threadId: string | null = null;
@@ -494,6 +495,15 @@ export class CodexAgentSession implements AgentSession {
       }
       this.acceptPendingControls(pending);
       this.currentTurnId = response.turn.id;
+      const earlyUsage = this.earlyContextUsage.get(response.turn.id);
+      this.earlyContextUsage.clear();
+      if (earlyUsage !== undefined) {
+        this.handleNotification("thread/tokenUsage/updated", {
+          threadId: this.threadId,
+          turnId: response.turn.id,
+          tokenUsage: earlyUsage,
+        });
+      }
       const completion = this.earlyTurnCompletions.get(response.turn.id) ?? response.turn;
       this.earlyTurnCompletions.delete(response.turn.id);
       this.completeFromTurn(completion);
@@ -510,13 +520,12 @@ export class CodexAgentSession implements AgentSession {
 
     if (method === "thread/tokenUsage/updated") {
       if (params.threadId !== this.threadId || this.threadId === null || this.compacting) return;
-      if (this.currentTurnId !== null && params.turnId !== this.currentTurnId) return;
-      if (
-        this.currentTurnId === null &&
-        this.turnInFlight &&
-        params.turnId === this.completedTurnId
-      )
+      if (this.currentTurnId === null && this.turnInFlight) {
+        const turnId = nonEmptyString(params.turnId);
+        if (turnId !== null) this.earlyContextUsage.set(turnId, params.tokenUsage);
         return;
+      }
+      if (this.currentTurnId !== null && params.turnId !== this.currentTurnId) return;
       if (!this.turnInFlight && params.turnId !== this.completedTurnId) return;
       const usage = codexContextUsage(params.tokenUsage);
       this.contextVisible = usage !== null;
@@ -587,6 +596,7 @@ export class CodexAgentSession implements AgentSession {
   }
 
   private clearContext(): void {
+    this.earlyContextUsage.clear();
     if (this.contextVisible) this.output.push({ type: "context_usage", usage: null });
     this.contextVisible = false;
   }

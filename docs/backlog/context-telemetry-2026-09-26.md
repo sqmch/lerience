@@ -89,3 +89,15 @@ malformed/absent capacity, over-window estimates, thread/turn isolation, compact
 and stale Claude responses after model, turn and session changes. Conductor and reducer coverage
 checks live snapshot replacement and clearing on replacement/end. Rendered component coverage
 checks the disclosure and absent state. Final check and CI results belong in the PR handoff.
+
+The real renderer harness showed the line and keyboard-operated disclosure in the seminar at
+1280 by 900 and 1024 by 768, and in onboarding at 1024 by 768. The narrow seminar sample
+occupied 184 by 17 pixels and stayed inside its column without horizontal page overflow.
+Switching to a fixture without telemetry removed it. Screenshots remain in ignored `out/`.
+A `pnpm dev` startup with disposable app-data and window display suppressed verified the built
+entry, preload API and `currentSeminar()` IPC response, then exited. It did not contact a tutor.
+
+Review added a deferred `turn/start` regression: reports from two older Codex turns cannot
+populate the new session sample before acceptance. Early samples are buffered by turn ID and
+only the accepted turn's latest sample is released. The first full check caught an unsupported
+`leading-relaxed` token; it was replaced with the existing `leading-normal` design token.

@@ -99,6 +99,63 @@ async function events(iterator: AsyncIterator<AgentEvent>, count: number): Promi
 }
 
 describe("CodexAgentSession", () => {
+  it("holds early context for the accepted turn and discards every older turn's report", async () => {
+    const writeProof = vi.spyOn(courseWrite, "verifyCodexCourseWrite").mockResolvedValue(undefined);
+    const { connection, session } = setup();
+    const received: AgentEvent[] = [];
+    const pump = (async () => {
+      for await (const event of session.events) received.push(event);
+    })();
+    const report = (turnId: string, used: number): void =>
+      connection.emit("thread/tokenUsage/updated", {
+        threadId: "thread-1",
+        turnId,
+        tokenUsage: { last: { totalTokens: used }, modelContextWindow: 200000 },
+      });
+    try {
+      await session.describeControls();
+      for (const id of ["old-1", "old-2"]) {
+        connection.responses.set("turn/start", { turn: { id, status: "inProgress" } });
+        session.send(id);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        connection.emit("turn/completed", {
+          threadId: "thread-1",
+          turn: { id, status: "completed" },
+        });
+        expect(session.busy).toBe(false);
+      }
+      let accept!: (value: unknown) => void;
+      connection.responses.set(
+        "turn/start",
+        new Promise((resolve) => {
+          accept = resolve;
+        }),
+      );
+      session.send("new");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      report("old-1", 190000);
+      report("old-2", 180000);
+      report("new", 14000);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(received.filter((e) => e.type === "context_usage")).toEqual([]);
+      accept({ turn: { id: "new", status: "inProgress" } });
+      await vi.waitFor(() =>
+        expect(received.filter((e) => e.type === "context_usage")).toEqual([
+          {
+            type: "context_usage",
+            usage: { usedTokens: 14000, capacityTokens: 200000, source: "last-request" },
+          },
+        ]),
+      );
+      report("old-1", 199000);
+      await session.end();
+      await pump;
+      expect(received.filter((e) => e.type === "context_usage")).toHaveLength(1);
+    } finally {
+      await session.end();
+      writeProof.mockRestore();
+    }
+  });
   it("replaces context samples, clears on compaction/model/turn changes and excludes other threads", async () => {
     const writeProof = vi.spyOn(courseWrite, "verifyCodexCourseWrite").mockResolvedValue(undefined);
     const { connection, session } = setup();
