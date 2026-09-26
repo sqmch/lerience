@@ -146,6 +146,13 @@ Validation and limits:
   Claude has no typed effort readback in this control response; the representative Stop hook
   supplies separate effective-effort evidence.
 
+Source fix in [PR #97](https://github.com/sqmch/lerience/pull/97), branch
+`codex/lb-007-effort-options`. `pnpm check` passed on Windows x64 with Node 24.18.0 and
+pnpm 11.9.0: 560 application tests and 61 Course Engine tests passed, six platform tests
+skipped. A separate `pnpm dev` run verified native startup and preload with disposable
+app-data; it did not exercise an interactive picker. The PR records final-head CI.
+Merge, release and installed-app acceptance remain separate.
+
 Done when each model offers supported values with faithful display names, switching models
 handles an invalid prior effort, and accepted/rejected updates leave truthful current and
 pending state. Add adapter/control coverage and a native check where supported. Start with
