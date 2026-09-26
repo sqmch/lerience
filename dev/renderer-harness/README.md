@@ -56,6 +56,13 @@ Close the overlay, refresh the fixture or change its context, then reopen it to 
 and stock configuration. Custom iframe addresses are inspectable here; their
 `praxeum-visual:` content is served only by Electron, not this browser harness.
 
+The `scroll-seminar` and `scroll-onboarding` fixtures put a long synthetic reply in both production
+conversation layouts. `Stream chunk` adds prose and a code block through the stubbed event stream.
+While pinned, each chunk should keep the viewport at the bottom. Scroll upward a few pixels, then
+add another chunk: the reading position should stay put and `Jump to latest` should appear.
+Expand `Expand synthetic rich content` to exercise late table layout independently of new tokens.
+Check both manual scrolling back to the bottom and the jump button before adding another chunk.
+
 ## Tool adapter
 
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is

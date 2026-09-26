@@ -210,6 +210,9 @@ turns, learner turns, composer, thinking state, approvals, retry notices, queue 
 controls, and scroll-follow logic. A surface may compose those parts differently; it must not fork
 their behavior.
 
+- Conversation follows new content while pinned at the bottom. A small intentional upward scroll
+  releases follow immediately and shows `Jump to latest`; streamed words and late layout growth
+  preserve the reading position. Reaching the bottom manually or using the button resumes follow.
 - The composer grows with its content and remains usable while the tutor is working. What a
   mid-turn reply does is the provider's fact, reported by the app, never assumed. A provider that
   can steer takes the reply into the running turn and the composer says the tutor sees it at its

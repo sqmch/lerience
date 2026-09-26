@@ -30,7 +30,8 @@ accessible above the overlay. Cover the data identity in
 ### Investigation and source fix, 2026-09-26
 
 Source fix and validation: [PR #93](https://github.com/sqmch/lerience/pull/93), implementation
-commit `81b7f11`. Ready for review; merge and release remain separate.
+commit `81b7f11`. Merged on 2026-09-26 at `8db35b64966141b889fa81339e85d66b1537fa08`
+after final-head Windows CI passed. Implemented in source; release remains separate.
 
 The synthetic multi-module reproduction produces three identical-looking "The loop" choices.
 Their identities are different module/file pairs. `labEntries` already collapses repeated stock
@@ -71,6 +72,9 @@ No provider, native package, release, or existing-course update is part of this 
 ## LB-011: Small upward scrolls should release streaming auto-follow
 
 P2, bug and explicit behavior request. Source S05.
+
+Owner: task `01a0dd5a-0c85-74a3-980d-cc9814897fbb`, branch
+`codex/lb-011-streaming-scroll`, started from current `main` on 2026-09-26.
 
 During a long streamed reply, a small upward scroll snaps back to the bottom. The learner must
 scroll aggressively to read stationary text. Requested behavior: follow while at the bottom;
