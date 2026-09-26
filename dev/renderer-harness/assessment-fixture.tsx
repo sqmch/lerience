@@ -19,6 +19,7 @@ import {
 } from "./assessment-state";
 
 const MODULE_ID = "01-tracing-changes";
+const MIXED_ID = "02-implementing-the-rule";
 export const ASSESSMENT_COURSE: CourseSnapshot = {
   rootPath: "C:\\PraxeumFixture\\Courses\\State changes",
   folderName: "State changes",
@@ -49,7 +50,7 @@ export const ASSESSMENT_COURSE: CourseSnapshot = {
         checkAttempts: 0,
         hintsUsed: [],
         lessonPath: null,
-        briefPath: null,
+        briefPath: "curriculum/00-reading-state/BRIEF.md",
         quizPath: null,
       },
       {
@@ -71,21 +72,21 @@ export const ASSESSMENT_COURSE: CourseSnapshot = {
         quizPath: null,
       },
       {
-        id: "02-changing-the-rule",
-        title: "Changing the rule",
+        id: MIXED_ID,
+        title: "Implementing the rule",
         phase: 0,
         phaseName: "Follow the change",
-        runtime: "",
+        runtime: "node",
         estimatedHours: 0.5,
         status: "not-started",
         bossCheck: false,
         hasVisual: false,
-        hasChecks: false,
-        hasScaffold: false,
+        hasChecks: true,
+        hasScaffold: true,
         checkAttempts: 0,
         hintsUsed: [],
         lessonPath: null,
-        briefPath: null,
+        briefPath: `curriculum/${MIXED_ID}/BRIEF.md`,
         quizPath: null,
       },
     ],
@@ -93,6 +94,13 @@ export const ASSESSMENT_COURSE: CourseSnapshot = {
 };
 
 export function readAssessmentDoc(path: string): string | null {
+  if (path === "curriculum/00-reading-state/BRIEF.md")
+    return `# Read a state, describe a change
+
+Sketch two snapshots of a token bin, before and after an addition. Label what changed and
+what stayed the same. Discuss your sketch with the tutor when you are ready.
+
+This activity uses a sketch and a conversation. There is no answer form to fill in.`;
   if (path === `curriculum/${MODULE_ID}/LESSON.md`)
     return `# A change starts with the previous state
 
@@ -103,7 +111,33 @@ For example, a bin with capacity 5 starts with 3 tokens. Adding 1 leaves 4 store
 another 3 leaves 5 stored and spills 2. Each event starts where the previous event finished.
 
 In the Brief, trace a different sequence and explain the last change.`;
-  if (path === `curriculum/${MODULE_ID}/BRIEF.md`) return "# Trace the token bin";
+  const scenario =
+    "A bin holds up to **6 tokens** and starts with 2. Follow the events in order. Additions spill when the bin is full; removals stop at zero.";
+  if (path === `curriculum/${MODULE_ID}/BRIEF.md`) return `# Trace the token bin\n\n${scenario}`;
+  if (path === `curriculum/${MIXED_ID}/BRIEF.md`)
+    return `# Implement the bin rule
+
+Use **Open in editor** to work in \`scaffold/src/bin.ts\`. Implement one state transition:
+
+\`\`\`ts
+step(stored, event, capacity)
+// returns { stored, spilled }
+\`\`\`
+
+Keep stored tokens between zero and capacity. The spill count belongs to the current addition,
+not earlier events. Cover exact fill, overflow and removal past zero.
+
+Use **Run checks** to exercise your implementation. The project's check command is:
+
+\`\`\`sh
+npm test
+\`\`\`
+
+## Predict before running
+
+${scenario}
+
+The prediction below supports the coding task. Passing its number checks does not verify your code.`;
   return null;
 }
 
@@ -137,14 +171,6 @@ export function AssessmentResponse({
 
   return (
     <article aria-label="Trace the token bin" className="text-ink">
-      <h1 className="font-course text-hi text-2xl font-semibold leading-tight text-balance">
-        Trace the token bin
-      </h1>
-      <p className="font-course mt-4 text-read leading-read text-pretty">
-        A bin holds up to <strong className="text-hi font-semibold">6 tokens</strong> and starts
-        with 2. Follow the events in order. Additions spill when the bin is full; removals stop at
-        zero.
-      </p>
       <p className="text-ink-dim mt-3 text-sm leading-normal">
         Record the count after each change, then explain the last one.
       </p>
@@ -422,14 +448,19 @@ export function AssessmentFixture(): React.JSX.Element {
   const initial = PREVIEW_STATES.find((entry) => entry === requested) ?? "initial";
   const [preview, setPreview] = useState<PreviewState>(initial);
   const [state, dispatch] = useReducer(assessmentReducer, initial, initialAssessment);
+  const [mixedState, mixedDispatch] = useReducer(assessmentReducer, initial, initialAssessment);
   return (
     <>
       <CourseView
         course={ASSESSMENT_COURSE}
         initialTab="brief"
         onLeaveCourse={() => undefined}
-        renderBrief={(id) =>
-          id === MODULE_ID ? <AssessmentResponse state={state} dispatch={dispatch} /> : undefined
+        renderBriefSupplement={(id) =>
+          id === MODULE_ID ? (
+            <AssessmentResponse state={state} dispatch={dispatch} />
+          ) : id === MIXED_ID ? (
+            <AssessmentResponse state={mixedState} dispatch={mixedDispatch} />
+          ) : undefined
         }
       />
       <div className="bg-surface-raised border-line text-ink-dim fixed bottom-8 left-3 z-10 flex items-center gap-2 rounded-pill border px-3 py-1 text-2xs">
@@ -441,6 +472,7 @@ export function AssessmentFixture(): React.JSX.Element {
           onChange={(next) => {
             setPreview(next);
             dispatch({ type: "reset", preview: next });
+            mixedDispatch({ type: "reset", preview: next });
           }}
         />
       </div>

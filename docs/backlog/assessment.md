@@ -34,6 +34,11 @@ in the development renderer harness; no production assessment, disk persistence,
 review or private-course conversion is enabled. Visual acceptance and portable-record authority
 are separate decisions. Reading preview work remains LB-015.
 
+The learner provisionally accepted the visual direction and explicitly required topic-driven,
+optional assessment. The preview now supplements ordinary Brief prose rather than replacing it.
+A mixed coding example retains instructions, commands, editor access and Run checks, while
+another activity uses only a sketch and conversation. This is not a universal course format.
+
 The [preview and evidence](assessment-preview-2026-09-26.md) in
 [PR #103](https://github.com/sqmch/lerience/pull/103) are ready for review. Source checks
 and synthetic interaction checks do not establish saved course attempts or learner acceptance.

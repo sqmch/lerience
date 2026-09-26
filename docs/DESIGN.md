@@ -193,6 +193,11 @@ The established workspace is rail, material, and seminar inside the shared shell
   clamps; widths persist app-wide because they are a window preference, not course content.
 - Course-scoped instruments appear when the course claims their underlying material. Hidden
   affordances follow file presence rather than speculative disabled controls.
+- The Brief remains open-ended course material: prose, code, commands, practical instructions
+  and mixed activities. A response area is optional for a particular activity and supplements
+  that material. It never replaces the Brief or forces a question-answer format on other
+  modules. Choose the interaction for the learning objective; editor work, checks, discussion
+  and custom teaching tools remain available where they fit.
 - The Lab overlay is a stage: the visual owns the space, while switching and context remain compact.
 - The Record overlay is a distinct modal layer, with tabs using the same active-rule idiom as other
   tabbed material.

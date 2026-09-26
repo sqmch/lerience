@@ -242,7 +242,7 @@ export function MaterialPane({
   tab,
   onTab,
   onOpenLab,
-  briefContent,
+  briefSupplement,
 }: {
   activeModule: CourseModule | null;
   docs: CourseDocs;
@@ -252,7 +252,7 @@ export function MaterialPane({
   tab: MaterialTab;
   onTab: (tab: MaterialTab) => void;
   onOpenLab: (key: string) => void;
-  briefContent?: React.ReactNode;
+  briefSupplement?: React.ReactNode;
 }): React.JSX.Element {
   // Scroll belongs to the DOCUMENT, not to the pane: opening a different module
   // or tab starts at its top, while a tutor write under you changes neither and
@@ -387,11 +387,11 @@ export function MaterialPane({
         </Tabs.Content>
 
         <Tabs.Content value="brief">
-          {briefContent ??
-            doc(brief, activeModule.briefPath !== null, {
-              title: "No brief yet",
-              desc: "A brief states the build task and how long it should take. This module has not been given one.",
-            })}
+          {doc(brief, activeModule.briefPath !== null, {
+            title: "No brief yet",
+            desc: "A brief states the build task and how long it should take. This module has not been given one.",
+          })}
+          {briefSupplement}
         </Tabs.Content>
 
         <Tabs.Content value="quiz">

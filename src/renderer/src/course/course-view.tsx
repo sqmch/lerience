@@ -91,13 +91,13 @@ function SessionStatus({ seminar }: { seminar: SeminarController }): React.JSX.E
 export function CourseView({
   course,
   onLeaveCourse,
-  renderBrief,
+  renderBriefSupplement,
   initialTab = "lesson",
 }: {
   course: CourseSnapshot;
   onLeaveCourse: () => void;
-  /** Optional composed material. The course reader remains the default. */
-  renderBrief?: (moduleId: string) => React.ReactNode;
+  /** Optional activity beside the course's own Brief, which always stays visible. */
+  renderBriefSupplement?: (moduleId: string) => React.ReactNode;
   initialTab?: MaterialTab;
 }): React.JSX.Element {
   const data = course.data;
@@ -248,7 +248,7 @@ export function CourseView({
         page={
           <MaterialPane
             activeModule={active}
-            briefContent={active === null ? undefined : renderBrief?.(active.id)}
+            briefSupplement={active === null ? undefined : renderBriefSupplement?.(active.id)}
             docs={docs}
             quiz={data.quiz}
             labs={data.labs}

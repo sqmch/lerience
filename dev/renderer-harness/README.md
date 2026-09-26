@@ -77,6 +77,11 @@ fixture bar remounts the fixture so its controls and listeners share the same br
 
 Open `/?screen=assessment&bar=hidden&theme=light` or use the `assessment` harness button.
 The preview mounts an original synthetic trace in the production course shell and Brief tab.
+The response area supplements the authored Brief; it never replaces it. Select Implementing
+the rule, then Brief, to see code instructions, command examples, Open in editor and Run checks
+alongside an optional prediction. Reading a state has only a sketch/discussion brief, with no
+form. Each assessment activity keeps its own draft. The interaction is chosen for the topic
+and learning objective, not imposed on the course.
 The harness imports the same bundled Inter, Literata and JetBrains Mono faces as the desktop
 entrypoint. `theme=dark` selects the other theme, including its status-bar preference label.
 
