@@ -207,8 +207,20 @@ Validation:
   process exited after both checks. These are representative source-runtime checks, not
   a broad model matrix, native recovery exercise, packaged acceptance, or a release.
 
-Final source checks and PR/CI evidence are recorded at handoff below.
+Source ready in [PR #98](https://github.com/sqmch/lerience/pull/98), implementation `672d3be`
+and reviewed correction `c9a4db9`. Standards and Spec re-reviews cleared both corrections:
+accepted opener save failure retires the runtime before buffered events can seal recovery;
+replacement controls must match the prepared runtime before Start becomes available.
 
+The single local `pnpm check` passed publication hygiene, typechecks, harness checks,
+571 application tests and 61 Course Engine tests, with six platform skips. It stopped at
+formatting while review corrections were being edited. After correction, all 52 affected tests,
+both TypeScript projects, complete lint/format checks and the production build passed.
+An isolated `pnpm dev` startup also passed its IPC round-trip and exposed both prepare/confirm
+preload methods, then exited. The PR records full final-head Windows CI. Merge, installed-app
+acceptance and release remain separate; the orchestration task owns merge.
+
+Original request and discovery:
 
 The dashboard offers a provider choice, but entering a course starts work automatically before
 the learner can choose a model. Provide an explicit choice before that first work, including
