@@ -18,6 +18,12 @@ records and a bounded app writer, amending ADR-002/010 before implementation. Cu
 is deferred; ADR-012's sandbox stays unchanged. This completes the discovery stopping point
 below, not the feature. Implementation stages and evaluation limits are in the recommendation.
 
+[PR #101](https://github.com/sqmch/lerience/pull/101) contains the documentation proposal.
+Independent Standards and Spec reviews cleared `f8fc9cc`. Publication hygiene, whitespace,
+45 local document links and the synthetic answer arithmetic passed. This is documentation
+evidence only; final-head hosted CI and merge review are tracked in the PR. No runtime or
+private-course probe was needed, and no source change required a full local `pnpm check`.
+
 ## Learner problem
 
 The learner repeatedly had to open a repository and enter answers as JSON values even when

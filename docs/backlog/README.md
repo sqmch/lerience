@@ -60,7 +60,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | PR #96 merged at `406c399`; renderer and CI verified | S04 | Implemented |
 | [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Native doctor/Git path observed; flash not reproduced; actual window ancestry missing | S12 | Blocked |
 | [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | Ideas, not committed scope | S15 | Open |
-| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | [Design](assessment-design-2026-09-26.md); owner task `01a0ddef`, branch `codex/lb-016-assessment-design`; portable-record authority decision remains | S17 | Discovery-ready |
+| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | [Design PR #101](https://github.com/sqmch/lerience/pull/101); owner task `01a0ddef`, branch `codex/lb-016-assessment-design`; portable-record authority decision remains | S17 | Discovery-ready |
 
 ## Source coverage
 
