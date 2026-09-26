@@ -52,8 +52,10 @@ Screenshot names are `initial-light.png`, `feedback-dark.png`, `narrow-light.png
 `save-error-narrow-dark.png`, retained in the task's local visualizations directory and linked
 in the handoff. They contain only synthetic course data. The feedback view is scrolled to its
 actions; the rest of the course remains visible. No native-provider, disk-persistence, learner
-acceptance or learning-quality result is claimed. Full source-check and final-head CI evidence
-belong in the PR before handoff.
+acceptance or learning-quality result is claimed. Full local `pnpm check` passed on Windows x64,
+Node 24.18.0 and pnpm 11.9.0: 595 application tests passed with six platform skips, 61 Course
+Engine tests passed, plus publication hygiene, both typecheck projects, harness build,
+lint/format and production build. Final-head review and hosted CI are recorded in the PR.
 
 The [portable-record proposal](assessment-design-2026-09-26.md) remains a separate product and
 architecture decision. This preview does not amend ADR-002/010 or ADR-012. LB-015 reading work

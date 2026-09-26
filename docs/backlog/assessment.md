@@ -4,8 +4,8 @@
 ## LB-016: Answer non-code exercises in the app
 
 P2, product and assessment discovery. Source S17. See the [register](README.md) for status.
-This item records a product direction to investigate, not an accepted architecture or a UI
-implementation. Schedule it ahead of optional reading annotations in LB-015.
+The portable assessment architecture remains proposed. A development-only visual preview below
+supports interface review before production implementation. Schedule it ahead of LB-015.
 
 Discovery owner: task `01a0ddef-68d1-7222-ba4d-785225359c96`, branch
 `codex/lb-016-assessment-design`, under orchestrator `01a0d98c-a787-7223-9b86-5fd61f99abf6`.
@@ -24,7 +24,7 @@ Independent Standards and Spec reviews cleared `f8fc9cc`. Publication hygiene, w
 evidence only; final-head hosted CI and merge review are tracked in the PR. No runtime or
 private-course probe was needed, and no source change required a full local `pnpm check`.
 
-## Learner problem
+## Visual preview
 
 Visual follow-up, 2026-09-26: the learner authorized disposable assessment and reading previews
 to judge fit with the existing design language. Assessment proceeds first in task `01a0ddef`,
@@ -33,6 +33,11 @@ trace and explanation in the real course shell and Brief. Saves and reviews are 
 in the development renderer harness; no production assessment, disk persistence, provider
 review or private-course conversion is enabled. Visual acceptance and portable-record authority
 are separate decisions. Reading preview work remains LB-015.
+
+The [preview and evidence](assessment-preview-2026-09-26.md) are ready for review. Source checks
+and synthetic interaction checks do not establish saved course attempts or learner acceptance.
+
+## Learner problem
 
 The learner repeatedly had to open a repository and enter answers as JSON values even when
 the task was conceptual reasoning or interview preparation. They propose in-app questions
