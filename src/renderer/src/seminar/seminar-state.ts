@@ -7,7 +7,7 @@ import type {
 import type { SeminarLifecycle, SeminarSnapshot } from "../../../shared/session";
 
 export type SeminarPhase =
-  "closed" | "opening" | "idle" | "thinking" | "streaming" | "tool-activity";
+  "closed" | "opening" | "choosing-model" | "idle" | "thinking" | "streaming" | "tool-activity";
 
 export type SeminarFailureKind = "auth" | "rate-limit" | "unavailable" | "silent";
 
@@ -50,6 +50,7 @@ export interface SeminarApproval {
 export interface SeminarState {
   phase: SeminarPhase;
   lifecycle: SeminarLifecycle;
+  modelChoice?: SeminarSnapshot["modelChoice"];
   sessionId: string | null;
   items: TranscriptTurn[];
   /** The sealed transcript kept on screen while its fresh successor opens. */
@@ -354,8 +355,11 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
         : sessionChanged
           ? null
           : state.previousSession;
-    let recoveryHandoff = state.recoveryHandoff;
-    if (snapshot.lifecycle === "close-failed") {
+    let recoveryHandoff =
+      snapshot.modelChoice === undefined ? state.recoveryHandoff : ("none" as RecoveryHandoff);
+    if (snapshot.modelChoice !== undefined) {
+      recoveryHandoff = "none";
+    } else if (snapshot.lifecycle === "close-failed") {
       recoveryHandoff = "none";
     } else if (snapshot.lifecycle === "recovering" || snapshot.lifecycle === "wrapping") {
       recoveryHandoff = "finishing-previous";
@@ -384,22 +388,25 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
     return {
       ...state,
       lifecycle: snapshot.lifecycle,
+      modelChoice: snapshot.modelChoice,
       sessionId: snapshot.sessionId,
       phase:
-        snapshot.lifecycle === "open"
-          ? snapshot.turnInProgress ||
-            state.phase === "opening" ||
-            recoveryHandoff === "opening-next"
-            ? !sessionChanged && (state.phase === "streaming" || state.phase === "tool-activity")
-              ? state.phase
-              : "thinking"
-            : "idle"
-          : snapshot.lifecycle === "opening" ||
-              snapshot.lifecycle === "recovering" ||
-              snapshot.lifecycle === "wrapping" ||
+        snapshot.modelChoice !== undefined
+          ? "choosing-model"
+          : snapshot.lifecycle === "open"
+            ? snapshot.turnInProgress ||
+              state.phase === "opening" ||
               recoveryHandoff === "opening-next"
-            ? "thinking"
-            : "closed",
+              ? !sessionChanged && (state.phase === "streaming" || state.phase === "tool-activity")
+                ? state.phase
+                : "thinking"
+              : "idle"
+            : snapshot.lifecycle === "opening" ||
+                snapshot.lifecycle === "recovering" ||
+                snapshot.lifecycle === "wrapping" ||
+                recoveryHandoff === "opening-next"
+              ? "thinking"
+              : "closed",
       items,
       previousSession,
       recoveryStartIndex: recoveryChangedSession ? null : state.recoveryStartIndex,

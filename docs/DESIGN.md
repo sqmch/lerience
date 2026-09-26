@@ -238,6 +238,11 @@ their behavior.
   outside-course effect inside a broad file-edit label. A command approval shows the command itself
   and where it runs — the course folder, a path inside it, or an absolute path outside it. The
   live activity line still never shows a command.
+- Before the first tutor work, onboarding and course entry show the same inline model choice
+  and Start tutor action in the conversation. The supported selection and provider-default reset
+  are available before the composer opens. Recovery explains that this choice covers finishing
+  the prior session and opening the next; a supported choice needs no second confirmation.
+  Leaving through Courses cancels preparation.
 - Session controls report provider-confirmed current values. Pending next-turn values must look
   pending, not active.
 - Model, effort, autonomy, and access changes are learner-initiated. A session starts from the

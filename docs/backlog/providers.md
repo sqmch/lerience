@@ -151,7 +151,8 @@ Source fix in [PR #97](https://github.com/sqmch/lerience/pull/97), branch
 pnpm 11.9.0: 560 application tests and 61 Course Engine tests passed, six platform tests
 skipped. A separate `pnpm dev` run verified native startup and preload with disposable
 app-data; it did not exercise an interactive picker. The PR records final-head CI.
-Merge, release and installed-app acceptance remain separate.
+Merged in PR #97 at `4b0e5b0c7fe34fd38e511c88313e270774be10a1` after clear reviews and
+green final-head Windows CI. Release and installed-app acceptance remain separate.
 
 Done when each model offers supported values with faithful display names, switching models
 handles an invalid prior effort, and accepted/rejected updates leave truthful current and
@@ -164,6 +165,62 @@ pending state. Add adapter/control coverage and a native check where supported. 
 ## LB-008: Select the model before the opening turn
 
 P2, requested feature. Source S08.
+
+Owner: task `01a0ddab-f53b-7cf2-9016-19906d6b3f7b`, branch
+`codex/lb-008-model-before-opener`. Baseline: PR #97 merge `4b0e5b0`.
+
+Implementation, 2026-09-26:
+
+- Both new-course onboarding and reopened courses prepare the provider runtime and show the
+  same model choice before sending any tutor input. The learner keeps the shown model,
+  selects a supported model, or chooses **Use provider default**, then **Start tutor**.
+  Existing effort, autonomy and access labels remain visible and use their existing controls.
+- The conductor holds the opener, validates the confirmation against that runtime, and
+  refuses other send paths while waiting. Cancellation closes an unused new transcript;
+  cancellation of recovery preserves the prior unverified transcript byte for byte.
+- Per-course/provider memory restores before this choice. A refused saved model requires a
+  new choice or explicit default reset. Current and staged values stay distinct. Recovery's
+  follow-on runtime continues with the confirmed choice when still supported; a changed
+  provider, removed model, or refused restore pauses before fallback work.
+- [ADR-040](../DECISIONS/ADR-040-remembered-session-controls.md), SPEC and DESIGN record the
+  deliberate first-turn boundary. Provider configuration and course access policy are unchanged.
+
+Validation:
+
+- Conductor regressions cover both entry paths, send/retry/end bypass attempts, duplicate and
+  stale confirmation, cancellation during async model validation, recovery transcript preservation,
+  current versus pending state, default reset, remembered choices and recovery replacement under
+  unchanged, removed-model and switched-provider conditions. The rendered hook/component test
+  covers default reset, the closed send path and explicit confirmation.
+- Actual production renderer components were inspected in the browser harness for onboarding
+  and recovery at desktop width, including the model menu, staged label, default reset and
+  first reply after confirmation. The harness uses synthetic state and does not prove providers.
+- `dev/model-choice/run.ts` exercised the production conductor and adapters in disposable
+  Windows fixtures, with Electron 43.4.0 / Node 24.18.1, SDK 0.3.233, Claude Code 2.1.282,
+  and discovered Codex 0.155.0-alpha.16.4. Claude used Sonnet. Codex staged GPT-5.5 while
+  current remained GPT-6 Astra, sent `model: gpt-5.5` on its first `turn/start`, and confirmed
+  GPT-5.5 after the reply. Each provider received zero inputs before confirmation and exactly
+  one after, producing `MODEL_CHOICE_OK`. Codex retained Course folder/on-request access.
+- The native entry build and file existence were checked before launch. App-data and courses
+  lived under `%TEMP%`; stdout/stderr and normalized capture were retained outside Git.
+  Each provider had a 180-second work deadline and ten-second cleanup budget. The native
+  process exited after both checks. These are representative source-runtime checks, not
+  a broad model matrix, native recovery exercise, packaged acceptance, or a release.
+
+Source ready in [PR #98](https://github.com/sqmch/lerience/pull/98), implementation `672d3be`
+and reviewed correction `c9a4db9`. Standards and Spec re-reviews cleared both corrections:
+accepted opener save failure retires the runtime before buffered events can seal recovery;
+replacement controls must match the prepared runtime before Start becomes available.
+
+The single local `pnpm check` passed publication hygiene, typechecks, harness checks,
+571 application tests and 61 Course Engine tests, with six platform skips. It stopped at
+formatting while review corrections were being edited. After correction, all 52 affected tests,
+both TypeScript projects, complete lint/format checks and the production build passed.
+An isolated `pnpm dev` startup also passed its IPC round-trip and exposed both prepare/confirm
+preload methods, then exited. The PR records full final-head Windows CI. Merge, installed-app
+acceptance and release remain separate; the orchestration task owns merge.
+
+Original request and discovery:
 
 The dashboard offers a provider choice, but entering a course starts work automatically before
 the learner can choose a model. Provide an explicit choice before that first work, including

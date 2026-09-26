@@ -32,6 +32,7 @@ export interface SeminarController {
   /** An approval answer is in flight; both buttons disable together. */
   answering: boolean;
   start: () => Promise<void>;
+  confirmModel: () => Promise<void>;
   send: (text: string) => Promise<boolean>;
   retry: () => Promise<void>;
   answerApproval: (allow: boolean) => Promise<void>;
@@ -51,7 +52,16 @@ export function useSeminar({
 }): SeminarController {
   const [state, dispatch] = useReducer(seminarReducer, undefined, createSeminarState);
   const [answering, setAnswering] = useState(false);
-  const [controls, setControlsState] = useState<SessionControls | null>(null);
+  const [loadedControls, setControlsState] = useState<{
+    runtimeId: number | undefined;
+    value: SessionControls | null;
+  }>({ runtimeId: undefined, value: null });
+  const modelChoiceId = state.modelChoice?.runtimeId;
+  // A replacement's gate must never enable Start using the previous runtime's controls.
+  const controls =
+    modelChoiceId === undefined || loadedControls.runtimeId === modelChoiceId
+      ? loadedControls.value
+      : null;
   const [queued, setQueued] = useState<string | null>(null);
   const [queueBlocked, setQueueBlocked] = useState(false);
   const autoStarted = useRef(false);
@@ -117,7 +127,7 @@ export function useSeminar({
   const send = useCallback(
     async (text: string): Promise<boolean> => {
       const message = text.trim();
-      if (message === "") return false;
+      if (message === "" || state.phase === "choosing-model") return false;
       // A turn in flight does not mean "wait, then retype". A provider that
       // reports it can steer takes the message into the running turn (the
       // tutor sees it at its next step); otherwise the app holds it and sends
@@ -245,46 +255,50 @@ export function useSeminar({
   const turnIdle = state.phase === "idle";
   useEffect(() => {
     if (!sessionOpen) {
-      setControlsState(null);
+      setControlsState({ runtimeId: modelChoiceId, value: null });
       return;
     }
     let cancelled = false;
     void window.praxeum
       .seminarControls()
       .then((next) => {
-        if (!cancelled && next !== null) setControlsState(next);
+        if (!cancelled && next !== null)
+          setControlsState({ runtimeId: modelChoiceId, value: next });
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [sessionOpen, state.items.length, turnIdle]);
+  }, [sessionOpen, state.items.length, turnIdle, modelChoiceId]);
 
-  const setControls = useCallback(async (patch: SessionControlPatch): Promise<boolean> => {
-    dispatch({ type: "control_change_started" });
-    try {
-      const next = await window.praxeum.setSeminarControls(patch);
-      if (next === null) throw new Error("Session controls are unavailable.");
-      setControlsState(next);
-      dispatch({ type: "control_change_succeeded" });
-      return true;
-    } catch {
-      // Claude controls are separate acknowledged calls. If a later call fails,
-      // re-read any earlier accepted change instead of leaving a stale pill.
+  const setControls = useCallback(
+    async (patch: SessionControlPatch): Promise<boolean> => {
+      dispatch({ type: "control_change_started" });
       try {
-        const next = await window.praxeum.seminarControls();
-        if (next !== null) setControlsState(next);
+        const next = await window.praxeum.setSeminarControls(patch);
+        if (next === null) throw new Error("Session controls are unavailable.");
+        setControlsState({ runtimeId: modelChoiceId, value: next });
+        dispatch({ type: "control_change_succeeded" });
+        return true;
       } catch {
-        /* Keep the last confirmed controls if the read also fails. */
+        // Claude controls are separate acknowledged calls. If a later call fails,
+        // re-read any earlier accepted change instead of leaving a stale pill.
+        try {
+          const next = await window.praxeum.seminarControls();
+          if (next !== null) setControlsState({ runtimeId: modelChoiceId, value: next });
+        } catch {
+          /* Keep the last confirmed controls if the read also fails. */
+        }
+        dispatch({
+          type: "control_change_failed",
+          message:
+            "That change couldn't be completed. Your tutor is still connected. Check the settings shown and try again.",
+        });
+        return false;
       }
-      dispatch({
-        type: "control_change_failed",
-        message:
-          "That change couldn't be completed. Your tutor is still connected. Check the settings shown and try again.",
-      });
-      return false;
-    }
-  }, []);
+    },
+    [modelChoiceId],
+  );
 
   const interrupt = useCallback((): void => {
     void window.praxeum.interruptSeminar().catch((error: unknown) => {
@@ -331,6 +345,17 @@ export function useSeminar({
     recoveryPending: state.lifecycle === "recoverable" || state.lifecycle === "close-failed",
     answering,
     start,
+    confirmModel: async () => {
+      if (state.modelChoice === undefined || controls === null) return;
+      try {
+        await window.praxeum.confirmSeminarModel(state.modelChoice.runtimeId);
+      } catch (error) {
+        dispatch({
+          type: "control_change_failed",
+          message: failed(error, "The tutor could not start. Check your model and try again."),
+        });
+      }
+    },
     send,
     retry,
     answerApproval,

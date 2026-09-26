@@ -68,6 +68,11 @@ in the production course composer. Labels show the actual values without a resto
 Choose another option to see the stub provider stage it with `· next reply`. Inspect both states
 at narrow seminar widths; this fixture does not exercise persistence or contact a provider.
 
+The `model-onboarding` and `model-recovery` fixtures show the production pre-turn choice in
+both layouts. No tutor event is replayed before Start tutor. Select a model or reset to provider
+default to inspect the staged label, then start to expose the synthetic first reply. Hiding the
+fixture bar remounts the fixture so its controls and listeners share the same bridge.
+
 ## Tool adapter
 
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is

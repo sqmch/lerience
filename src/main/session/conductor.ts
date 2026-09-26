@@ -76,6 +76,11 @@ interface ActiveRuntime {
    *  persisted" signal. Replacement and abandon must await it before another
    *  store instance may touch the same JSONL. */
   pump: Promise<void>;
+  pendingOpener: string | null;
+  cancelled: boolean;
+  modelChoiceNotice?: string;
+  modelNeedsSelection: boolean;
+  confirmedModel: string | null;
 }
 
 export interface StartConductedSessionOptions {
@@ -132,6 +137,7 @@ export class SessionConductor {
   }
 
   async start(options: StartConductedSessionOptions): Promise<StartSeminarReply> {
+    if (this.active?.pendingOpener != null) this.active.cancelled = true;
     return await this.serializeLifecycle(() => this.startLocked(options));
   }
 
@@ -246,8 +252,17 @@ export class SessionConductor {
    *  this course and provider (ADR-040). It never reaches the learner's own
    *  provider configuration; a provider rejection remembers nothing. */
   async applySessionControls(patch: SessionControlPatch): Promise<SessionControls | null> {
+    return this.serializeLifecycle(() => this.applyControlsLocked(patch));
+  }
+
+  private async applyControlsLocked(patch: SessionControlPatch): Promise<SessionControls | null> {
     const active = this.requireActive();
     const controls = await active.session.applyControls(patch);
+    if (this.active !== active || active.cancelled) throw new Error("The tutor session changed.");
+    if (patch.model !== undefined) {
+      active.modelNeedsSelection = false;
+      active.confirmedModel = { ...controls.current, ...controls.pending }.model;
+    }
     const rememberedPatch = { ...patch };
     if (patch.model !== undefined && patch.effort === undefined) {
       const effective = { ...controls.current, ...controls.pending };
@@ -285,7 +300,9 @@ export class SessionConductor {
       await active.session.applyControls(remembered);
       for (const key of keys) active.remembered.add(key);
     } catch {
-      // The provider's own init frame stays authoritative (ADR-018).
+      active.modelNeedsSelection = remembered.model !== undefined;
+      active.modelChoiceNotice =
+        "Some saved settings could not be restored. Choose a model or use the provider default before starting.";
     }
   }
 
@@ -354,6 +371,8 @@ export class SessionConductor {
   /** App/window shutdown: release the provider only. The logical transcript
    *  deliberately stays open so next start recovers it (ADR-009). */
   async abandon(): Promise<void> {
+    this.followOnEpoch += 1;
+    if (this.active?.pendingOpener != null) this.active.cancelled = true;
     await this.serializeLifecycle(() => this.abandonLocked());
   }
 
@@ -377,6 +396,12 @@ export class SessionConductor {
     const active = this.active;
     if (active === null) return;
     active.suppressEndedUi = true;
+    if (active.pendingOpener !== null) {
+      active.suppressEndedPersistence = true;
+      if (active.flow === "normal") {
+        await active.transcript.markLifecycle("closed", "Cancelled before tutor work began.");
+      }
+    }
     if (active.admission !== null) await active.admission;
     await active.session.end();
     // end() resolves when the adapter has QUEUED its trailing events; only the
@@ -403,7 +428,9 @@ export class SessionConductor {
   private async beginNormal(
     courseId: string,
     options: StartConductedSessionOptions,
+    confirmed?: { providerId: TutorAgent["providerId"]; model: string | null },
   ): Promise<void> {
+    const preparationEpoch = this.followOnEpoch;
     const transcript = await FileTranscriptStore.create({
       userDataPath: this.options.userDataPath,
       courseId,
@@ -417,7 +444,15 @@ export class SessionConductor {
     });
 
     try {
-      await this.startRuntime(courseId, options, transcript, "normal", opener);
+      await this.startRuntime(
+        courseId,
+        options,
+        transcript,
+        "normal",
+        opener,
+        preparationEpoch,
+        confirmed,
+      );
     } catch (error) {
       await transcript.markLifecycle(
         "closed",
@@ -431,8 +466,8 @@ export class SessionConductor {
     transcript: FileTranscriptStore,
     options: StartConductedSessionOptions,
   ): Promise<void> {
+    const preparationEpoch = this.followOnEpoch;
     const previous = await transcript.snapshot();
-    await transcript.markLifecycle("wrapping");
     const inspection = await this.options.scripts.inspectContext(options);
     const opener = buildSessionOpener({
       ...openerFacts(inspection, this.clock()),
@@ -440,7 +475,14 @@ export class SessionConductor {
     });
 
     try {
-      await this.startRuntime(transcript.courseId, options, transcript, "recovery", opener);
+      await this.startRuntime(
+        transcript.courseId,
+        options,
+        transcript,
+        "recovery",
+        opener,
+        preparationEpoch,
+      );
     } catch (error) {
       await transcript.markLifecycle("close_failed", "The recovery tutor could not start.");
       throw error;
@@ -453,6 +495,8 @@ export class SessionConductor {
     transcript: FileTranscriptStore,
     flow: RuntimeFlow,
     opener: string,
+    preparationEpoch: number,
+    confirmed?: { providerId: TutorAgent["providerId"]; model: string | null },
   ): Promise<void> {
     const agent = this.options.createAgent();
     const session = agent.startSession({ courseDir: options.courseDir });
@@ -476,27 +520,99 @@ export class SessionConductor {
       remembered: new Set(),
       idleWaiters: new Set(),
       admission: null,
-      turnPending: true,
+      turnPending: false,
       backgroundTasks: [],
       taskNotice: null,
       pump: Promise.resolve(),
+      pendingOpener: opener,
+      cancelled: preparationEpoch !== this.followOnEpoch,
+      modelNeedsSelection: false,
+      confirmedModel: null,
     };
     this.active = active;
     active.pump = this.pump(active);
     try {
       await this.restoreRememberedControls(active);
       if (this.active?.id !== active.id) return;
-      await transcript.append({ kind: "operator", text: opener });
-      session.send(opener);
-      // send() accepted the hidden opener synchronously. Report that turn as
-      // busy even when a test double or provider has not updated its getter.
-      this.options.emitSnapshot(await this.snapshotFor(transcript, true));
+      const controls = await session.describeControls();
+      const model = { ...controls.current, ...controls.pending }.model;
+      active.confirmedModel = model;
+      if (
+        !active.cancelled &&
+        confirmed !== undefined &&
+        confirmed.providerId === active.providerId &&
+        confirmed.model === model &&
+        active.modelChoiceNotice === undefined &&
+        (model === null || controls.models.some((option) => option.id === model))
+      ) {
+        await this.releaseOpener(active);
+      } else {
+        this.options.emitSnapshot(await this.snapshotFor(transcript));
+      }
     } catch (error) {
       // A half-started runtime must not stay registered with a live provider
       // process behind it (the caller marks the transcript's lifecycle).
-      if (this.active.id === active.id) this.active = null;
+      if (this.active?.id === active.id) this.active = null;
       void session.end();
       throw error;
+    }
+  }
+
+  /** Confirm only the prepared runtime the learner actually saw. */
+  async confirmModel(runtimeId: number): Promise<void> {
+    await this.serializeLifecycle(async () => {
+      const active = this.requireActive();
+      if (active.id !== runtimeId || active.pendingOpener === null || active.cancelled)
+        throw new Error("The tutor session changed. Check its model before starting.");
+      if (active.modelNeedsSelection)
+        throw new Error(
+          "Choose a model or use the provider default. The saved choice could not be restored.",
+        );
+      const controls = await active.session.describeControls();
+      const model = { ...controls.current, ...controls.pending }.model;
+      if (model !== null && !controls.models.some((option) => option.id === model))
+        throw new Error("That model is no longer offered. Choose a model or the provider default.");
+      active.confirmedModel = model;
+      await this.releaseOpener(active);
+    });
+  }
+
+  private async releaseOpener(active: ActiveRuntime): Promise<void> {
+    const opener = active.pendingOpener;
+    if (opener === null || this.active !== active || active.cancelled)
+      throw new Error("No tutor is waiting to start.");
+    // Hold output until the accepted opener is persisted, like later turns.
+    let release!: () => void;
+    active.admission = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
+      active.session.send(opener);
+      active.pendingOpener = null;
+      active.turnPending = true;
+      if (active.flow === "recovery") await active.transcript.markLifecycle("wrapping");
+      await active.transcript.append({ kind: "operator", text: opener });
+      this.options.emitSnapshot(await this.snapshotFor(active.transcript, true));
+    } catch (error) {
+      if (active.pendingOpener === null) {
+        this.active = null;
+        this.followOn = null;
+        this.followOnEpoch += 1;
+        this.resolveIdleWaiters(active);
+        await active.session.interrupt().catch(() => undefined);
+        await active.session.end().catch(() => undefined);
+        this.options.emitAgentEvent({
+          type: "error",
+          code: "process-exited",
+          message:
+            "The tutor started, but its opening request could not be saved. Reopen the course to recover.",
+        });
+        this.options.emitAgentEvent({ type: "session_ended", reason: "died" });
+      }
+      throw error;
+    } finally {
+      active.admission = null;
+      release();
     }
   }
 
@@ -523,7 +639,7 @@ export class SessionConductor {
         // Provider adapters may still drain a final usage/error/end frame while
         // their process exits; those are runtime cleanup, not logical-session
         // evidence, and must not race the fresh session opened after recovery.
-        if (!active.suppressEndedPersistence) {
+        if (!active.suppressEndedPersistence && active.pendingOpener === null) {
           const entry = transcriptEntry(event);
           if (entry !== null) await active.transcript.append(entry);
         }
@@ -563,12 +679,19 @@ export class SessionConductor {
 
         if (event.type === "turn_complete") {
           this.resolveIdleWaiters(active);
-          if (active.flow !== "normal" && !active.wrapFinishing) {
+          if (active.pendingOpener === null && active.flow !== "normal" && !active.wrapFinishing) {
             active.wrapFinishing = true;
             await this.finishWrap(active);
           }
         }
         if (event.type === "session_ended") {
+          if (
+            active.pendingOpener !== null &&
+            !active.suppressEndedPersistence &&
+            active.flow === "normal"
+          ) {
+            await active.transcript.markLifecycle("closed", "Tutor stopped before any work began.");
+          }
           this.resolveIdleWaiters(active);
           this.runtimeEnded(active);
           return;
@@ -646,11 +769,15 @@ export class SessionConductor {
                 active.courseDir,
                 this.identityOptions(),
               );
-              await this.beginNormal(identity.courseId, {
-                courseDir: active.courseDir,
-                currentModuleId: active.currentModuleId,
-                onboarding: active.onboarding,
-              });
+              await this.beginNormal(
+                identity.courseId,
+                {
+                  courseDir: active.courseDir,
+                  currentModuleId: active.currentModuleId,
+                  onboarding: active.onboarding,
+                },
+                { providerId: active.providerId, model: active.confirmedModel },
+              );
             }
           : null;
     }
@@ -700,6 +827,17 @@ export class SessionConductor {
       .reverse()
       .find((entry) => entry.kind === "lifecycle");
     return {
+      ...(runtime?.pendingOpener != null
+        ? {
+            modelChoice: {
+              runtimeId: runtime.id,
+              recovery: runtime.flow === "recovery",
+              ...(runtime.modelChoiceNotice === undefined
+                ? {}
+                : { notice: runtime.modelChoiceNotice }),
+            },
+          }
+        : {}),
       lifecycle:
         snapshot.lifecycle === "close_failed"
           ? "close-failed"
@@ -731,6 +869,8 @@ export class SessionConductor {
   private requireActive(requiredFlow?: "open"): ActiveRuntime {
     const active = this.active;
     if (active === null) throw new Error("No tutor session is open.");
+    if (requiredFlow === "open" && active.pendingOpener !== null)
+      throw new Error("Choose a model and start the tutor first.");
     if (requiredFlow === "open" && active.flow !== "normal") {
       throw new Error("The previous session must finish closing first.");
     }

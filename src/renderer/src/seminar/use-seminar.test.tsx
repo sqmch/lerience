@@ -7,6 +7,7 @@ import type { PraxeumApi } from "../../../shared/ipc";
 import type { AgentEvent, SessionControls } from "../../../shared/seminar";
 import type { SeminarSnapshot } from "../../../shared/session";
 import { useSeminar, type SeminarController } from "./use-seminar";
+import { ModelChoice } from "./model-choice";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -464,5 +465,155 @@ describe("useSeminar session controls", () => {
     });
     await vi.waitFor(() => expect(sendSeminarMessage).toHaveBeenCalledWith("I have a question"));
     expect(seminar().queued).toBeNull();
+  });
+});
+
+describe("model preflight", () => {
+  it("shows the supported choice, keeps sends closed, resets default, and starts only on confirmation", async () => {
+    (globalThis as typeof globalThis & { React: typeof React }).React = React;
+    let snapshotListener: ((snapshot: SeminarSnapshot) => void) | undefined;
+    const snapshot: SeminarSnapshot = {
+      lifecycle: "open",
+      sessionId: "prepared",
+      messages: [],
+      totalCostUsd: 0,
+      turnInProgress: false,
+      steerable: true,
+      modelChoice: { runtimeId: 7, recovery: false },
+    };
+    const sendSeminarMessage = vi.fn();
+    const setSeminarControls = vi.fn(async () => ({ ...controls, pending: { model: null } }));
+    const confirmSeminarModel = vi.fn(async () => {
+      snapshotListener?.({ ...snapshot, modelChoice: undefined, turnInProgress: true });
+    });
+    Object.defineProperty(window, "praxeum", {
+      configurable: true,
+      value: {
+        currentSeminar: async () => snapshot,
+        seminarControls: async () => controls,
+        setSeminarControls,
+        confirmSeminarModel,
+        sendSeminarMessage,
+        onSeminarEvent: () => () => undefined,
+        onSeminarSnapshot: (listener: (snapshot: SeminarSnapshot) => void) => {
+          snapshotListener = listener;
+          return () => undefined;
+        },
+      },
+    });
+    const observed: { current: SeminarController | null } = { current: null };
+    function Probe(): React.JSX.Element {
+      const seminar = useSeminar({ currentModuleId: null, autoStart: true });
+      observed.current = seminar;
+      return seminar.state.phase === "choosing-model" ? (
+        <ModelChoice seminar={seminar} />
+      ) : (
+        <p>{seminar.state.phase}</p>
+      );
+    }
+    const host = document.createElement("div");
+    root = createRoot(host);
+    await act(async () => root?.render(<Probe />));
+    expect(host.textContent).toContain("Codex");
+    expect(host.textContent).toContain("Start tutor");
+    expect(observed.current?.busy).toBe(false);
+    await act(async () => {
+      expect(await observed.current?.send("Early question")).toBe(false);
+    });
+    expect(sendSeminarMessage).not.toHaveBeenCalled();
+    expect(confirmSeminarModel).not.toHaveBeenCalled();
+    const button = (text: string) =>
+      [...host.querySelectorAll("button")].find((entry) => entry.textContent === text)!;
+    await act(async () => button("Use provider default").click());
+    expect(setSeminarControls).toHaveBeenCalledWith({ model: null });
+    expect(host.textContent).toMatch(/Provider default.*next reply/);
+    await act(async () => button("Start tutor").click());
+    expect(confirmSeminarModel).toHaveBeenCalledExactlyOnceWith(7);
+    expect(host.textContent).toBe("thinking");
+  });
+});
+
+describe("replacement model controls", () => {
+  it("keeps Start disabled from the first replacement render until matching controls resolve", async () => {
+    (globalThis as typeof globalThis & { React: typeof React }).React = React;
+    let snapshotListener: ((snapshot: SeminarSnapshot) => void) | undefined;
+    let resolveControls!: (value: SessionControls) => void;
+    const snapshot: SeminarSnapshot = {
+      lifecycle: "open",
+      sessionId: "prior",
+      messages: [],
+      totalCostUsd: 0,
+      turnInProgress: false,
+      steerable: false,
+    };
+    const seminarControls = vi.fn(async () => controls);
+    const confirmSeminarModel = vi.fn(async () => undefined);
+    Object.defineProperty(window, "praxeum", {
+      configurable: true,
+      value: {
+        currentSeminar: async () => snapshot,
+        seminarControls,
+        confirmSeminarModel,
+        onSeminarEvent: () => () => undefined,
+        onSeminarSnapshot: (listener: (snapshot: SeminarSnapshot) => void) => {
+          snapshotListener = listener;
+          return () => undefined;
+        },
+      },
+    });
+    const renders: Array<{ choice?: number; model: string | null | undefined }> = [];
+    const observed: { current: SeminarController | null } = { current: null };
+    function Probe(): React.JSX.Element {
+      const seminar = useSeminar({ currentModuleId: null, autoStart: false });
+      observed.current = seminar;
+      renders.push({
+        choice: seminar.state.modelChoice?.runtimeId,
+        model: seminar.controls?.current.model,
+      });
+      return seminar.state.phase === "choosing-model" ? (
+        <ModelChoice seminar={seminar} />
+      ) : (
+        <p>{seminar.controls?.current.model}</p>
+      );
+    }
+    const host = document.createElement("div");
+    root = createRoot(host);
+    await act(async () => root?.render(<Probe />));
+    expect(host.textContent).toBe("codex");
+    seminarControls.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveControls = resolve;
+        }),
+    );
+    await act(async () =>
+      snapshotListener?.({
+        ...snapshot,
+        sessionId: "replacement",
+        modelChoice: { runtimeId: 8, recovery: false },
+      }),
+    );
+    const start = () =>
+      [...host.querySelectorAll("button")].find((entry) => entry.textContent === "Start tutor")!;
+    expect(start().disabled).toBe(true);
+    expect(
+      renders.filter((render) => render.choice === 8).every((render) => render.model === undefined),
+    ).toBe(true);
+    await act(async () => {
+      start().click();
+      await observed.current?.confirmModel();
+    });
+    expect(confirmSeminarModel).not.toHaveBeenCalled();
+    await act(async () =>
+      resolveControls({
+        ...controls,
+        models: [{ id: "replacement-model", label: "Replacement model", efforts: [] }],
+        current: { ...controls.current, model: "replacement-model" },
+      }),
+    );
+    expect(host.textContent).toContain("Replacement model");
+    expect(start().disabled).toBe(false);
+    await act(async () => start().click());
+    expect(confirmSeminarModel).toHaveBeenCalledExactlyOnceWith(8);
   });
 });

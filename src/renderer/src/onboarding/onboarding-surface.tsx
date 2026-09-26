@@ -13,6 +13,8 @@
  * a course with nothing in it has no rail to sit beside and no material to
  * read. */
 
+import { ModelChoice } from "../seminar/model-choice";
+
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LINKISH, PRIMARY, QUIET } from "../components/controls";
 import { Menu } from "../components/menu";
@@ -599,7 +601,11 @@ function ConnectedOnboardingSurface({
               ) : null}
             </div>
 
-            {composerVisible ? (
+            {state.phase === "choosing-model" ? (
+              <div className="mx-auto w-full max-w-(--container-converse) shrink-0 px-6 pt-3.5 pb-4">
+                <ModelChoice seminar={seminar} />
+              </div>
+            ) : composerVisible ? (
               /* The composer is not a footer. It keeps the conversation's own
                  column and ground — one element, no rule across the window,
                  nothing that reads as a separate section under the reading. */

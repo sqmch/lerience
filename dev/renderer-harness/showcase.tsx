@@ -372,6 +372,7 @@ function installBridge(initialTheme: ThemePreference): void {
     selectTutorProvider: () => Promise.resolve(providerCatalog),
     loginTutorProvider: () => new Promise(() => undefined),
     cancelTutorProviderLogin: () => Promise.resolve(),
+    confirmSeminarModel: () => Promise.resolve(),
     startSeminar: () => Promise.resolve({ ok: true }),
     currentSeminar: () => Promise.resolve(snapshot),
     sendSeminarMessage: () => {

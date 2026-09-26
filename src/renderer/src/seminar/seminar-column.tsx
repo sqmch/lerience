@@ -15,6 +15,8 @@
  * the tutor speaks the reading face on the ground, the learner speaks sans in a
  * raised card. Screen readers still get both, via aria-label on the turns. */
 
+import { ModelChoice } from "./model-choice";
+
 import { useState, type ReactNode } from "react";
 import { INSTRUMENT, PRIMARY, QUIET } from "../components/controls";
 import { CloseGlyph } from "../components/glyphs";
@@ -189,7 +191,9 @@ export function SeminarColumn({
           </div>
         )}
 
-        {closed ? (
+        {state.phase === "choosing-model" ? (
+          <ModelChoice seminar={seminar} />
+        ) : closed ? (
           <div className="flex flex-col items-start gap-3">
             <p className="text-ink-dim text-sm leading-normal text-pretty">
               {recoveryPending
