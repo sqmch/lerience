@@ -754,6 +754,7 @@ export function useFollowBottom(
 } {
   const viewportRef = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
+  const lastScrollTop = useRef(0);
   const [showLatest, setShowLatest] = useState(false);
 
   /* The real pinning mechanism: whatever makes the content taller (streamed
@@ -765,12 +766,47 @@ export function useFollowBottom(
     const viewport = viewportRef.current;
     const content = viewport?.firstElementChild;
     if (viewport == null || content == null) return;
+    // Input arrives before scrolling/layout. Release now so a token or a late
+    // resize cannot win that race. Scrollbar movement is handled by onScroll.
+    const release = (): void => {
+      if (viewport.scrollTop <= 0) return;
+      nearBottom.current = false;
+      setShowLatest(true);
+    };
+    const onWheel = (event: WheelEvent): void => {
+      if (event.deltaY < 0 && !event.ctrlKey) release();
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          "input, textarea, select, button, a, [contenteditable='true'], [role='slider']",
+        )
+      )
+        return;
+      if (
+        event.key === "ArrowUp" ||
+        event.key === "PageUp" ||
+        event.key === "Home" ||
+        (event.key === " " && event.shiftKey)
+      )
+        release();
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: true });
+    viewport.addEventListener("keydown", onKeyDown);
     const observer = new ResizeObserver(() => {
-      if (nearBottom.current) viewport.scrollTop = viewport.scrollHeight;
+      if (nearBottom.current) {
+        viewport.scrollTop = viewport.scrollHeight;
+        lastScrollTop.current = viewport.scrollTop;
+      }
     });
     observer.observe(content);
     return () => {
       observer.disconnect();
+      viewport.removeEventListener("wheel", onWheel);
+      viewport.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 
@@ -779,6 +815,7 @@ export function useFollowBottom(
     if (viewport === null) return;
     if (nearBottom.current) {
       viewport.scrollTop = viewport.scrollHeight;
+      lastScrollTop.current = viewport.scrollTop;
       setShowLatest(false);
     } else {
       setShowLatest(true);
@@ -792,14 +829,24 @@ export function useFollowBottom(
     onScroll: () => {
       const viewport = viewportRef.current;
       if (viewport === null) return;
-      const distance = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      nearBottom.current = distance <= viewport.clientHeight / 4;
-      if (nearBottom.current) setShowLatest(false);
+      const top = viewport.scrollTop;
+      const bottom = viewport.scrollHeight - viewport.clientHeight;
+      // Ignore unchanged/programmatic events. A small upward move releases;
+      // only returning to the bottom reattaches, with 1px for rounded geometry.
+      // A shrinking transcript can clamp scrollTop without reader input.
+      if (top < lastScrollTop.current && lastScrollTop.current <= bottom) {
+        nearBottom.current = false;
+      } else if (top > lastScrollTop.current && bottom - top <= 1) {
+        nearBottom.current = true;
+      }
+      lastScrollTop.current = top;
+      setShowLatest(!nearBottom.current);
     },
     jumpToLatest: () => {
       const viewport = viewportRef.current;
       if (viewport === null) return;
       viewport.scrollTop = viewport.scrollHeight;
+      lastScrollTop.current = viewport.scrollTop;
       nearBottom.current = true;
       setShowLatest(false);
     },

@@ -20,6 +20,7 @@ import { TutorConnectionGate, TutorControl } from "../../src/renderer/src/tutor/
 import { useTutorConnection } from "../../src/renderer/src/tutor/use-tutor-connection";
 import { COURSE_ROOT, FIXTURE_COURSE, readFixtureDoc } from "./course-fixture";
 import { LabFixture } from "./lab-choice-fixture";
+import { SCROLL_REPLY, SCROLL_CHUNK } from "./scroll-fixture";
 import "./harness.css";
 
 const ROOT = "C:\\LerienceFixture\\Courses\\Weather display";
@@ -344,6 +345,7 @@ function installBridge(
    *  have or lack a provider for the screen to be inspectable. */
   providerFault = false,
   activityFixture: ActivityFixture | null = null,
+  scrollFixture = false,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -356,8 +358,15 @@ function installBridge(
       { id: "zed", label: "Zed" },
     ],
   };
-  const script =
-    activityFixture !== null
+  const script = scrollFixture
+    ? {
+        events: [
+          { type: "message_delta", delta: SCROLL_REPLY },
+          { type: "turn_complete" },
+        ] as AgentEvent[],
+        busy: false,
+      }
+    : activityFixture !== null
       ? activityScript(activityFixture)
       : working
         ? WORKING
@@ -471,7 +480,13 @@ function installBridge(
     startSeminar: () => Promise.resolve({ ok: true }),
     currentSeminar: () => Promise.resolve(snapshot),
     currentCourse: () => Promise.resolve(courseSnapshot),
-    sendSeminarMessage: () => Promise.resolve(),
+    sendSeminarMessage: () => {
+      if (scrollFixture) {
+        for (const listener of eventListeners)
+          listener({ type: "message_delta", delta: SCROLL_CHUNK });
+      }
+      return Promise.resolve();
+    },
     retrySeminarTurn: () => Promise.resolve(),
     respondToSeminarApproval: () => Promise.resolve(),
     allowSeminarCourseEdits: () => Promise.resolve(),
@@ -604,6 +619,8 @@ type Screen =
   | "courses"
   | "course"
   | "labs"
+  | "scroll-seminar"
+  | "scroll-onboarding"
   | "working"
   | "control-error"
   | "connect";
@@ -614,6 +631,8 @@ const SCREENS: Screen[] = [
   "courses",
   "course",
   "labs",
+  "scroll-seminar",
+  "scroll-onboarding",
   "working",
   "background",
   "continuing",
@@ -639,6 +658,7 @@ function Harness(): React.JSX.Element {
     update,
     screen === "tutor-repair",
     screen === "background" || screen === "continuing" || screen === "settled" ? screen : null,
+    screen === "scroll-seminar" || screen === "scroll-onboarding",
   );
 
   if (!bar) {
@@ -682,6 +702,14 @@ function Harness(): React.JSX.Element {
           </button>
         ))}
         <span className="bg-line mx-1 w-px self-stretch" aria-hidden="true" />
+        {screen === "scroll-seminar" || screen === "scroll-onboarding" ? (
+          <button
+            type="button"
+            onClick={() => void window.praxeum.sendSeminarMessage("Synthetic chunk")}
+          >
+            Stream chunk
+          </button>
+        ) : null}
         {/* The update notice is orthogonal to the surface: any fixture on any screen. */}
         {UPDATE_FIXTURES.map((candidate) => (
           <button
@@ -751,6 +779,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
   if (screen === "labs") return <LabFixture />;
   if (
     screen === "course" ||
+    screen === "scroll-seminar" ||
     screen === "working" ||
     screen === "control-error" ||
     screen === "background" ||
