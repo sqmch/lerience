@@ -796,14 +796,14 @@ function BuildStage({
           />
         </div>
 
-        <div className="text-ink-dim mt-2.5 flex items-center gap-3 text-xs">
+        <div className="text-ink-dim mt-2.5 flex items-baseline gap-3 text-xs">
           {elapsed === null ? null : (
-            <span className="font-data tabular-nums">
+            <span className="font-data shrink-0 tabular-nums whitespace-nowrap">
               {ready ? `built in ${elapsed}` : elapsed}
             </span>
           )}
           {activity === null || ready ? null : (
-            <span className="text-ink-faint min-w-0 truncate">
+            <span className="text-ink-faint min-w-0 wrap-anywhere">
               {activity.summary}
               {activity.detail === null ? null : (
                 <span className="font-data"> {activity.detail}</span>
