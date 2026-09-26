@@ -8,6 +8,7 @@ import {
   ApprovalCard,
   BackgroundActivity,
   ConversationTranscript,
+  ContextReadout,
   LimitNotice,
   SessionControlBar,
 } from "./parts";
@@ -24,6 +25,23 @@ window.matchMedia = () =>
   }) as unknown as MediaQueryList;
 
 let root: Root | null = null;
+
+it("explains context estimates in an accessible disclosure and removes unavailable readings", () => {
+  const container = document.createElement("div");
+  root = createRoot(container);
+  act(() =>
+    root!.render(
+      <ContextReadout
+        usage={{ usedTokens: 12000, capacityTokens: 200000, source: "last-request" }}
+      />,
+    ),
+  );
+  expect(container.querySelector("summary")?.textContent).toBe("Context ~12,000 / 200,000 tokens");
+  expect(container.querySelector("details p")?.textContent).toContain("not a live count");
+  expect(container.textContent).toContain("cannot precisely predict or prevent");
+  act(() => root!.render(<ContextReadout usage={null} />));
+  expect(container.textContent).toBe("");
+});
 
 afterEach(() => {
   if (root !== null) {

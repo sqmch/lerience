@@ -585,6 +585,7 @@ export function Composer({
   controls,
   onControls,
   controlNotice,
+  contextUsage,
   queued,
   onUnqueue,
   onRetryQueued,
@@ -602,6 +603,7 @@ export function Composer({
   controls?: SessionControls | null;
   onControls?: (patch: SessionControlPatch) => void;
   controlNotice?: SeminarState["controlNotice"];
+  contextUsage?: SeminarState["contextUsage"];
   queued?: string | null;
   onUnqueue?: () => void;
   onRetryQueued?: (() => void) | undefined;
@@ -735,7 +737,31 @@ export function Composer({
           </button>
         </div>
       </div>
+      <ContextReadout usage={contextUsage} />
     </div>
+  );
+}
+
+export function ContextReadout({
+  usage,
+}: {
+  usage: SeminarState["contextUsage"];
+}): React.JSX.Element | null {
+  if (!usage) return null;
+  return (
+    <details className="text-ink-faint px-1 text-2xs">
+      <summary className="focus-visible:outline-focus w-fit cursor-pointer rounded-sm focus-visible:outline-2">
+        Context ~{usage.usedTokens.toLocaleString("en-US")} /{" "}
+        {usage.capacityTokens.toLocaleString("en-US")} tokens
+      </summary>
+      <p className="text-ink-dim mt-1 max-w-prose leading-relaxed">
+        {usage.source === "current-context"
+          ? "Estimated context after the latest reply. The window is reported by your tutor provider and may reflect its compaction policy."
+          : "Latest reported context estimate, including input and output tokens. It is a sample from the latest request, not a live count."}{" "}
+        This is separate from your account allowance. Your provider controls compaction; this
+        readout cannot precisely predict or prevent it.
+      </p>
+    </details>
   );
 }
 

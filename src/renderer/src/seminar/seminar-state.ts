@@ -62,6 +62,7 @@ export interface SeminarState {
   taskNotice: TaskOutcome | null;
   approval: SeminarApproval | null;
   totalCostUsd: number;
+  contextUsage: SeminarSnapshot["contextUsage"];
   limitWarning: Extract<AgentEvent, { type: "limit_warning" }> | null;
   failure: { kind: SeminarFailureKind; message: string } | null;
   /** A recoverable failure scoped to the composer's session controls. It must
@@ -118,6 +119,7 @@ export function createSeminarState(): SeminarState {
     taskNotice: null,
     approval: null,
     totalCostUsd: 0,
+    contextUsage: null,
     limitWarning: null,
     failure: null,
     controlNotice: null,
@@ -185,6 +187,7 @@ function failureKind(code: AgentErrorCode): SeminarFailureKind {
 }
 
 function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
+  if (event.type === "context_usage") return { ...state, contextUsage: event.usage };
   if (
     [
       "turn_started",
@@ -294,6 +297,7 @@ function reduceEvent(state: SeminarState, event: AgentEvent): SeminarState {
       phase: "closed",
       lifecycle: "closed",
       backgroundTasks: [],
+      contextUsage: null,
       taskNotice: null,
       recoveryHandoff: "none",
       items: finalizeStreamingTutor(state.items),
@@ -414,6 +418,7 @@ export function seminarReducer(state: SeminarState, action: SeminarAction): Semi
       toolActivity: null,
       approval: null,
       totalCostUsd: snapshot.totalCostUsd,
+      contextUsage: snapshot.contextUsage ?? null,
       backgroundTasks: snapshot.backgroundTasks ?? [],
       taskNotice: snapshot.taskNotice ?? null,
       failure,

@@ -21,6 +21,7 @@ import type {
   TutorAgent,
 } from "../../shared/seminar";
 import { AsyncQueue } from "./async-queue";
+import { claudeContextUsage } from "./context-usage";
 
 interface ClaudeQuery extends AsyncIterable<SDKMessage> {
   interrupt(): Promise<unknown>;
@@ -32,6 +33,7 @@ interface ClaudeQuery extends AsyncIterable<SDKMessage> {
   setPermissionMode?(mode: PermissionMode): Promise<void>;
   applyFlagSettings?(settings: Record<string, unknown>): Promise<void>;
   supportedModels?(): Promise<ModelInfo[]>;
+  getContextUsage?(): Promise<unknown>;
 }
 
 type QueryOptions = Parameters<typeof query>[0];
@@ -392,6 +394,9 @@ class ClaudeAgentSession implements AgentSession {
   private readonly pumpPromise: Promise<void>;
 
   private turnInFlight = false;
+  private contextRevision = 0;
+  private contextVisible = false;
+  private contextUnavailable = false;
   /** Whether text deltas have streamed since the last assistant frame. It is
    *  per-frame rather than per-turn on purpose: a turn can carry several
    *  assistant messages (text, tool use, text again), and each one has to be
@@ -479,6 +484,7 @@ class ClaudeAgentSession implements AgentSession {
       throw new Error("A tutor turn is already in progress.");
     }
 
+    this.clearContext();
     this.turnInFlight = true;
     this.currentTurnNumber = ++this.turnCounter;
     this.interruptRequested = false;
@@ -623,6 +629,7 @@ class ClaudeAgentSession implements AgentSession {
     if (patch.model !== undefined) {
       if (this.sdkQuery.setModel === undefined) throw new Error("Model control is unavailable.");
       await this.sdkQuery.setModel(patch.model ?? undefined);
+      this.clearContext();
       this.currentModel = patch.model;
       this.modelPinned = patch.model !== null;
     }
@@ -641,6 +648,35 @@ class ClaudeAgentSession implements AgentSession {
       this.currentAutonomy = mode.id;
     }
     return await this.describeControls();
+  }
+
+  private clearContext(): void {
+    this.contextRevision++;
+    if (this.contextVisible) this.output.push({ type: "context_usage", usage: null });
+    this.contextVisible = false;
+  }
+
+  private refreshContext(): void {
+    if (this.contextUnavailable || !this.sdkQuery.getContextUsage) return;
+    const revision = this.contextRevision;
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Context query timed out")), 5000);
+    });
+    void Promise.race([this.sdkQuery.getContextUsage(), timeout])
+      .then((value) => {
+        if (revision !== this.contextRevision || this.terminal || this.endRequested) return;
+        const usage = claudeContextUsage(value);
+        this.contextVisible = usage !== null;
+        this.output.push({ type: "context_usage", usage });
+      })
+      .catch(() => {
+        // Optional telemetry must never fail the tutor or accumulate timed-out
+        // control requests on runtimes that cannot answer this query.
+        this.contextUnavailable = true;
+        if (revision === this.contextRevision) this.clearContext();
+      })
+      .finally(() => clearTimeout(timer));
   }
 
   async end(): Promise<void> {
@@ -738,6 +774,7 @@ class ClaudeAgentSession implements AgentSession {
           this.turnInFlight = true;
           this.currentTurnNumber = ++this.turnCounter;
           this.streamedSinceAssistant = false;
+          this.clearContext();
           this.output.push({ type: "turn_started" });
         }
         // Result frames map to foreground turns FIFO. One whose turn the interrupt
@@ -758,6 +795,13 @@ class ClaudeAgentSession implements AgentSession {
 
         const resultTurn = message.type === "result" ? ++this.resultCursor : null;
         const stale = resultTurn !== null && this.fallbackCompleted.delete(resultTurn);
+        if (
+          message.type === "system" &&
+          (message.subtype === "compact_boundary" ||
+            (message.subtype === "status" && message.status === "compacting"))
+        ) {
+          this.clearContext();
+        }
         const events = normalizeClaudeMessage(message, {
           includeAssistantText: message.type === "assistant" && !this.streamedSinceAssistant,
         });
@@ -779,6 +823,7 @@ class ClaudeAgentSession implements AgentSession {
             this.interruptRequested = false;
           } else this.output.push(event);
         }
+        if (message.type === "result" && !stale) this.refreshContext();
       }
 
       if (!this.endRequested && failure === null)

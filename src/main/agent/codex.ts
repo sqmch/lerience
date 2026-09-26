@@ -19,6 +19,7 @@ import {
   type CodexAppServerFactory,
 } from "../provider/codex-app-server";
 import { AsyncQueue } from "./async-queue";
+import { codexContextUsage } from "./context-usage";
 import {
   CODEX_COURSE_SANDBOX_CONFIG,
   CodexCourseWriteFailure,
@@ -244,6 +245,9 @@ export class CodexAgentSession implements AgentSession {
   private turnInFlight = false;
   private turnStart: Promise<void> | null = null;
   private currentTurnId: string | null = null;
+  private completedTurnId: string | null = null;
+  private contextVisible = false;
+  private compacting = false;
   private threadId: string | null = null;
   private interruptRequested = false;
   private terminal = false;
@@ -291,6 +295,7 @@ export class CodexAgentSession implements AgentSession {
   send(message: string): void {
     if (this.terminal) throw new Error("This tutor session has ended.");
     if (this.turnInFlight) throw new Error("A tutor turn is already in progress.");
+    this.clearContext();
     this.turnInFlight = true;
     this.interruptRequested = false;
     const starting = this.startTurn(message);
@@ -503,6 +508,36 @@ export class CodexAgentSession implements AgentSession {
     if (this.terminal || !isRecord(params)) return;
     if ("threadId" in params && this.threadId !== null && params.threadId !== this.threadId) return;
 
+    if (method === "thread/tokenUsage/updated") {
+      if (params.threadId !== this.threadId || this.threadId === null || this.compacting) return;
+      if (this.currentTurnId !== null && params.turnId !== this.currentTurnId) return;
+      if (
+        this.currentTurnId === null &&
+        this.turnInFlight &&
+        params.turnId === this.completedTurnId
+      )
+        return;
+      if (!this.turnInFlight && params.turnId !== this.completedTurnId) return;
+      const usage = codexContextUsage(params.tokenUsage);
+      this.contextVisible = usage !== null;
+      this.output.push({ type: "context_usage", usage });
+      return;
+    }
+    if (method === "thread/compacted") {
+      this.compacting = false;
+      this.clearContext();
+      return;
+    }
+    if (method === "model/rerouted") this.clearContext();
+    if (
+      (method === "item/started" || method === "item/completed") &&
+      isRecord(params.item) &&
+      params.item.type === "contextCompaction"
+    ) {
+      this.compacting = method === "item/started";
+      this.clearContext();
+    }
+
     if (method === "item/agentMessage/delta") {
       if (typeof params.itemId !== "string" || typeof params.delta !== "string") return;
       this.streamedAgentItems.add(params.itemId);
@@ -531,6 +566,7 @@ export class CodexAgentSession implements AgentSession {
       return;
     }
     if (method === "thread/settings/updated" && isRecord(params.threadSettings)) {
+      if (nonEmptyString(params.threadSettings.model) !== this.currentModel) this.clearContext();
       this.currentModel = nonEmptyString(params.threadSettings.model);
       this.currentEffort = knownEffort(params.threadSettings.effort);
       this.currentAutonomy = knownAutonomy(params.threadSettings.approvalPolicy);
@@ -548,6 +584,11 @@ export class CodexAgentSession implements AgentSession {
       }
       if (turnId === this.currentTurnId) this.completeFromTurn(params.turn);
     }
+  }
+
+  private clearContext(): void {
+    if (this.contextVisible) this.output.push({ type: "context_usage", usage: null });
+    this.contextVisible = false;
   }
 
   private handleRequest(id: string | number, method: string, params: unknown): void {
@@ -734,6 +775,7 @@ export class CodexAgentSession implements AgentSession {
   private finishTurn(): void {
     if (!this.turnInFlight) return;
     this.turnInFlight = false;
+    this.completedTurnId = this.currentTurnId;
     this.currentTurnId = null;
     this.interruptRequested = false;
     this.output.push({ type: "turn_complete" });

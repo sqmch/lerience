@@ -99,6 +99,74 @@ async function events(iterator: AsyncIterator<AgentEvent>, count: number): Promi
 }
 
 describe("CodexAgentSession", () => {
+  it("replaces context samples, clears on compaction/model/turn changes and excludes other threads", async () => {
+    const writeProof = vi.spyOn(courseWrite, "verifyCodexCourseWrite").mockResolvedValue(undefined);
+    const { connection, session } = setup();
+    const received: AgentEvent[] = [];
+    const pump = (async () => {
+      for await (const event of session.events) received.push(event);
+    })();
+    const report = (
+      used: number,
+      capacity: number | null = 200000,
+      threadId = "thread-1",
+      turnId = "turn-1",
+    ): void =>
+      connection.emit("thread/tokenUsage/updated", {
+        threadId,
+        turnId,
+        tokenUsage: {
+          last: { totalTokens: used },
+          total: { totalTokens: 9999999 },
+          modelContextWindow: capacity,
+        },
+      });
+    try {
+      session.send("hello");
+      await session.describeControls();
+      await vi.waitFor(() =>
+        expect(connection.calls.some((call) => call.method === "turn/start")).toBe(true),
+      );
+      report(12000);
+      report(90000, 200000, "child");
+      report(13000);
+      connection.emit("item/started", {
+        threadId: "thread-1",
+        item: { id: "compact", type: "contextCompaction" },
+      });
+      report(190000);
+      connection.emit("item/completed", {
+        threadId: "thread-1",
+        item: { id: "compact", type: "contextCompaction" },
+      });
+      report(4000);
+      report(5000, null);
+      report(6000, 100000);
+      connection.emit("thread/settings/updated", {
+        threadId: "thread-1",
+        threadSettings: { model: "different" },
+      });
+      report(7000, 100000);
+      connection.emit("turn/completed", {
+        threadId: "thread-1",
+        turn: { id: "turn-1", status: "completed" },
+      });
+      await vi.waitFor(() => expect(session.busy).toBe(false));
+      connection.responses.set("turn/start", { turn: { id: "turn-2", status: "inProgress" } });
+      session.send("next");
+      report(80000);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      report(8000, 100000, "thread-1", "turn-2");
+      await session.end();
+      await pump;
+      expect(
+        received.filter((e) => e.type === "context_usage").map((e) => e.usage?.usedTokens ?? null),
+      ).toEqual([12000, 13000, null, 4000, null, 6000, null, 7000, null, 8000]);
+    } finally {
+      await session.end();
+      writeProof.mockRestore();
+    }
+  });
   it("does not confuse a collaboration item or child turn completion with the parent turn", async () => {
     // This tests event routing. The sandbox tests below exercise the real
     // marker command; starting another PowerShell here made this unit test

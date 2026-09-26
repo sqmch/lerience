@@ -71,6 +71,7 @@ interface ActiveRuntime {
   /** Includes a result queued by the adapter but not yet saved by this pump. */
   turnPending: boolean;
   backgroundTasks: NonNullable<SeminarSnapshot["backgroundTasks"]>;
+  contextUsage: SeminarSnapshot["contextUsage"];
   taskNotice: NonNullable<SeminarSnapshot["taskNotice"]> | null;
   /** The pump's own completion — the only truthful "all trailing events are
    *  persisted" signal. Replacement and abandon must await it before another
@@ -522,6 +523,7 @@ export class SessionConductor {
       admission: null,
       turnPending: false,
       backgroundTasks: [],
+      contextUsage: null,
       taskNotice: null,
       pump: Promise.resolve(),
       pendingOpener: opener,
@@ -622,6 +624,7 @@ export class SessionConductor {
         while (active.admission !== null) await active.admission;
         if (this.active?.id !== active.id) return;
         if (event.type === "turn_started") active.turnPending = true;
+        if (event.type === "context_usage") active.contextUsage = event.usage;
         if (event.type === "background_tasks") {
           if (
             event.tasks.some((task) => !active.backgroundTasks.some((old) => old.id === task.id))
@@ -632,6 +635,7 @@ export class SessionConductor {
         }
         if (event.type === "task_notification") active.taskNotice = event.status;
         if (event.type === "session_ended") {
+          active.contextUsage = null;
           active.backgroundTasks = [];
           active.taskNotice = null;
         }
@@ -859,6 +863,7 @@ export class SessionConductor {
         knownTurnInProgress ?? (runtime !== null && (runtime.turnPending || runtime.session.busy)),
       steerable: runtime?.session.steerable ?? false,
       backgroundTasks: runtime?.backgroundTasks ?? [],
+      contextUsage: runtime?.contextUsage ?? null,
       taskNotice: runtime?.taskNotice ?? null,
       ...(latestLifecycle?.kind === "lifecycle" && latestLifecycle.detail !== undefined
         ? { detail: latestLifecycle.detail }
@@ -955,6 +960,7 @@ function transcriptEntry(event: AgentEvent): TranscriptEntryInput | null {
   // Live activity is not learning evidence and must not revive after restart.
   if (
     event.type === "turn_started" ||
+    event.type === "context_usage" ||
     event.type === "background_tasks" ||
     event.type === "task_notification"
   )

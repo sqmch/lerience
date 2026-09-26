@@ -53,7 +53,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Pinned types, runtime schema, adapter and renderer fixtures | S02, S11 | Implemented |
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Native Claude/Codex transitions; capability and control regressions; PR #97 | S06 | Implemented |
 | [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | PR #98 merged at `4c0258c`; reviewed gate, native first-turn evidence and green Windows CI | S08 | Implemented |
-| [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | Requested; telemetry discovery needed | S13 | Open |
+| [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | Finite inventory, both native samples and source regressions; task `01a0ddd5`, branch `codex/lb-009-context-usage` | S13 | In progress |
 | [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Reproduced ambiguous labels; identity regressions and renderer verified | S01 | Implemented |
 | [LB-011](experience.md#lb-011) | Streaming chat pulls the reader back down | Bug / behavior change | P2 | Reproduced snap-back; 12 hook regressions and both renderer consumers verified | S05 | Implemented |
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |

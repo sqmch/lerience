@@ -245,6 +245,9 @@ their behavior.
   Leaving through Courses cancels preparation.
 - Session controls report provider-confirmed current values. Pending next-turn values must look
   pending, not active.
+- Where supported, the shared composer shows estimated context use against the provider-reported
+  window. A keyboard-accessible disclosure explains its sampling and compaction limits. Missing
+  telemetry hides the readout. Account allowance and accumulated usage are separate facts.
 - Model, effort, autonomy, and access changes are learner-initiated. A session starts from the
   learner's provider configuration, then re-applies the explicit choices the learner made for this
   course last time. Pills show the actual selected values without a restoration suffix (ADR-040). The

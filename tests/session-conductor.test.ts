@@ -212,6 +212,25 @@ async function startConfirmed(
 }
 
 describe("SessionConductor", () => {
+  it("keeps context in live snapshots only and clears it on runtime replacement", async () => {
+    const { conductor, agent, courseDir } = harness({});
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
+    const usage = { usedTokens: 12000, capacityTokens: 200000, source: "current-context" as const };
+    agent.sessions[0]!.queue.push({ type: "context_usage", usage });
+    await settleUntil(
+      async () => (await conductor.current(courseDir)).contextUsage?.usedTokens === 12000,
+    );
+    agent.sessions[0]!.queue.push({ type: "context_usage", usage: null });
+    await settleUntil(async () => (await conductor.current(courseDir)).contextUsage === null);
+    agent.sessions[0]!.queue.push({ type: "context_usage", usage });
+    await settleUntil(
+      async () => (await conductor.current(courseDir)).contextUsage?.usedTokens === 12000,
+    );
+    await conductor.abandon();
+    expect((await conductor.current(courseDir)).contextUsage).toBeNull();
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    expect((await conductor.current(courseDir)).contextUsage).toBeNull();
+  });
   it.each([false, true])(
     "keeps prior Claude results separate from closing with a buffered continuation: %s",
     async (buffered) => {

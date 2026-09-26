@@ -254,6 +254,14 @@ Start with [`conductor.ts`](../../src/main/session/conductor.ts),
 
 P2, requested feature with telemetry discovery. Source S13.
 
+Owner: task `01a0ddd5-efa8-7fa0-86bd-331b77dc2043`, branch `codex/lb-009-context-usage`.
+In progress, 2026-09-26. Baseline PR #99 merge `ccdc9da`; merged state and final-head Windows
+CI verified. The [finite telemetry inventory](context-telemetry-2026-09-26.md) records official
+sources, pinned/runtime contracts, design and successful native samples from both providers.
+Implementation adds a neutral estimated-context disclosure in the shared composer, with live
+snapshot replacement, invalidation and no inferred model capacity. Source checkpoint awaits
+final checks and review; no release or installed-course change is included.
+
 The learner wants to see used tokens versus the session maximum to decide when to start a new
 session and avoid compaction. First distinguish current context occupancy from cumulative
 session token usage and account allowance. Only context occupancy against a known capacity
