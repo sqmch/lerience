@@ -90,9 +90,9 @@ export interface StartSessionOptions {
   courseDir: string;
 }
 
-/** How hard the model is asked to think. Providers that have no such control
- *  report no levels and the app shows none. */
-export type SessionEffort = "low" | "medium" | "high" | "xhigh" | "max";
+/** Provider-owned effort id, validated against the selected model's live
+ *  capabilities by the adapter. An empty capability list hides the control. */
+export type SessionEffort = string;
 
 export interface SessionModelOption {
   /** Opaque to the app — only the adapter interprets it. */

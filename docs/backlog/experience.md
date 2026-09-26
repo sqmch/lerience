@@ -223,8 +223,9 @@ permission values from the unnecessary restoration suffix.
 - Source gate: `pnpm check` on Windows x64, Node 24.18.0, pnpm 11.9.0. The PR records the local
   result and CI for its final head.
 
-Source fix in [PR #96](https://github.com/sqmch/lerience/pull/96) on
-`codex/lb-013-control-labels`; merge and release remain separate.
+Implemented in [PR #96](https://github.com/sqmch/lerience/pull/96), merged at
+`406c39992e53450f98485e5b8ffea9e7a864443b` after green final-head Windows x64 CI.
+Release remains separate.
 
 <a id="lb-015"></a>
 ## LB-015: Explore interactive lesson reading

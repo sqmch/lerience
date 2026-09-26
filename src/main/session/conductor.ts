@@ -248,10 +248,20 @@ export class SessionConductor {
   async applySessionControls(patch: SessionControlPatch): Promise<SessionControls | null> {
     const active = this.requireActive();
     const controls = await active.session.applyControls(patch);
-    for (const key of REMEMBERED_CONTROL_KEYS) {
-      if (patch[key] !== undefined) active.remembered.delete(key);
+    const rememberedPatch = { ...patch };
+    if (patch.model !== undefined && patch.effort === undefined) {
+      const effective = { ...controls.current, ...controls.pending };
+      const savedEffort = this.options.controlMemory?.read(
+        active.courseId,
+        active.providerId,
+      ).effort;
+      if (savedEffort !== undefined && savedEffort !== effective.effort)
+        rememberedPatch.effort = null;
     }
-    this.options.controlMemory?.remember(active.courseId, active.providerId, patch);
+    for (const key of REMEMBERED_CONTROL_KEYS) {
+      if (rememberedPatch[key] !== undefined) active.remembered.delete(key);
+    }
+    this.options.controlMemory?.remember(active.courseId, active.providerId, rememberedPatch);
     return this.withRemembered(active, controls);
   }
 

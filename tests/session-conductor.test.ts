@@ -806,6 +806,24 @@ describe("SessionConductor", () => {
 });
 
 describe("remembered session controls (ADR-040)", () => {
+  it.each([null, "medium"])(
+    "forgets an incompatible saved effort after a model change resolves to %s",
+    async (effort) => {
+      const memory = new FileControlMemory(temporaryRoot());
+      const { conductor, courseDir, agent } = harness({ controlMemory: memory });
+      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      await conductor.applySessionControls({ effort: "ultra" });
+      expect(memory.read(COURSE_ID, "claude").effort).toBe("ultra");
+      const session = agent.sessions[0]!;
+      session.applyControls = async () => ({
+        ...session.controls,
+        pending: { model: "narrow", effort },
+      });
+      await conductor.applySessionControls({ model: "narrow" });
+      expect(memory.read(COURSE_ID, "claude")).toEqual({ model: "narrow" });
+    },
+  );
+
   it("remembers explicit choices per course and restores them before the opener", async () => {
     const userData = temporaryRoot();
     const memory = new FileControlMemory(userData);

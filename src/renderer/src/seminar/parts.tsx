@@ -517,8 +517,8 @@ export function SessionControlBar({
           <Menu
             label="How hard the model thinks before answering"
             value={selected.effort}
-            trigger={`${selected.effort === null ? "Default effort" : EFFORT_LABELS[selected.effort]}${suffix("effort")}`}
-            options={efforts.map((level) => ({ value: level, label: EFFORT_LABELS[level] }))}
+            trigger={`${selected.effort === null ? "Default effort" : effortLabel(selected.effort)}${suffix("effort")}`}
+            options={efforts.map((level) => ({ value: level, label: effortLabel(level) }))}
             onChange={(effort) => {
               onChange({ effort });
             }}
@@ -535,12 +535,19 @@ export function SessionControlBar({
 }
 
 const EFFORT_LABELS: Record<SessionEffort, string> = {
+  none: "No reasoning",
+  minimal: "Minimal effort",
   low: "Low effort",
   medium: "Medium effort",
   high: "High effort",
-  xhigh: "Very high effort",
+  xhigh: "Extra high effort",
   max: "Max effort",
+  ultra: "Ultra effort",
 };
+
+function effortLabel(effort: SessionEffort): string {
+  return Object.hasOwn(EFFORT_LABELS, effort) ? EFFORT_LABELS[effort]! : `${effort} effort`;
+}
 
 /** The last inch of transcript, dissolving into the ground the composer sits
  *  on. It replaces the rule that used to run the full width under every

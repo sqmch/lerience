@@ -39,7 +39,6 @@ export interface ControlMemory {
 
 const FILE_NAME = "course-controls.json";
 const VERSION = 1 as const;
-const EFFORTS: readonly SessionEffort[] = ["low", "medium", "high", "xhigh", "max"];
 
 interface MemoryFile {
   version: typeof VERSION;
@@ -61,8 +60,9 @@ export function parseRememberedControls(value: unknown): RememberedControls {
     if (typeof entry === "string" && entry !== "") controls[key] = entry;
   }
   const effort = record["effort"];
-  if (typeof effort === "string" && (EFFORTS as readonly string[]).includes(effort)) {
-    controls.effort = effort as SessionEffort;
+  // Compatibility belongs to the live provider capability list at restore.
+  if (typeof effort === "string" && effort.trim() !== "") {
+    controls.effort = effort;
   }
   return controls;
 }

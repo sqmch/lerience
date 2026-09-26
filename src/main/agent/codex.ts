@@ -27,7 +27,6 @@ import {
 
 const PROTOCOL_LIMIT = 512 * 1024;
 const INTERRUPT_FALLBACK_MS = 5_000;
-const EFFORTS: SessionEffort[] = ["low", "medium", "high", "xhigh", "max"];
 
 const AUTONOMY: SessionAutonomyOption[] = [
   {
@@ -82,6 +81,7 @@ interface PendingApproval {
 
 interface ModelRecord extends SessionModelOption {
   wireModel: string;
+  defaultEffort: SessionEffort | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -93,9 +93,7 @@ function nonEmptyString(value: unknown): string | null {
 }
 
 function knownEffort(value: unknown): SessionEffort | null {
-  return typeof value === "string" && EFFORTS.includes(value as SessionEffort)
-    ? (value as SessionEffort)
-    : null;
+  return nonEmptyString(value);
 }
 
 function knownAutonomy(value: unknown): string | null {
@@ -253,6 +251,7 @@ export class CodexAgentSession implements AgentSession {
   private models: ModelRecord[] | null = null;
   private currentModel: string | null = null;
   private currentEffort: SessionEffort | null = null;
+  private initialModel: string | null = null;
   private currentAutonomy: string | null = null;
   private currentAccess: string | null = null;
   private courseSandbox: Record<string, unknown> | null = null;
@@ -345,12 +344,14 @@ export class CodexAgentSession implements AgentSession {
     if (!(await this.ready) || this.threadId === null) throw new Error("Codex is unavailable.");
     const models = await this.loadModels();
     const next: SessionControlPatch = { ...this.pendingControls, ...patch };
+    // App Server null overrides mean "keep the current value", not reset.
+    if (patch.model === null) next.model = this.initialModel;
     if (patch.access !== undefined && !ACCESS.some((option) => option.id === patch.access)) {
       throw new Error("That access setting is not available in this session.");
     }
 
     if (patch.model !== undefined) {
-      if (patch.model !== null && !models.some((model) => model.id === patch.model)) {
+      if (!models.some((model) => model.id === next.model)) {
         throw new Error("That model is not available in this session.");
       }
     }
@@ -370,15 +371,22 @@ export class CodexAgentSession implements AgentSession {
       }
     }
 
-    // Moving to a model that cannot accept the current/staged effort restores
-    // that model's default rather than sending a combination model/list says
-    // is invalid.
-    if (patch.model !== undefined && patch.model !== null) {
-      const selected = models.find((model) => model.id === patch.model);
-      const effectiveEffort = next.effort !== undefined ? next.effort : this.currentEffort;
-      if (effectiveEffort !== null && !selected?.efforts.includes(effectiveEffort)) {
-        next.effort = null;
+    const selected = models.find((model) => model.id === (next.model ?? this.currentModel));
+    const effectiveEffort = next.effort !== undefined ? next.effort : this.currentEffort;
+    if (
+      patch.effort === null ||
+      (patch.model !== undefined &&
+        effectiveEffort !== null &&
+        !selected?.efforts.includes(effectiveEffort))
+    ) {
+      // Send the advertised default explicitly. Sending null left the previous
+      // override active in codex-cli 0.155.1, including on a different model.
+      if (selected?.defaultEffort == null) {
+        throw new Error(
+          "Codex did not report a default effort for this model. Choose an effort first.",
+        );
       }
+      next.effort = selected.defaultEffort;
     }
 
     this.pendingControls = this.onlyChangedControls(next);
@@ -446,6 +454,7 @@ export class CodexAgentSession implements AgentSession {
     this.currentAccess = knownAccess(response.sandbox);
     this.threadId = response.thread.id;
     this.currentModel = nonEmptyString(response.model);
+    this.initialModel = this.currentModel;
     this.currentEffort = knownEffort(response.reasoningEffort);
     this.currentAutonomy = knownAutonomy(response.approvalPolicy);
   }
@@ -630,9 +639,15 @@ export class CodexAgentSession implements AgentSession {
         const effortRows = Array.isArray(value.supportedReasoningEfforts)
           ? value.supportedReasoningEfforts
           : [];
-        const efforts = EFFORTS.filter((effort) =>
-          effortRows.some((row) => isRecord(row) && row.reasoningEffort === effort),
-        );
+        const efforts = [
+          ...new Set(
+            effortRows.flatMap((row) => {
+              const effort = isRecord(row) ? knownEffort(row.reasoningEffort) : null;
+              return effort === null ? [] : [effort];
+            }),
+          ),
+        ];
+        const defaultEffort = knownEffort(value.defaultReasoningEffort);
         return [
           {
             id,
@@ -640,6 +655,8 @@ export class CodexAgentSession implements AgentSession {
             label,
             description: nonEmptyString(value.description) ?? undefined,
             efforts,
+            defaultEffort:
+              defaultEffort !== null && efforts.includes(defaultEffort) ? defaultEffort : null,
           },
         ];
       });
@@ -647,6 +664,10 @@ export class CodexAgentSession implements AgentSession {
         (model) => model.id === this.currentModel || model.wireModel === this.currentModel,
       );
       if (match !== undefined) this.currentModel = match.id;
+      const initial = this.models.find(
+        (model) => model.id === this.initialModel || model.wireModel === this.initialModel,
+      );
+      if (initial !== undefined) this.initialModel = initial.id;
       return this.models;
     } catch {
       return (this.models = []);
