@@ -91,6 +91,21 @@ const joinPath = (base, key) => (base === "" ? String(key) : `${base}.${key}`);
 const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 export function validate(schema, value, at, errors) {
+  if (
+    Array.isArray(schema.anyOf) &&
+    !schema.anyOf.some((branch) => validate(branch, value, at, []).length === 0)
+  ) {
+    errors.push({ path: at, message: "does not match any allowed shape" });
+    return errors;
+  }
+  if (Object.hasOwn(schema, "const") && !eq(schema.const, value))
+    errors.push({ path: at, message: "unexpected constant" });
+  if (typeof value === "string") {
+    if (schema.minLength !== undefined && value.length < schema.minLength)
+      errors.push({ path: at, message: "text is too short" });
+    if (schema.maxLength !== undefined && value.length > schema.maxLength)
+      errors.push({ path: at, message: "text is too long" });
+  }
   // --- type ---
   if (schema.type !== undefined) {
     const types = Array.isArray(schema.type) ? schema.type : [schema.type];
@@ -123,6 +138,10 @@ export function validate(schema, value, at, errors) {
 
   // --- number: minimum / maximum ---
   if (typeof value === "number") {
+    if (typeof schema.exclusiveMinimum === "number" && value <= schema.exclusiveMinimum)
+      errors.push({ path: at, message: "number is below the exclusive minimum" });
+    if (typeof schema.exclusiveMaximum === "number" && value >= schema.exclusiveMaximum)
+      errors.push({ path: at, message: "number exceeds the exclusive maximum" });
     if (typeof schema.minimum === "number" && value < schema.minimum) {
       errors.push({ path: at, message: `${value} is below minimum ${schema.minimum}` });
     }
@@ -220,6 +239,7 @@ function targets(root) {
       for (const [file, schema] of [
         ["module.json", "module"],
         ["lab.json", "lab"],
+        ["assessment.json", "assessment-question"],
       ]) {
         if (fs.existsSync(path.join(curriculum, ent.name, file)))
           add(`curriculum/${ent.name}/${file}`, schema);
@@ -294,6 +314,7 @@ function main() {
   const repoRoot = path.resolve(chosen);
 
   const SCHEMAS = {
+    "assessment-question": loadSchema("assessment-question"),
     module: loadSchema("module"),
     progress: loadSchema("progress"),
     "quiz-bank": loadSchema("quiz-bank"),

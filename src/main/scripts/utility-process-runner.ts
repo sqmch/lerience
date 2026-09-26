@@ -24,6 +24,7 @@ export class ElectronUtilityProcessRunner implements ProcessRunner {
       }
 
       const stdout: Buffer[] = [];
+      if (request.input !== undefined) child.once("spawn", () => child.postMessage(request.input));
       const stderr: Buffer[] = [];
       let outputBytes = 0;
       let settled = false;
@@ -79,6 +80,14 @@ export class ElectronUtilityProcessRunner implements ProcessRunner {
       child.stdout?.on("data", capture(stdout));
       child.stderr?.on("data", capture(stderr));
       child.once("error", () => terminate("spawn-error"));
+      // The worker waits for this acknowledgement before exiting. Electron can
+      // destroy stdout on exit before a large reply has reached the parent.
+      if (request.ipcReply)
+        child.once("message", (message: unknown) => {
+          if (typeof message !== "string") return terminate("spawn-error");
+          capture(stdout)(message);
+          if (!settled && forcedTermination === null) child.postMessage("reply-received");
+        });
       child.once("exit", (exitCode) => {
         const termination = forcedTermination ?? "exit";
         finish(result(termination, termination === "exit" ? exitCode : null));

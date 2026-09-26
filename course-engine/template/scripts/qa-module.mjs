@@ -33,6 +33,7 @@ import path from "node:path";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { validateQuestion } from "./assessment.mjs";
 
 const die = (msg) => {
   console.error(msg);
@@ -741,7 +742,22 @@ function main() {
   // The volatile layer (scaffold/checks/REVIEW.md) is generated when the
   // learner starts the module. A stable-only module (spine written, not yet
   // generated) can't be QA'd for handover — say so, don't fail it.
-  volatilePresent = hasScaffold || hasChecks;
+  const hasAssessment = fs.existsSync(path.join(moduleDir, "assessment.json"));
+  volatilePresent = hasScaffold || hasChecks || hasAssessment;
+  if (hasAssessment) {
+    try {
+      const question = JSON.parse(readText(path.join(moduleDir, "assessment.json")));
+      const key = JSON.parse(readText(path.join(moduleDir, "assessment-key.json")));
+      validateQuestion(question, key, moduleId);
+      add(
+        "assessment-contract",
+        "ok",
+        "Question fields, criteria and versioned numeric key agree. Correctness and learner clarity require the cold review.",
+      );
+    } catch (error) {
+      add("assessment-contract", "fail", error.message);
+    }
+  }
   // Courses generated before engine 0.2.0 carry sealed hint files instead of a
   // review; those modules are read as legacy and warned about, never failed.
   const legacyHints = fs.existsSync(path.join(moduleDir, "hints"));
@@ -790,9 +806,11 @@ function main() {
   if (!hasScaffold) {
     add(
       "scaffold-todo",
-      volatilePresent ? "fail" : "warn",
+      hasAssessment && !hasChecks ? "ok" : volatilePresent ? "fail" : "warn",
       volatilePresent
-        ? "no scaffold/ directory"
+        ? hasAssessment && !hasChecks
+          ? "Assessment-only activity needs no scaffold."
+          : "no scaffold/ directory"
         : "no scaffold/ yet (volatile layer not generated)",
     );
   } else {
@@ -849,7 +867,11 @@ function main() {
             return 0;
           }
         };
-        const stale = ["LESSON.md", "BRIEF.md"].filter((f) => mtime(f) > mtime("REVIEW.md"));
+        const stale = [
+          "LESSON.md",
+          "BRIEF.md",
+          ...(hasAssessment ? ["assessment.json", "assessment-key.json"] : []),
+        ].filter((f) => mtime(f) > mtime("REVIEW.md"));
         if (stale.length)
           add(
             "review",
@@ -944,8 +966,12 @@ function main() {
   if (!hasChecks) {
     add(
       "timing",
-      volatilePresent ? "fail" : "warn",
-      volatilePresent ? "no checks/ directory" : "no checks/ yet (volatile layer not generated)",
+      hasAssessment && !hasScaffold ? "ok" : volatilePresent ? "fail" : "warn",
+      hasAssessment && !hasScaffold
+        ? "Assessment-only activity uses the canonical numeric checker."
+        : volatilePresent
+          ? "no checks/ directory"
+          : "no checks/ yet (volatile layer not generated)",
     );
   } else {
     const files = walkFiles(checksDir)

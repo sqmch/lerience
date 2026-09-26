@@ -18,6 +18,7 @@ import { useSeminar, type SeminarController } from "../seminar/use-seminar";
 import { AppShell } from "../shell/app-shell";
 import { BackToCourses, TitleRule } from "../shell/surface-head";
 import { EditorControl } from "./editor-control";
+import { Assessment } from "./assessment";
 import { LabOverlay } from "./lab-overlay";
 import { MaterialPane, type MaterialTab } from "./material";
 import { CourseRail } from "./rail";
@@ -114,6 +115,17 @@ export function CourseView({
      there, so the state that joins them belongs to the surface that owns both
      columns rather than to either one. */
   const [editorNotice, setEditorNotice] = useState<string | null>(null);
+  const assessmentUnsaved = useRef(false);
+  const onAssessmentUnsaved = useCallback((value: boolean) => {
+    assessmentUnsaved.current = value;
+  }, []);
+  const canLeaveAssessment = useCallback(() => {
+    if (!assessmentUnsaved.current) return true;
+    setEditorNotice(
+      "Wait for your answers to save, or retry the failed save in the Brief before leaving.",
+    );
+    return false;
+  }, []);
   const [connectionRequested, setConnectionRequested] = useState(false);
   const connection = useTutorConnection();
   /** Paths whose read is in flight or done. A read that returns nothing must
@@ -167,10 +179,14 @@ export function CourseView({
     });
   }, []);
 
-  const selectModule = useCallback((id: string) => {
-    setSelectedId(id);
-    setTab("lesson");
-  }, []);
+  const selectModule = useCallback(
+    (id: string) => {
+      if (!canLeaveAssessment()) return;
+      setSelectedId(id);
+      setTab("lesson");
+    },
+    [canLeaveAssessment],
+  );
 
   /* A failed launch is about the module it was launched for. Move to another
      and the message is no longer true of anything on screen. */
@@ -184,7 +200,11 @@ export function CourseView({
 
   const titleBar = (
     <>
-      <BackToCourses onLeaveCourse={onLeaveCourse} />
+      <BackToCourses
+        onLeaveCourse={() => {
+          if (canLeaveAssessment()) onLeaveCourse();
+        }}
+      />
       <TitleRule />
       <h1 className="text-hi font-course ml-1 min-w-0 truncate text-md font-semibold">{title}</h1>
     </>
@@ -251,7 +271,18 @@ export function CourseView({
         page={
           <MaterialPane
             activeModule={active}
-            briefSupplement={active === null ? undefined : renderBriefSupplement?.(active.id)}
+            briefSupplement={
+              active === null ? undefined : renderBriefSupplement ? (
+                renderBriefSupplement(active.id)
+              ) : (
+                <Assessment
+                  key={`${course.rootPath}:${active.id}`}
+                  courseRoot={course.rootPath}
+                  moduleId={active.id}
+                  onUnsaved={onAssessmentUnsaved}
+                />
+              )
+            }
             lessonPreview={active === null ? undefined : renderLessonPreview?.(active.id)}
             docs={docs}
             quiz={data.quiz}

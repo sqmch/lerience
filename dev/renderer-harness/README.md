@@ -85,24 +85,15 @@ and learning objective, not imposed on the course.
 The harness imports the same bundled Inter, Literata and JetBrains Mono faces as the desktop
 entrypoint. `theme=dark` selects the other theme, including its status-bar preference label.
 
-The small `Assessment preview` menu selects initial, editing, validation, submitted, feedback,
-revision, history and save-error examples. Direct links use `&assessment=feedback` and the
-other menu values. These choices reset the example. All responses and attempts live only in
-the mounted fixture's memory. Reloading, leaving the fixture or hiding/showing the general
-harness bar resets them. Switching Lesson/Brief or modules within the course retains them.
-No assessment code is loaded by the production entrypoint, and no disk, IPC, engine, provider,
-progress or spaced-recall writes are added.
+The harness now mounts the production Assessment component with a memory-only bridge. Begin
+answers, enter the trace, submit and request review through the real controls. The fixture
+review is explicitly synthetic. Use `&assessment=save-error` for a one-time save failure.
+Reloading the page resets fixture state; switching Lesson/Brief or modules retains it.
+The old independent preview UI/state implementation has been removed.
 
-Try Submit with an empty response, then enter the trace and explanation. Enter in the
-explanation inserts a newline. Submit freezes that attempt; Preview tutor feedback exposes
-a clearly labelled fixed example, not an evaluation of the typed explanation. Revise opens
-a new draft and Earlier attempts keeps prior responses readable. The save-error example
-retains all input and requires Retry save before submission. This verifies interaction only,
-not disk durability, grading accuracy, learner understanding or accepted production authority.
-
-For a clean review, compare a 1440 by 1000 desktop with a 1100 by 1000 window whose material
-pane reaches the supported 420-pixel floor. Use the existing separators to resize. The
-learner's content scrolls within its pane; primary actions remain in document order.
+Production uses the course-local engine writer through preload IPC. This harness proves only
+rendered interaction; native disk/IPC/reopen evidence is in `dev/assessment/README.md`.
+No provider, progress or spaced-recall operation runs from this fixture.
 
 ## Reading interaction preview
 

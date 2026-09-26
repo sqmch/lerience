@@ -25,6 +25,7 @@ import { useTutorConnection } from "../../src/renderer/src/tutor/use-tutor-conne
 import { COURSE_ROOT, FIXTURE_COURSE, readFixtureDoc } from "./course-fixture";
 import { LabFixture } from "./lab-choice-fixture";
 import { AssessmentFixture, readAssessmentDoc } from "./assessment-fixture";
+import { createAssessmentFixtureStore } from "./assessment-store";
 import { ReadingFixture, readingBridge } from "./reading-fixture";
 import { readReadingDoc } from "./reading-material";
 import { SCROLL_REPLY, SCROLL_CHUNK } from "./scroll-fixture";
@@ -549,6 +550,15 @@ function installBridge(
 
   // @ts-expect-error — the harness supplies only what this surface touches.
   window.praxeum = {
+    assessment: assessmentPreview
+      ? createAssessmentFixtureStore(
+          new URLSearchParams(window.location.search).get("assessment") ?? "initial",
+        )
+      : () =>
+          Promise.resolve({
+            ok: true,
+            view: { state: "none", detail: "", question: null, sourceDigest: null, attempts: [] },
+          }),
     ...updateBridge(update),
     listTutorProviders: () => Promise.resolve(providerCatalog),
     selectTutorProvider: () => Promise.resolve(providerCatalog),

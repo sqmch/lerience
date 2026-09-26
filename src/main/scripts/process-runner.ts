@@ -19,6 +19,10 @@ export interface ProcessRunRequest {
   timeoutMs: number;
   maxOutputBytes: number;
   serviceName: string;
+  /** Bounded structured input for course scripts that opt into parentPort. */
+  input?: unknown;
+  /** Receive one bounded JSON reply over parentPort and acknowledge before exit. */
+  ipcReply?: boolean;
 }
 
 export type ProcessTermination = "exit" | "timeout" | "output-limit" | "spawn-error";

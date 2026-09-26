@@ -4,17 +4,18 @@
 ## LB-016: Answer non-code exercises in the app
 
 P2, product and assessment discovery. Source S17. See the [register](README.md) for status.
-The portable assessment architecture remains proposed. A development-only visual preview below
-supports interface review before production implementation. Schedule it ahead of LB-015.
+ADR-044 now accepts optional portable assessment for new courses. Production implementation
+and acceptance are recorded [here](assessment-production-2026-09-26.md). The discovery and
+development-only preview below preserve the earlier decisions and evidence.
 
 Discovery owner: task `01a0ddef-68d1-7222-ba4d-785225359c96`, branch
 `codex/lb-016-assessment-design`, under orchestrator `01a0d98c-a787-7223-9b86-5fd61f99abf6`.
 Source baseline: `affd3a480b17e8b8116a8f645069efc5e5de0e21`, current main on 2026-09-26.
 
-Discovery is ready for product review. The [concrete recommendation](assessment-design-2026-09-26.md)
+Discovery was completed before production authorization. The [concrete recommendation](assessment-design-2026-09-26.md)
 compares three original tasks and selects one standard in-app trace with explanation, portable
-drafts and attempt history. The remaining decision is whether to accept engine-owned attempt
-records and a bounded app writer, amending ADR-002/010 before implementation. Custom submission
+drafts and attempt history. ADR-044 subsequently accepted engine-owned attempt
+records and a bounded app writer, amending ADR-002/010. Custom submission
 is deferred; ADR-012's sandbox stays unchanged. This completes the discovery stopping point
 below, not the feature. Implementation stages and evaluation limits are in the recommendation.
 
@@ -177,3 +178,12 @@ Start with the canonical protocol and `docs/FORMAT.md` under `course-engine/temp
 [`visual-protocol.ts`](../../src/main/visual-protocol.ts). Coordinate with LB-015 on selection
 and tutor context, and LB-003 on honest review activity. None of those existing items covers
 assessment entry or grading quality on its own.
+
+## New-course implementation, 2026-09-26
+
+The learner authorized finishing optional assessment for newly created courses. ADR-044 accepts
+the narrow portable-record contract. Owner task `01a0ddef`, branch
+`codex/lb-016-new-course-assessment`, implements engine capability/schema/writer, application
+save/submit/review and the reviewed Brief composition. [Acceptance evidence](assessment-production-2026-09-26.md)
+records the native and renderer checks. Existing-course
+conversion, reading annotations, distributable builds and release remain separate.
