@@ -2,6 +2,7 @@
 
 LB-014, source S12. Baseline `4c0258c`, Windows x64, Electron 43.4.0 and embedded
 Node 24.18.1. Branch `codex/lb-014-console-flashes`. No production fix is proposed.
+S12 does not establish the original provider/version, launching process or tool command.
 
 ## Launch audit
 
