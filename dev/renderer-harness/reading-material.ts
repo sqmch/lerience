@@ -6,7 +6,7 @@ const COLLECTION =
   "One collection removes one parcel from the tray. Parcels on the waiting shelf stay there until a separate refill event moves them into available tray spaces. **Collection alone does not refill the tray.**";
 const START = `# The parcel tray
 
-A small model for following changes, one event at a time. Read at your own pace; marking a passage is optional.
+A small model for following changes, one event at a time.
 
 ## Arrivals
 

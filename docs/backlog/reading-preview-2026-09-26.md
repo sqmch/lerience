@@ -21,9 +21,11 @@ CourseView and Lesson pane. Inter chrome, Literata prose, shared controls and ne
 remain unchanged. A quiet fill and underline identify saved ranges independently of colour.
 
 1. Read normally, select a sentence in Collection and choose Highlight. Copy still works.
-2. Open Highlights and return to the passage. Switch to Brief and back; the mark remains.
-3. Use Highlight a passage with the keyboard. Choose a paragraph and select a range in its
-   read-only text field, or save the whole paragraph. Escape returns to the invoking control.
+2. Right-click Lesson prose, choose Your highlights and return to the passage. Switch to Brief
+   and back; the mark remains. Links and form controls keep their ordinary context behavior.
+3. Focus the Lesson tabpanel and press Shift+F10 or the Context Menu key. Choose Highlight a
+   passage, then a paragraph and a range in its read-only text field, or save the whole paragraph.
+   Escape and saving return focus to the Lesson panel.
 4. Change the development menu's lesson version. An inserted paragraph leaves the Collection
    range intact and labels the changed lesson. Changed, duplicated or missing Collection text
    keeps the saved quote/context, with no Open passage action and no paint on a guessed target.
@@ -49,9 +51,13 @@ identity; they are not a production compatibility/digest contract. This does not
 portable saving, crash recovery or an accepted annotation schema.
 
 The bounded preview handles direct prose paragraphs, including inline emphasis/link text,
-with UTF-16 offsets. Cross-paragraph selections receive an explanation. Code, tables, lists,
-diagrams and sandbox contents are not highlight targets. The reading entry and list sit above
-this one Lesson to avoid adding a production rail instrument. A course-wide list and recovery
+with UTF-16 offsets. Unsupported selections keep normal selection and copy behavior; an invoked
+context menu explains the single-paragraph limit. Code, tables, lists, diagrams and sandbox
+contents are not highlight targets. There is no persistent reading action row, count, banner
+or empty-state feature prompt. Selection exposes Highlight; the existing menu primitives expose
+the paragraph chooser and, once marks exist, Your highlights. The Lesson panel advertises its
+menu and keyboard shortcut to assistive technology without visible instructional copy.
+A course-wide list and recovery
 after deleting a whole module are deferred; the missing-passage example does not prove those.
 The existing lab sandbox and provider APIs are unchanged.
 
@@ -64,7 +70,8 @@ local result, independent Standards/Spec reviews and final-head hosted CI before
   missing passages, duplicate paragraph identity, changed headings, malformed ranges, Unicode
   and inline links/emphasis, cross-paragraph refusal and independently removable overlaps.
 - Headless Chromium exercised actual pointer dragging, the contextual action, copy shortcut,
-  keyboard entry and Escape/focus restoration. Saved ranges do not rewrite the lesson DOM.
+  right-click and Shift+F10 entry, and Escape/focus restoration. Clean and marked lessons have
+  no permanent highlight buttons or counts. Saved ranges do not rewrite the lesson DOM.
   Reopening Lesson retains marks; reloading resets them. Removing one preserves the other.
 - Returning focuses and scrolls to the source paragraph. Source version changes preserve the
   current scroll offset. Unmatched quotes remain readable, with saved context and no false jump.

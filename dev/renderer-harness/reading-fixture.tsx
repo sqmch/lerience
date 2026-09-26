@@ -2,10 +2,11 @@ import { READING_COURSE, READING_LESSONS, READING_MODULE } from "./reading-mater
 /* Original synthetic reading material. No course writes, provider calls or durable store. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { CourseView } from "../../src/renderer/src/course/course-view";
 import { DocMarkdown } from "../../src/renderer/src/components/markdown-view";
 import { GHOST, PRIMARY } from "../../src/renderer/src/components/controls";
-import { Menu } from "../../src/renderer/src/components/menu";
+import { Menu, MENU_PANEL, MENU_ROW } from "../../src/renderer/src/components/menu";
 import { LayerContainerProvider } from "../../src/renderer/src/components/layer";
 import {
   appendMark,
@@ -77,7 +78,7 @@ function ReadingLesson({
   onMarks: (marks: ReadingMark[]) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const openingDialog = useRef(false);
   const field = useRef<HTMLTextAreaElement>(null);
   const popover = useRef<HTMLButtonElement>(null);
   const [dialog, setDialog] = useState<"list" | "choose" | null>(null);
@@ -89,8 +90,67 @@ function ReadingLesson({
     bottom: number;
   } | null>(null);
   const [notice, setNotice] = useState("");
-  const [selectionNotice, setSelectionNotice] = useState("");
+  const [context, setContext] = useState<{
+    left: number;
+    top: number;
+    gap: number;
+    padding: number;
+    selection: ReadingMark | null;
+    copy: string;
+  } | null>(null);
   const passages = (): Passage[] => (root.current ? readPassages(root.current) : []);
+
+  useEffect(() => {
+    const panel = root.current?.closest<HTMLElement>('[role="tabpanel"]');
+    if (!panel) return;
+    panel.setAttribute("aria-haspopup", "menu");
+    panel.setAttribute("aria-keyshortcuts", "Shift+F10");
+    const open = (event: MouseEvent | KeyboardEvent): void => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest("a,button,input,textarea,dialog,pre,table,iframe")) return;
+      const keyboard = event instanceof KeyboardEvent;
+      if (keyboard && event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10"))
+        return;
+      if (!keyboard && target !== panel && !root.current?.contains(target)) return;
+      event.preventDefault();
+      const source = root.current ? readPassages(root.current) : [];
+      const selected = window.getSelection();
+      const range = selected ? selectedPassage(source, selected) : null;
+      const clicked = source.find((entry) => entry.element.contains(target));
+      setChosen(clicked?.index ?? range?.passage.index ?? 0);
+      const selection = range
+        ? makeMark(
+            range.passage,
+            range.start,
+            range.end,
+            revision,
+            Math.max(0, ...marks.map((entry) => entry.id)) + 1,
+          )
+        : null;
+      const rect = (clicked?.element ?? root.current ?? panel).getBoundingClientRect();
+      const style = getComputedStyle(panel);
+      const padding = Number.parseFloat(style.getPropertyValue("--space-3"));
+      const scale = Number.parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+      setCandidate(null);
+      openingDialog.current = false;
+      setContext({
+        left: keyboard ? rect.left / scale + padding : event.clientX / scale,
+        top: keyboard ? Math.max(rect.top / scale, padding) : event.clientY / scale,
+        gap: Number.parseFloat(style.getPropertyValue("--space-1-5")),
+        padding,
+        selection,
+        copy: selected?.toString() ?? "",
+      });
+    };
+    panel.addEventListener("contextmenu", open);
+    panel.addEventListener("keydown", open);
+    return () => {
+      panel.removeEventListener("contextmenu", open);
+      panel.removeEventListener("keydown", open);
+      panel.removeAttribute("aria-haspopup");
+      panel.removeAttribute("aria-keyshortcuts");
+    };
+  }, [marks, revision]);
 
   useLayoutEffect(() => {
     const button = popover.current;
@@ -98,12 +158,14 @@ function ReadingLesson({
     const styles = getComputedStyle(button);
     const gap = Number.parseFloat(styles.getPropertyValue("--space-2"));
     const padding = Number.parseFloat(styles.getPropertyValue("--space-3"));
-    const scale = button.getBoundingClientRect().width / button.offsetWidth || 1;
+    const width = Number.parseFloat(styles.width);
+    const height = Number.parseFloat(styles.height);
+    const scale = button.getBoundingClientRect().width / width || 1;
     const viewportWidth = window.innerWidth / scale;
     const viewportHeight = window.innerHeight / scale;
     const below = candidate.bottom / scale + gap;
-    button.style.left = `${Math.max(padding, Math.min(candidate.left / scale, viewportWidth - button.offsetWidth - padding))}px`;
-    button.style.top = `${Math.max(padding, below + button.offsetHeight <= viewportHeight - padding ? below : candidate.top / scale - gap - button.offsetHeight)}px`;
+    button.style.left = `${Math.max(padding, Math.min(candidate.left / scale, viewportWidth - width - padding))}px`;
+    button.style.top = `${Math.max(padding, below + height <= viewportHeight - padding ? below : candidate.top / scale - gap - height)}px`;
   }, [candidate, revision]);
 
   useEffect(() => {
@@ -156,15 +218,12 @@ function ReadingLesson({
   }, [candidate]);
 
   const inspectSelection = (): void => {
+    if (context || dialog) return;
     const selection = window.getSelection();
     setCandidate(null);
-    setSelectionNotice("");
     if (!selection || selection.isCollapsed) return;
     const selected = selectedPassage(passages(), selection);
-    if (!selected) {
-      setSelectionNotice("Select text within one prose paragraph to highlight it.");
-      return;
-    }
+    if (!selected) return;
     const mark = makeMark(
       selected.passage,
       selected.start,
@@ -191,7 +250,10 @@ function ReadingLesson({
   };
   const closeDialog = (): void => {
     setDialog(null);
-    requestAnimationFrame(() => trigger.current?.focus());
+    openingDialog.current = false;
+    requestAnimationFrame(() =>
+      root.current?.closest<HTMLElement>('[role="tabpanel"]')?.focus({ preventScroll: true }),
+    );
   };
   const openPassage = (mark: ReadingMark): void => {
     const match = matchMark(mark, passages(), revision);
@@ -211,38 +273,9 @@ function ReadingLesson({
 
   return (
     <div ref={root} className="reading-preview">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-        <button
-          type="button"
-          className={`${GHOST} -ml-2.5 text-xs`}
-          onClick={(event) => {
-            trigger.current = event.currentTarget;
-            setCandidate(null);
-            setDialog("choose");
-          }}
-        >
-          Highlight a passage
-        </button>
-        <button
-          type="button"
-          className={`${GHOST} text-xs`}
-          onClick={(event) => {
-            trigger.current = event.currentTarget;
-            setCandidate(null);
-            setDialog("list");
-          }}
-        >
-          Highlights{marks.length ? ` · ${marks.length}` : ""}
-        </button>
-      </div>
       <div role="status" className="sr-only">
         {notice}
       </div>
-      {selectionNotice ? (
-        <p role="status" className="text-ink-dim mb-4 text-xs">
-          {selectionNotice}
-        </p>
-      ) : null}
       <div onPointerUp={inspectSelection} onKeyUp={inspectSelection}>
         <DocMarkdown
           markdown={READING_LESSONS[revision]}
@@ -250,6 +283,89 @@ function ReadingLesson({
           className="prose max-w-none"
         />
       </div>
+      {context && (
+        <DropdownMenu.Root
+          open
+          onOpenChange={(open) => {
+            if (!open) setContext(null);
+          }}
+        >
+          <DropdownMenu.Trigger asChild>
+            <span
+              aria-hidden="true"
+              tabIndex={-1}
+              className="pointer-events-none fixed size-px opacity-0"
+              style={{ left: context.left, top: context.top }}
+            />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              aria-label="Lesson actions"
+              align="start"
+              sideOffset={context.gap}
+              collisionPadding={context.padding}
+              className={`${MENU_PANEL} min-w-56`}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                if (!openingDialog.current)
+                  root.current
+                    ?.closest<HTMLElement>('[role="tabpanel"]')
+                    ?.focus({ preventScroll: true });
+              }}
+            >
+              {context.copy && (
+                <DropdownMenu.Item
+                  className={`${MENU_ROW} cursor-pointer px-3 py-2 text-sm`}
+                  onSelect={() => {
+                    void navigator.clipboard.writeText(context.copy).then(
+                      () => setNotice("Selection copied."),
+                      () =>
+                        setNotice("Copy unavailable. Select the text and use your copy shortcut."),
+                    );
+                  }}
+                >
+                  Copy
+                </DropdownMenu.Item>
+              )}
+              {context.copy && !context.selection && (
+                <DropdownMenu.Item disabled className={`${MENU_ROW} max-w-56 px-3 py-2 text-xs`}>
+                  Highlight within one prose paragraph.
+                </DropdownMenu.Item>
+              )}
+              {context.selection && (
+                <DropdownMenu.Item
+                  className={`${MENU_ROW} cursor-pointer px-3 py-2 text-sm`}
+                  onSelect={() => {
+                    if (context.selection) save(context.selection);
+                  }}
+                >
+                  Highlight selection
+                </DropdownMenu.Item>
+              )}
+              <DropdownMenu.Item
+                className={`${MENU_ROW} cursor-pointer px-3 py-2 text-sm`}
+                onSelect={() => {
+                  openingDialog.current = true;
+                  setDialog("choose");
+                }}
+              >
+                Highlight a passage…
+              </DropdownMenu.Item>
+              {marks.length > 0 && (
+                <DropdownMenu.Item
+                  className={`${MENU_ROW} cursor-pointer px-3 py-2 text-sm`}
+                  onSelect={() => {
+                    openingDialog.current = true;
+                    setDialog("list");
+                  }}
+                >
+                  Your highlights
+                </DropdownMenu.Item>
+              )}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      )}
       {candidate &&
         candidate.mark.revision === revision &&
         createPortal(

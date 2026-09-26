@@ -32,7 +32,7 @@ independently; they do not need to wait for the recovery investigation.
 | 9 | LB-014, Windows window flashes | [Bounded native investigation](console-investigation-2026-09-26.md) found no visible console during the app-owned doctor run. No launch change justified. Capture an actual flash before reopening; proceed to LB-009. |
 | 10 | LB-009, context visibility | Implemented in [PR #100](https://github.com/sqmch/lerience/pull/100), merged at `affd3a4` after green final-head Windows CI, with both native samples and renderer evidence. Release remains separate. |
 | 11 | LB-016, in-app assessment | Development-only [visual preview PR #103](https://github.com/sqmch/lerience/pull/103) merged at `df8fc62` after green final-head CI. The learner provisionally accepted the direction with optional, open-ended or mixed Briefs; portable-record authority and production implementation remain separate. |
-| 12 | LB-015, interactive reading | [Visual preview ready](reading-preview-2026-09-26.md): optional saved highlights in a synthetic Lesson, held in memory only. Review the interaction before production storage authority or next-day learner evaluation. |
+| 12 | LB-015, interactive reading | [Visual preview ready](reading-preview-2026-09-26.md): contextual selection/menu actions, with no permanent row or counts; synthetic Lesson marks held in memory only. Review before production storage authority or next-day learner evaluation. |
 
 These are work packages, not estimates or a promise to finish each package in one sitting.
 

@@ -92,7 +92,7 @@ other lessons for similar text. The list keeps marks visible when their lesson o
 Lesson prose, with a completed selection:
   Collection alone does not refill the tray.     [Highlight]
 
-Highlights dialog, opened from the course rail:
+Highlights dialog, opened from the Lesson context menu:
   The parcel tray / Collection
   "Collection alone does not refill the tray."
   [Open passage] [Remove]
@@ -107,15 +107,21 @@ After the changed-rule revision:
 Offer Highlight in a small selection popover without stealing focus on selection. Escape
 dismisses it; copy, link activation and ordinary selection still work. Restrict the experiment
 to one contiguous range within a prose paragraph, including inline emphasis or link text.
-Selections across paragraphs, tables, code, diagrams or lab frames get a plain explanation
-and no save. Do not alter the visual sandbox or add executable markup to saved text.
+Selections across paragraphs, tables, code, diagrams or lab frames do not save. Explain the
+supported range only when the learner invokes the context menu; ordinary selection adds no
+feature prompt. Do not alter the visual sandbox or add executable markup to saved text.
 
-Use a small Highlights dialog from the existing rail instruments, with the current lesson's
-marks first and other lessons grouped by name. This single list also preserves access to
-marks whose module vanished; it needs no separate archive, tags, search or management pane.
-Show the control once marks exist. In an unmarked lesson, a quiet `Highlight a passage`
-action near the lesson title supplies the keyboard entry point and explains the feature.
-No new full-width toolbar or permanent side pane is needed.
+The contextual-only decision supersedes the original near-title action and rail-entry sketch.
+No persistent reading action row, highlight count, banner or empty-lesson feature prompt is
+acceptable. Right-click ordinary Lesson prose, or use Context Menu / Shift+F10 on the existing
+Lesson tabpanel, to open the shared menu pattern. It offers Highlight a passage and, once marks
+exist, Your highlights. Selection also exposes the small Highlight action. Preserve ordinary
+copy behavior and native context behavior on links and form controls. Expose the panel's menu
+and keyboard shortcut semantically, without a visible accessibility prompt.
+
+The preview list covers this one synthetic Lesson. A future course-wide list must preserve
+access to marks whose module vanished, but remains deferred; this correction adds no rail
+instrument, archive, tags, search or management pane.
 
 Do not depend on mouse selection or a screen reader exposing a DOM range. The keyboard entry
 opens a dialog to choose a prose paragraph by heading and preview, then a labelled read-only
