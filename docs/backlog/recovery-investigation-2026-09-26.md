@@ -2,6 +2,8 @@
 
 LB-004 / LB-005, 2026-09-26. Owner task `01a0dd1a-ad92-79d1-a183-c57bcb25869d`,
 branch `codex/lb-004-005-recovery`. Current source baseline `ef2dd8a`, after PR #90.
+Delivery: [draft PR #91](https://github.com/sqmch/lerience/pull/91), investigation commit
+[`d9e2fe6`](https://github.com/sqmch/lerience/commit/d9e2fe6).
 
 ## Finding and decision
 
