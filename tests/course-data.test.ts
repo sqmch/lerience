@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { labFixtureCourse, labFixtureFiles } from "../dev/renderer-harness/lab-fixture";
 import {
   assembleCourseData,
   courseTitle,
@@ -178,6 +179,48 @@ describe("assembleCourseData", () => {
       contents: { "COURSE.md": "# COURSE.md — Typed REST APIs\n\n## Phase 0\n" },
     });
     expect(named.title).toBe("Typed REST APIs");
+  });
+});
+
+describe("lab identity", () => {
+  it("lists repeated claims once while keeping same-title module files distinct", () => {
+    const data = labFixtureCourse();
+    expect(data.labs.map((entry) => entry.key)).toEqual([
+      "vectors",
+      "00-position/loop.html",
+      "01-velocity/loop.html",
+      "02-force/loop.html",
+    ]);
+    expect(data.labs[0]?.modules).toEqual(["00-position", "01-velocity", "02-force"]);
+    expect(data.labs.slice(1).map((entry) => entry.visual)).toEqual([
+      { moduleId: "00-position", file: "loop.html" },
+      { moduleId: "01-velocity", file: "loop.html" },
+      { moduleId: "02-force", file: "loop.html" },
+    ]);
+    for (const [id, axisX] of [
+      ["00-position", "East"],
+      ["01-velocity", "Speed"],
+      ["02-force", "Newtons"],
+    ] as const) {
+      expect(stockLabConfig(data.labClaims, "vectors", id)).toMatchObject({ vectors: { axisX } });
+    }
+  });
+
+  it("keeps keys across file ordering, repeated paths, and title changes", () => {
+    const fixture = labFixtureFiles();
+    const contents = { ...fixture.contents };
+    const path = "curriculum/01-velocity/lab.json";
+    contents[path] = contents[path]!.replaceAll("The loop", "Renamed loop");
+    const refreshed = assembleCourseData({
+      files: [...fixture.files].reverse().concat(fixture.files),
+      contents,
+    });
+    expect(refreshed.labs.map((entry) => entry.key)).toEqual(
+      labFixtureCourse().labs.map((entry) => entry.key),
+    );
+    expect(refreshed.labs.find((entry) => entry.key === "01-velocity/loop.html")?.title).toBe(
+      "Renamed loop",
+    );
   });
 });
 

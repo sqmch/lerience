@@ -19,6 +19,7 @@ import { AppShell } from "../../src/renderer/src/shell/app-shell";
 import { TutorConnectionGate, TutorControl } from "../../src/renderer/src/tutor/tutor-connection";
 import { useTutorConnection } from "../../src/renderer/src/tutor/use-tutor-connection";
 import { COURSE_ROOT, FIXTURE_COURSE, readFixtureDoc } from "./course-fixture";
+import { LabFixture } from "./lab-choice-fixture";
 import "./harness.css";
 
 const ROOT = "C:\\LerienceFixture\\Courses\\Weather display";
@@ -602,6 +603,7 @@ type Screen =
   | "first-run"
   | "courses"
   | "course"
+  | "labs"
   | "working"
   | "control-error"
   | "connect";
@@ -611,6 +613,7 @@ const SCREENS: Screen[] = [
   "first-run",
   "courses",
   "course",
+  "labs",
   "working",
   "background",
   "continuing",
@@ -745,6 +748,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
 
   /* The course view brings its OWN AppShell — it is a surface that owns its
      frame contents (ADR-019), not a child of someone else's. */
+  if (screen === "labs") return <LabFixture />;
   if (
     screen === "course" ||
     screen === "working" ||

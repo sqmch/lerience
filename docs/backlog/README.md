@@ -54,7 +54,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Reported; filtering observed | S06 | Open |
 | [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | Requested | S08 | Open |
 | [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | Requested; telemetry discovery needed | S13 | Open |
-| [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Reported | S01 | Open |
+| [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Synthetic identity investigation | S01 | Investigating |
 | [LB-011](experience.md#lb-011) | Streaming chat pulls the reader back down | Bug / behavior change | P2 | Reported; follow threshold observed | S05 | Open |
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reported | S03 | Open |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | Requested; suffix observed | S04 | Open |

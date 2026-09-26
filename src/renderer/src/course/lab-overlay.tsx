@@ -45,6 +45,28 @@ export function LabOverlay({
   const active: CourseLabEntry | undefined =
     labs.find((entry) => entry.key === selectedKey) ?? labs[0];
 
+  // A title is prose, not identity. Same-title files in different modules
+  // are separate visuals; show their module instead of hiding one of them.
+  const labels = labs.map((entry) => {
+    if (
+      entry.visual === undefined ||
+      !labs.some((other) => other.key !== entry.key && other.title === entry.title)
+    ) {
+      return entry.title;
+    }
+    const module = course.modules.find((module) => module.id === entry.visual?.moduleId);
+    return `${entry.title} · ${module?.title ?? entry.visual.moduleId}`;
+  });
+  const options = labs.map((entry, index) => ({
+    value: entry.key,
+    // Two files can also share a title within one module. Use their stable
+    // address only when module names still leave the choices ambiguous.
+    label: labels.some((label, otherIndex) => otherIndex !== index && label === labels[index])
+      ? `${labels[index]} · ${entry.key}`
+      : labels[index]!,
+    ...(entry.blurb === "" ? {} : { description: entry.blurb }),
+  }));
+
   // The module whose lab.json frames this entry: the opening context when it
   // claims the entry, else the (first) claiming module.
   const framingModuleId =
@@ -83,12 +105,7 @@ export function LabOverlay({
               <Menu
                 label="Which visualization is on the stage"
                 value={active.key}
-                trigger={active.title}
-                options={labs.map((entry) => ({
-                  value: entry.key,
-                  label: entry.title,
-                  ...(entry.blurb === "" ? {} : { description: entry.blurb }),
-                }))}
+                options={options}
                 onChange={onSelect}
               />
             ) : (
