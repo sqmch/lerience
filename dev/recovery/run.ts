@@ -11,6 +11,7 @@ import { SessionConductor } from "../../src/main/session/conductor";
 import { FileTranscriptStore } from "../../src/main/session/transcript-store";
 import { createEngineScriptService } from "../../src/main/scripts/engine-script-service";
 import { ElectronUtilityProcessRunner } from "../../src/main/scripts/utility-process-runner";
+import { runBoundedProbe } from "./deadline";
 
 const candidate = `
 **Closing interrupted work:** a session close records what happened; it does not finish an
@@ -197,15 +198,20 @@ async function run(variant: string) {
   let runtime = 0;
   let finished = false;
   let failed = false;
+  const abortController = new AbortController();
+  const queries: Array<{ close(): void }> = [];
   const service = createEngineScriptService({ runner: new ElectronUtilityProcessRunner() });
   const agent = new ClaudeTutorAgent(
     ({ prompt, options }) => {
+      // A timed-out start may settle later. It must not spawn a fresh provider.
+      if (abortController.signal.aborted) throw new Error("Recovery probe was cancelled");
       const n = ++runtime;
       stamp({ phase: "provider-create", runtime: n });
       const actual = query({
         prompt,
         options: {
           ...options,
+          abortController,
           model: "claude-sonnet-4-6",
           effort: "medium",
           permissionMode: "bypassPermissions",
@@ -246,6 +252,7 @@ async function run(variant: string) {
           },
         },
       });
+      queries.push(actual);
       return actual;
     },
     1500,
@@ -287,37 +294,52 @@ async function run(variant: string) {
     quiz: JSON.parse(fs.readFileSync(path.join(dir, "tutor/quiz-bank.json"), "utf8")),
     head: git(dir, "rev-parse", "HEAD").trim(),
   });
-  try {
-    stamp({ phase: "start" });
-    stamp({
-      phase: "accepted",
-      reply: await conductor.start({
-        courseDir: dir,
-        currentModuleId: "00-running-total",
-        onboarding: false,
-      }),
-    });
-    while (!finished && performance.now() - started < 480_000)
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    stamp({ phase: finished ? "finished" : "timeout", failed });
-    write(root, `${variant}-after.json`, {
-      snapshot: await (
-        await FileTranscriptStore.open({
-          userDataPath: path.join(root, `${variant}-appdata`),
-          courseId: store.courseId,
-          sessionId: store.sessionId,
-        })
-      ).snapshot(),
-      progress: JSON.parse(fs.readFileSync(path.join(dir, "tutor/progress.json"), "utf8")),
-      quiz: JSON.parse(fs.readFileSync(path.join(dir, "tutor/quiz-bank.json"), "utf8")),
-      journal: fs.readFileSync(path.join(dir, "tutor/journal.md"), "utf8"),
-      status: git(dir, "status", "--short"),
-      diff: git(dir, "diff", "HEAD~1", "--stat"),
-    });
-  } finally {
-    await conductor.abandon();
-    stamp({ phase: "abandoned" });
-  }
+  await runBoundedProbe(
+    async () => {
+      stamp({ phase: "start" });
+      stamp({
+        phase: "accepted",
+        reply: await conductor.start({
+          courseDir: dir,
+          currentModuleId: "00-running-total",
+          onboarding: false,
+        }),
+      });
+      while (!finished && !abortController.signal.aborted)
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      if (abortController.signal.aborted) return;
+      stamp({ phase: "finished", failed });
+      write(root, `${variant}-after.json`, {
+        snapshot: await (
+          await FileTranscriptStore.open({
+            userDataPath: path.join(root, `${variant}-appdata`),
+            courseId: store.courseId,
+            sessionId: store.sessionId,
+          })
+        ).snapshot(),
+        progress: JSON.parse(fs.readFileSync(path.join(dir, "tutor/progress.json"), "utf8")),
+        quiz: JSON.parse(fs.readFileSync(path.join(dir, "tutor/quiz-bank.json"), "utf8")),
+        journal: fs.readFileSync(path.join(dir, "tutor/journal.md"), "utf8"),
+        status: git(dir, "status", "--short"),
+        diff: git(dir, "diff", "HEAD~1", "--stat"),
+      });
+    },
+    () => {
+      stamp({ phase: "provider-cancel" });
+      abortController.abort();
+      for (const handle of queries) {
+        try {
+          handle.close();
+        } catch (error) {
+          stamp({ phase: "provider-close-error", message: String(error) });
+        }
+      }
+    },
+    async () => {
+      await conductor.abandon();
+      stamp({ phase: "abandoned" });
+    },
+  );
 }
 
 void app.whenReady().then(async () => {

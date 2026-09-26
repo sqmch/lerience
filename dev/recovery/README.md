@@ -28,8 +28,14 @@ unattempted transfer, an existing quiz history and an unfinished next-module les
 module is initially absent from progress, so recovery must reconcile coverage without claiming
 the draft was reviewed. No teaching or learning about the draft module occurred.
 
-Each variant has an eight-minute bound across recovery and the fresh opener. Normalized
-provider errors and close failures are recorded. A completed capture is not a successful
+After fixture setup, each variant has an eight-minute asynchronous deadline covering
+`conductor.start()`, recovery, the fresh opener and record capture. Success, failure and timeout
+all abort the SDK controller and close every retained query before awaiting conductor cleanup.
+A start that resumes after cancellation cannot create another query. Cleanup has a separate
+ten-second limit; exceeding either deadline fails the probe and prevents the next variant.
+This uses the SDK's process-termination API, not an interruption request followed by an
+unbounded drain. A stalled-stub test covers admission and cleanup without contacting a provider.
+Normalized provider errors and close failures are recorded. A completed capture is not a successful
 close. Inspect the durable transcript lifecycle and learning-record deltas. Timings use a
 monotonic clock; the provider interval includes model, tools and scheduling. Tool-result byte
 counts describe serialized result envelopes, not tokens or journal text alone. File read

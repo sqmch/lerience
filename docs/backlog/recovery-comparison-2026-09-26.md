@@ -154,6 +154,11 @@ lifecycle to `close_failed` instead of `close-failed`, and it read the seed stor
 snapshot instead of reopening the persisted transcript. Therefore its eight-minute timeout
 must not be reported as recovery work, and its cached `after` snapshot is not lifecycle proof.
 The persisted transcript and recorded UI lifecycle establish the actual close boundary.
+Review also found that the original eight-minute polling limit did not bound provider admission
+or shutdown. The committed runner wraps admission, provider work and capture in a deadline,
+aborts/closes retained SDK queries on every exit, rejects late starts, and allows at most ten
+additional seconds for conductor cleanup. Three stalled-stub/error tests cover that correction;
+it did not require another provider run or a production lifecycle change.
 
 ## Validation
 
