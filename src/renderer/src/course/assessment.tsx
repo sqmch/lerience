@@ -108,6 +108,7 @@ export function Assessment({
     }
   }, [courseRoot, moduleId]);
   useEffect(() => {
+    const requestGeneration = generation;
     mounted.current = true;
     void load();
     const unsubscribe = window.praxeum.onCourseChanged((paths) => {
@@ -121,7 +122,7 @@ export function Assessment({
     });
     return () => {
       mounted.current = false;
-      generation.current++;
+      requestGeneration.current++;
       unsubscribe();
     };
   }, [load, moduleId]);
