@@ -271,6 +271,10 @@ Claude natively and assess Codex separately. Preserve the review requirement in 
 
 P1, reliability investigation. Sources S10 and S14.
 
+Investigation owner, 2026-09-26: task `01a0dd1a-ad92-79d1-a183-c57bcb25869d`, branch
+`codex/lb-004-005-recovery`, baseline `ef2dd8a`. Measuring recovery phases and context
+alongside LB-005, with read-only historical evidence and disposable reproductions.
+
 Returning to the dashboard and immediately reopening a course asks to recover, then spends a
 long time on "Finishing your previous session". In a longer course, "Tutor not available"
 appeared for no understood reason, and resuming reportedly took 20 minutes. Capture the
@@ -298,10 +302,28 @@ evidence and preserves required learning records and recovery after real interru
 Choose a measurable latency target after obtaining the baseline. Any lifecycle rule change
 needs a decision record; do not infer that unchanged files mean no learning happened.
 
+### Investigation outcome, 2026-09-26
+
+The [measured investigation and next experiment](recovery-investigation-2026-09-26.md)
+identify the provider recovery turn as the dominant historical interval. Of 21 successful
+recoveries, seven exceed seven minutes; preparation takes at most 11.706 seconds and
+post-result verification at most 0.462 seconds. One detailed recovery includes QA, reviews
+and dependency work. A subsequent opener can add substantial time too. These are historical
+records, not current-native latency acceptance or attribution of the exact reported incident.
+
+The proposed next task tests closing interrupted generation with its unfinished work
+explicitly pending, while preserving the learning-record ritual and doctor verification.
+Generic provider failures need one bounded structured-error capture. An explicit sign-in
+failure is supported, but is not identified as the learner's reported incident. Status Ready
+means the investigation and follow-up are ready for review, not that a latency fix exists.
+No lifecycle, source, installed-course or release change was made.
+
 <a id="lb-005"></a>
 ## LB-005: Journal growth may waste context and recovery work
 
 P2, investigation. Source S14. Usually investigate alongside LB-004.
+
+Investigation owner: the LB-004 task and branch above, 2026-09-26.
 
 The learner reports seven modules and 37 journal entries, with verbose entries potentially
 added on repeated close/start or crash recovery within one module. They worry that the tutor
@@ -324,6 +346,16 @@ Done when a justified change reduces measured unnecessary records or context wit
 open gaps, assisted-versus-independent evidence, quiz state, or retrieval of older learning.
 If no change is justified, record the measured result and close the hypothesis explicitly.
 Preserve existing learner history; pruning or migration would require its own concrete scope.
+
+### Investigation outcome, 2026-09-26
+
+The [shared evidence](recovery-investigation-2026-09-26.md) measures a 259,260-byte journal
+with 52 entries, but at most 16,384 bytes of journal in each of 51 historical fact blocks.
+Whole-journal injection is not the cause in those openers. Subsequent reads are not reliably
+measurable from retained tool metadata, and entry counts do not prove redundant evidence.
+The follow-up specifies read-range/byte capture and before/after learning-record deltas for
+no-op, study and interrupted-generation fixtures. Preserve the existing journal. Status
+Ready means a concrete experiment is prepared; no context-saving implementation is claimed.
 
 <a id="lb-014"></a>
 ## LB-014: Windows console windows flash during tutor work

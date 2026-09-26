@@ -24,7 +24,7 @@ independently; they do not need to wait for the recovery investigation.
 | 1 | LB-001, QA cleanup | Source fix and regression in PR #88. Release and existing-course update remain separate. |
 | 2 | LB-002 + LB-003, Claude activity | Implemented in source. PR #89 records CI and merge; native Claude and renderer evidence is recorded. Release remains separate. |
 | 3 | LB-006, usage warnings | Implemented in source. PR #90 records CI and merge; unit/bucket evidence and native-warning limitations are recorded. Release remains separate. |
-| 4 | LB-004 + LB-005, recovery and journal | Measure where recovery time and context go. End the first session with a supported cause or a bounded follow-up, before changing lifecycle rules. |
+| 4 | LB-004 + LB-005, recovery and journal | Investigation complete; [measured provider-turn bottleneck and bounded next experiment](recovery-investigation-2026-09-26.md). Review the proposed interrupted-generation close boundary before implementation. |
 | 5 | LB-010, duplicate labs | Establish lab identity and fix repeated choices without merging distinct module configurations. |
 | 6 | LB-011, streaming scroll | Make a small upward scroll release auto-follow and verify reattachment at the bottom. |
 | 7 | LB-012, then LB-013, compact UI | Two independent small fixes. Keep each change separately reviewable; LB-013 also updates the remembered-label decision. |
@@ -48,8 +48,8 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-001](reliability.md#lb-001) | QA may delete real scaffold dependencies | Bug | P1 | Reproduced under Windows Electron; regression passes | S16 | Implemented |
 | [LB-002](reliability.md#lb-002) | Claude stays Thinking after apparent completion | Bug | P1 | Reproduced; source regression and native Claude pass | S02, S07 | Implemented |
 | [LB-003](reliability.md#lb-003) | Cold review appears idle while work continues | Bug / missing activity state | P1 | Native background sequence; renderer states verified | S09 | Implemented |
-| [LB-004](reliability.md#lb-004) | Slow recovery, including after Tutor not available | Reliability investigation | P1 | Reported | S10, S14 | Open |
-| [LB-005](reliability.md#lb-005) | Journal growth and repeated recovery overhead | Investigation | P2 | Reported; opener bound observed | S14 | Open |
+| [LB-004](reliability.md#lb-004) | Slow recovery, including after Tutor not available | Reliability investigation | P1 | Historical phase timings; next experiment specified | S10, S14 | Ready |
+| [LB-005](reliability.md#lb-005) | Journal growth and repeated recovery overhead | Investigation | P2 | Bounded injection measured; subsequent read volume unknown | S14 | Ready |
 | [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Pinned types, runtime schema, adapter and renderer fixtures | S02, S11 | Implemented |
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Reported; filtering observed | S06 | Open |
 | [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | Requested | S08 | Open |
