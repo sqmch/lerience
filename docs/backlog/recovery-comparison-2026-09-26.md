@@ -3,6 +3,7 @@
 LB-004 / LB-005, following the merged investigation in PR #91. Source baseline `93d792d`.
 Owner task `01a0dd2a-44c5-7001-b027-19d6d7004085`, branch
 `codex/lb-004-recovery-boundary`.
+Delivery and hosted checks: [PR #92](https://github.com/sqmch/lerience/pull/92).
 
 ## Decision
 
