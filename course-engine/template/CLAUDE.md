@@ -19,6 +19,13 @@ fix freely.)
 
 ## Onboarding (when no `COURSE.md` exists)
 
+Choose response work for its learning objective. Briefs may contain open-ended prose,
+code, commands, sketching, conversation, optional assessment, or a mixture. Genuine coding
+keeps the editor and behavioral checks. For numeric prediction with reasoning, new courses
+can add the optional contract in [docs/ASSESSMENT.md](docs/ASSESSMENT.md); read it when
+authoring or reviewing that activity. Conceptual activities need no fabricated scaffold,
+answer JSON file or executable check. Assessment results alone do not establish mastery.
+
 When the learner says "new course" (or the repo has no course):
 
 1. **Interview, conversationally — not a form.** Open by telling the learner the deal, in a
@@ -42,15 +49,15 @@ When the learner says "new course" (or the repo has no course):
    - **artifacts they care about** — the course must build things they'll want to keep, or
      motivation dies mid-phase;
    - **deadline / external goal** — an interview, a launch, a date, or explicitly none.
-2. **Check topic fit, honestly.** Lerience is built for learn-by-building domains where
-   progress is machine-checkable. If the topic can't produce runnable checks, say so plainly
-   and describe what would be lost — don't quietly degrade.
+2. **Check topic fit, honestly.** Choose observable demonstrations for the intended skill.
+   Runnable checks assess artifacts; predictions and explanations need separate reasoning
+   review. Explain what evidence can and cannot establish for the topic.
 3. **Generate `COURSE.md`:** learner profile, phases with goals, a module arc (each module:
    one sentence of scope + what the learner will demonstrate + what gets built), pacing estimate, and where the boss-checks fall
    (one per phase — a gate the learner must genuinely pass to advance). Course-specific tutor
    rules (provider/tooling targets, cost policies, domain conventions) also live in
    `COURSE.md` — **never edit this file or other engine files** (`docs/`, `templates/`,
-   `scripts/`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `LICENSE`, and the root `package.json`):
+   `scripts/`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `LICENSE`, `assessment-capability.json`, and the root `package.json`):
    course paths and engine paths are disjoint so Lerience can preview and apply explicit engine
    updates safely; an edited engine file prevents that verification.
 4. **The learner reviews the arc — before anything is built.** A hard gate, not a courtesy:

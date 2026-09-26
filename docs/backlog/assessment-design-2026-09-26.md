@@ -3,7 +3,10 @@
 LB-016, source S17. Baseline `affd3a480b17e8b8116a8f645069efc5e5de0e21`.
 Owner task `01a0ddef-68d1-7222-ba4d-785225359c96`, branch
 `codex/lb-016-assessment-design`. Status: proposed design, ready for product review.
-This document selects a prototype. It does not authorize production persistence, change an
+Update 2026-09-26: the learner authorized new-course implementation and ADR-044 accepts the
+narrow portable-record contract. The original discovery below records the recommendation.
+
+This document originally selected a prototype. It does not authorize production persistence, change an
 accepted ADR, implement assessment, or claim a learning improvement.
 
 ## Recommendation and decision

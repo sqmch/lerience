@@ -389,7 +389,7 @@ export function MaterialPane({
             })}
         </Tabs.Content>
 
-        <Tabs.Content value="brief">
+        <Tabs.Content value="brief" forceMount className="data-[state=inactive]:hidden">
           {doc(brief, activeModule.briefPath !== null, {
             title: "No brief yet",
             desc: "A brief states the build task and how long it should take. This module has not been given one.",

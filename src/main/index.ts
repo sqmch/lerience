@@ -4,8 +4,10 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { PRODUCT_NAME, PRODUCT_WORDMARK } from "../shared/product";
+import { AssessmentService } from "./assessment-service";
 import { resolveDocumentLink } from "./editor/document-link";
 import {
+  ASSESSMENT_CHANNEL,
   CHECK_RUN_CHANNEL,
   COURSE_CHANGED_CHANNEL,
   COURSE_CHOOSE_PARENT_CHANNEL,
@@ -519,6 +521,18 @@ void app.whenReady().then(async () => {
     controlMemory: new FileControlMemory(app.getPath("userData")),
     emitAgentEvent: broadcastSeminarEvent,
     emitSnapshot: broadcastSeminarSnapshot,
+  });
+  const assessments = new AssessmentService(
+    new ElectronUtilityProcessRunner(runtimeEnvironment),
+    (message) => sessionConductor().send(message),
+    (root) => currentCourseRoot() === root,
+  );
+  ipcMain.handle(ASSESSMENT_CHANNEL, async (_event, expectedRoot: unknown, command: unknown) => {
+    const root = currentCourseRoot();
+    if (root === null || expectedRoot !== root)
+      return { ok: false, detail: "The course changed. Reopen its assessment." };
+    const result = await assessments.execute(root, command);
+    return result;
   });
   const updatePlatform = createUpdatePlatform({
     platform: process.platform,

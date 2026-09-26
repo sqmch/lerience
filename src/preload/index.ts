@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import {
+  ASSESSMENT_CHANNEL,
   COURSE_CHANGED_CHANNEL,
   COURSE_CHOOSE_PARENT_CHANNEL,
   COURSE_CLOSE_CHANNEL,
@@ -63,6 +64,10 @@ import type { RunChecksReply, SeminarSnapshot } from "../shared/session";
 import type { BrowseEditorReply, EditorCatalog, OpenInEditorReply } from "../shared/editor";
 
 const api: PraxeumApi = {
+  assessment: (courseRoot, command) =>
+    ipcRenderer.invoke(ASSESSMENT_CHANNEL, courseRoot, command) as ReturnType<
+      PraxeumApi["assessment"]
+    >,
   ping: () => ipcRenderer.invoke(PING_CHANNEL) as Promise<PingReply>,
   openCourse: () => ipcRenderer.invoke(COURSE_OPEN_CHANNEL) as Promise<OpenCourseReply>,
   currentCourse: () => ipcRenderer.invoke(COURSE_CURRENT_CHANNEL) as Promise<CourseSnapshot | null>,

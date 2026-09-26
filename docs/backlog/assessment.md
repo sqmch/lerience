@@ -177,3 +177,11 @@ Start with the canonical protocol and `docs/FORMAT.md` under `course-engine/temp
 [`visual-protocol.ts`](../../src/main/visual-protocol.ts). Coordinate with LB-015 on selection
 and tutor context, and LB-003 on honest review activity. None of those existing items covers
 assessment entry or grading quality on its own.
+
+## New-course implementation, 2026-09-26
+
+The learner authorized finishing optional assessment for newly created courses. ADR-044 accepts
+the narrow portable-record contract. Owner task `01a0ddef`, branch
+`codex/lb-016-new-course-assessment`, implements engine capability/schema/writer, application
+save/submit/review and the reviewed Brief composition. Validation is in progress. Existing-course
+conversion, reading annotations, distributable builds and release remain separate.

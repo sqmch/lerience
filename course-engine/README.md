@@ -19,6 +19,12 @@ previews only provenance-bound engine paths, refuses learner edits/collisions, a
 validated engine commit only from a future learner action. Increment `engineVersion` whenever a
 reviewed template delta should become such an offered update.
 
+Engine 0.3.0 adds optional numeric prediction and explanation for new courses. An explicit
+assessment capability enables portable drafts, immutable local submissions and separately bound
+tutor reviews through the canonical writer. Briefs remain open-ended and may mix assessment
+with code work. There is no automatic progress, recall, existing-course conversion or migration.
+See template/docs/ASSESSMENT.md and ADR-044.
+
 Engine 0.2.1 fixes Windows QA cleanup under Electron by removing temporary files and links
 without recursive deletion through junctions. Dependencies remain shared to avoid copying or
 reinstalling them for each check run. Cleanup failures leave a warning and retain the remaining

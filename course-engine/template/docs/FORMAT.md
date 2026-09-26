@@ -282,3 +282,13 @@ belongs, with a `visual` fence (Lerience renders it as a sandboxed iframe):
 { "file": "event-loop.html", "height": 420, "title": "The event loop" }
 ```
 ````
+
+## Optional assessment capability
+
+New templates carry `assessment-capability.json` with schema version 1 and
+`assessment: "numeric-explanation-v1"`; the base marker remains course format 0.
+Optional module questions and separate keys live in `assessment.json` and
+`assessment-key.json`. Portable attempt bundles live in `tutor/assessments/<UUID>.json`.
+The canonical writer owns their mutations. See [ASSESSMENT.md](ASSESSMENT.md) for authoring,
+record binding, feedback, recovery and the exact schemas. Missing or unknown capability
+permits no app assessment writes. Existing modules remain unchanged.

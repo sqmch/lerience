@@ -4,6 +4,8 @@
    never a bare channel string. */
 
 import type { CourseData } from "./course-data";
+import type { AssessmentCommand, AssessmentReply } from "./assessment";
+export const ASSESSMENT_CHANNEL = "praxeum:assessment";
 import type { AgentEvent, SessionControlPatch, SessionControls } from "./seminar";
 import type { RunChecksReply, SeminarSnapshot } from "./session";
 import type { ProviderCatalog, ProviderLoginReply, TutorProviderId } from "./provider";
@@ -163,6 +165,7 @@ export interface TitleBarOverlayColors {
 
 /** What the preload bridges onto `window.praxeum`. */
 export interface PraxeumApi {
+  assessment(courseRoot: string, command: AssessmentCommand): Promise<AssessmentReply>;
   ping(): Promise<PingReply>;
   /** Folder picker → load. */
   openCourse(): Promise<OpenCourseReply>;

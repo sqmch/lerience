@@ -24,6 +24,7 @@ export class ElectronUtilityProcessRunner implements ProcessRunner {
       }
 
       const stdout: Buffer[] = [];
+      if (request.input !== undefined) child.once("spawn", () => child.postMessage(request.input));
       const stderr: Buffer[] = [];
       let outputBytes = 0;
       let settled = false;

@@ -125,6 +125,7 @@ never transits anything of ours (ADR-001, ADR-004).
 | State | Where | Authority | Survives folder copy to a new machine |
 | --- | --- | --- | --- |
 | Course content, progress, quiz bank, journal | course folder (engine format) | the course files | yes — this is the course |
+| Optional assessment questions, drafts, submissions and feedback | course folder, negotiated assessment capability | Course Engine writer; narrow app mediation under ADR-044 | yes |
 | Tutor protocol | `CLAUDE.md` in the course folder (engine file) | the engine | yes |
 | Session transcript, thread bindings, window prefs | app-data, keyed by course UUID | the app | no — by design; the journal is the durable memory (ADR-010) |
 | Course registry | app-data | the app | re-add by opening the folder |
