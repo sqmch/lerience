@@ -9,3 +9,5 @@ README.md
 # their canonical formatting; their own test suite is the gate.
 course-engine/template/CLAUDE.md
 course-engine/tests/fixtures/
+
+course-engine/template/scripts/vendor/

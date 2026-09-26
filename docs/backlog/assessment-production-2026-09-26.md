@@ -47,3 +47,7 @@ Full source validation and final hosted CI are recorded in the implementation PR
 temporary preview server and hidden probe process were stopped after acceptance. These checks
 establish storage and interaction behavior. They do not establish improved learning outcomes,
 live tutor feedback quality, signed package acceptance or release availability.
+
+## Delivery
+
+PR #105 merged at `d9d3d08bb1336dae4564e7677f18ef3f7c57c1b8` with successful hosted Windows fullcheck. Local fullcheck recorded 609 passed, 6 skipped, and one existing piped PowerShell launcher null-exit failure. The isolated native suite passed 9 with 1 skipped. This is new-course source delivery, not an existing-course migration or distributable release.

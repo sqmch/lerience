@@ -1,3 +1,5 @@
+import { ReadingService } from "./reading-service";
+import { READING_CHANNEL } from "../shared/reading";
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from "electron";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -521,6 +523,16 @@ void app.whenReady().then(async () => {
     controlMemory: new FileControlMemory(app.getPath("userData")),
     emitAgentEvent: broadcastSeminarEvent,
     emitSnapshot: broadcastSeminarSnapshot,
+  });
+  const reading = new ReadingService(
+    new ElectronUtilityProcessRunner(runtimeEnvironment),
+    (root) => currentCourseRoot() === root,
+  );
+  ipcMain.handle(READING_CHANNEL, async (_event, expectedRoot: unknown, command: unknown) => {
+    const root = currentCourseRoot();
+    if (root === null || expectedRoot !== root)
+      return { ok: false, detail: "The course changed. Reopen its highlights." };
+    return reading.execute(root, command);
   });
   const assessments = new AssessmentService(
     new ElectronUtilityProcessRunner(runtimeEnvironment),

@@ -292,3 +292,10 @@ Optional module questions and separate keys live in `assessment.json` and
 The canonical writer owns their mutations. See [ASSESSMENT.md](ASSESSMENT.md) for authoring,
 record binding, feedback, recovery and the exact schemas. Missing or unknown capability
 permits no app assessment writes. Existing modules remain unchanged.
+
+## Optional saved Lesson passages
+
+Engine 0.4.0 adds `reading-capability.json` and portable learner-owned
+`tutor/reading-marks.json`, independently of assessment. See [READING.md](READING.md) for
+source binding, conservative matching, limits and writer authority. Marks do not imply
+understanding or completion. Existing courses gain no capability or state automatically.

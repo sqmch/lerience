@@ -18,6 +18,8 @@ import { useSeminar, type SeminarController } from "../seminar/use-seminar";
 import { AppShell } from "../shell/app-shell";
 import { BackToCourses, TitleRule } from "../shell/surface-head";
 import { EditorControl } from "./editor-control";
+import { ReadingLesson } from "./reading";
+import type { ReadingMark } from "../../../shared/reading";
 import { Assessment } from "./assessment";
 import { LabOverlay } from "./lab-overlay";
 import { MaterialPane, type MaterialTab } from "./material";
@@ -93,21 +95,20 @@ export function CourseView({
   course,
   onLeaveCourse,
   renderBriefSupplement,
-  renderLessonPreview,
   initialTab = "lesson",
 }: {
   course: CourseSnapshot;
   onLeaveCourse: () => void;
   /** Optional activity beside the course's own Brief, which always stays visible. */
   renderBriefSupplement?: (moduleId: string) => React.ReactNode;
-  /** Composition point for a development-only reading preview. No production caller. */
-  renderLessonPreview?: (moduleId: string) => React.ReactNode;
   initialTab?: MaterialTab;
 }): React.JSX.Element {
   const data = course.data;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<MaterialTab>(initialTab);
   const [docs, setDocs] = useState<CourseDocs>({});
+  const [docRevision, setDocRevision] = useState(0);
+  const readGenerations = useRef(new Map<string, number>());
   const [overlay, setOverlay] = useState<"record" | "lab" | null>(null);
   const [recordTab, setRecordTab] = useState<RecordTab>("quiz");
   const [labKey, setLabKey] = useState<string | null>(null);
@@ -115,11 +116,27 @@ export function CourseView({
      there, so the state that joins them belongs to the surface that owns both
      columns rather than to either one. */
   const [editorNotice, setEditorNotice] = useState<string | null>(null);
+  const readingUnsaved = useRef(false);
+  const [readingTarget, setReadingTarget] = useState<string | null>(null);
+  const onReadingUnsaved = useCallback((value: boolean) => {
+    readingUnsaved.current = value;
+  }, []);
+  const openReadingMark = useCallback((mark: ReadingMark) => {
+    setSelectedId(mark.moduleId);
+    setTab("lesson");
+    setReadingTarget(mark.id);
+  }, []);
   const assessmentUnsaved = useRef(false);
   const onAssessmentUnsaved = useCallback((value: boolean) => {
     assessmentUnsaved.current = value;
   }, []);
   const canLeaveAssessment = useCallback(() => {
+    if (readingUnsaved.current) {
+      setEditorNotice(
+        "Wait for the highlight to save, or retry/discard its unsaved action in the Lesson menu.",
+      );
+      return false;
+    }
     if (!assessmentUnsaved.current) return true;
     setEditorNotice(
       "Wait for your answers to save, or retry the failed save in the Brief before leaving.",
@@ -156,28 +173,29 @@ export function CourseView({
     for (const path of [active.lessonPath, active.briefPath, active.quizPath]) {
       if (path === null || requested.current.has(path)) continue;
       requested.current.add(path);
+      const generation = (readGenerations.current.get(path) ?? 0) + 1;
+      readGenerations.current.set(path, generation);
       void window.praxeum.readDoc(path).then((content) => {
-        if (content !== null) setDocs((cache) => ({ ...cache, [path]: content }));
+        if (readGenerations.current.get(path) !== generation) return;
+        setDocs((cache) => ({ ...cache, [path]: content ?? "" }));
       });
     }
-  }, [active]);
+  }, [active, docRevision]);
 
-  /* A changed doc LEAVES the cache rather than being refetched: the tutor
-     often rewrites a module the learner is not reading. The refetch happens
-     when they open it. */
-  useEffect(() => {
-    return window.praxeum.onCourseChanged((changed) => {
-      if (changed.length === 0) return;
-      setDocs((cache) => {
-        const next = { ...cache };
+  // Keep the displayed document mounted during refresh so an unacknowledged
+  // highlight retains its quote and retry identity. New bytes replace it in place.
+  useEffect(
+    () =>
+      window.praxeum.onCourseChanged((changed) => {
+        if (changed.length === 0) return;
         for (const path of changed) {
-          delete next[path];
           requested.current.delete(path);
+          readGenerations.current.set(path, (readGenerations.current.get(path) ?? 0) + 1);
         }
-        return next;
-      });
-    });
-  }, []);
+        setDocRevision((value) => value + 1);
+      }),
+    [],
+  );
 
   const selectModule = useCallback(
     (id: string) => {
@@ -283,13 +301,28 @@ export function CourseView({
                 />
               )
             }
-            lessonPreview={active === null ? undefined : renderLessonPreview?.(active.id)}
+            lessonContent={
+              active && active.lessonPath && docs[active.lessonPath] !== undefined ? (
+                <ReadingLesson
+                  key={`${course.rootPath}:${active.id}`}
+                  markdown={docs[active.lessonPath]!}
+                  moduleId={active.id}
+                  courseRoot={course.rootPath}
+                  availableModules={data.modules.map((m) => m.id)}
+                  onOpenMark={openReadingMark}
+                  targetId={readingTarget}
+                  onUnsaved={onReadingUnsaved}
+                />
+              ) : undefined
+            }
             docs={docs}
             quiz={data.quiz}
             labs={data.labs}
             courseDoc={data.courseDoc}
             tab={tab}
-            onTab={setTab}
+            onTab={(next) => {
+              if (canLeaveAssessment()) setTab(next);
+            }}
             onOpenLab={(key) => {
               setLabKey(key);
               setOverlay("lab");

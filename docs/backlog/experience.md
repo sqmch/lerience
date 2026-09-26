@@ -316,3 +316,10 @@ separate, as does native assistive-technology acceptance. The preview record nam
 
 The related assessment visual preview PR #103 merged at `df8fc62`, with green final-head Windows
 CI. Its provisional appearance acceptance does not accept either feature's persistence authority.
+
+### New-course implementation
+
+The learner authorized finishing portable highlights after the contextual preview. Work now
+follows [production evidence](reading-production-2026-09-26.md) and accepted ADR-045, with the
+engine owning records. This supersedes the prototype-only scope for new courses; existing-course
+migration and release remain excluded. LB-016 is implemented in PR #105 under ADR-044.

@@ -57,7 +57,7 @@ When the learner says "new course" (or the repo has no course):
    (one per phase — a gate the learner must genuinely pass to advance). Course-specific tutor
    rules (provider/tooling targets, cost policies, domain conventions) also live in
    `COURSE.md` — **never edit this file or other engine files** (`docs/`, `templates/`,
-   `scripts/`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `LICENSE`, `assessment-capability.json`, and the root `package.json`):
+   `scripts/`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `LICENSE`, `assessment-capability.json`, `reading-capability.json`, and the root `package.json`):
    course paths and engine paths are disjoint so Lerience can preview and apply explicit engine
    updates safely; an edited engine file prevents that verification.
 4. **The learner reviews the arc — before anything is built.** A hard gate, not a courtesy:
@@ -298,3 +298,7 @@ celebrate real wins briefly. Give honest pushback; don't oversell.
   improving the learning instrument instead of using it, name it and timebox it.
 - If the course involves paid services, prefer the cheapest adequate tier in checks and
   examples, print costs where natural, and keep live checks at negligible cost.
+
+## Learner highlights
+
+When reading or editing a lesson with saved highlights, follow [docs/READING.md](docs/READING.md). Preserve `tutor/reading-marks.json`; marks are learner-owned passages, not requests for tutor work or evidence of learning. Do not create, rewrite or remove marks on the learner's behalf.

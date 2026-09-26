@@ -1,3 +1,4 @@
+import { readingPreviewStore } from "./reading-store";
 /* Mounts production renderer surfaces against a stubbed Lerience bridge.
 
    Every path, account label, course detail, provider event, and line of tutor
@@ -548,8 +549,18 @@ function installBridge(
     sessionControls.remembered = ["model", "effort", "autonomy", "access"];
   }
 
+  readingPreviewStore.onChange = () => {
+    for (const listener of changeListeners) listener(["curriculum/01-parcel-tray/LESSON.md"]);
+  };
   // @ts-expect-error — the harness supplies only what this surface touches.
   window.praxeum = {
+    reading: (_root, command) =>
+      readingPreview
+        ? readingPreviewStore.execute(command)
+        : Promise.resolve({
+            ok: true,
+            view: { supported: false, revision: 0, marks: [], source: null, matches: {} },
+          }),
     assessment: assessmentPreview
       ? createAssessmentFixtureStore(
           new URLSearchParams(window.location.search).get("assessment") ?? "initial",
@@ -658,7 +669,9 @@ function installBridge(
     readDoc: (path: string) =>
       Promise.resolve(
         readingPreview
-          ? readReadingDoc(path)
+          ? path.endsWith("/LESSON.md")
+            ? readingPreviewStore.markdown()
+            : readReadingDoc(path)
           : assessmentPreview
             ? readAssessmentDoc(path)
             : readFixtureDoc(path),
