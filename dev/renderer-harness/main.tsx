@@ -4,6 +4,10 @@
    prose in this harness is purpose-authored synthetic data. Nothing was copied
    from a learner course, provider transcript, or development session. */
 
+/* Match the desktop entrypoint so visual review never uses fallback faces. */
+import "@fontsource-variable/inter";
+import "@fontsource-variable/literata";
+import "@fontsource-variable/jetbrains-mono";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { AgentEvent, SessionControlPatch, SessionControls } from "../../src/shared/seminar";
@@ -20,6 +24,7 @@ import { TutorConnectionGate, TutorControl } from "../../src/renderer/src/tutor/
 import { useTutorConnection } from "../../src/renderer/src/tutor/use-tutor-connection";
 import { COURSE_ROOT, FIXTURE_COURSE, readFixtureDoc } from "./course-fixture";
 import { LabFixture } from "./lab-choice-fixture";
+import { AssessmentFixture, readAssessmentDoc } from "./assessment-fixture";
 import { SCROLL_REPLY, SCROLL_CHUNK } from "./scroll-fixture";
 import "./harness.css";
 
@@ -349,6 +354,7 @@ function installBridge(
   restoredControls = false,
   modelChoice: "new" | "recovery" | null = null,
   contextFixture = false,
+  assessmentPreview = false,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -362,19 +368,31 @@ function installBridge(
       { id: "zed", label: "Zed" },
     ],
   };
-  const script = scrollFixture
+  const script = assessmentPreview
     ? {
         events: [
-          { type: "message_delta", delta: SCROLL_REPLY },
+          {
+            type: "message_delta",
+            delta:
+              "Take your time with the trace in the Brief. Each row starts from the previous result.\n\nWhen you are ready, submit your prediction and explanation together. You can revise them after feedback.",
+          },
           { type: "turn_complete" },
         ] as AgentEvent[],
         busy: false,
       }
-    : activityFixture !== null
-      ? activityScript(activityFixture)
-      : working
-        ? WORKING
-        : scriptFor(stage);
+    : scrollFixture
+      ? {
+          events: [
+            { type: "message_delta", delta: SCROLL_REPLY },
+            { type: "turn_complete" },
+          ] as AgentEvent[],
+          busy: false,
+        }
+      : activityFixture !== null
+        ? activityScript(activityFixture)
+        : working
+          ? WORKING
+          : scriptFor(stage);
 
   const snapshot: SeminarSnapshot = {
     lifecycle: "open",
@@ -572,7 +590,11 @@ function installBridge(
         if (index !== -1) changeListeners.splice(index, 1);
       };
     },
-    getTheme: () => Promise.resolve({ preference: "dark", dark: true }),
+    getTheme: () => {
+      const preference =
+        new URLSearchParams(window.location.search).get("theme") === "light" ? "light" : "dark";
+      return Promise.resolve({ preference, dark: preference !== "light" });
+    },
     setTheme: (preference: string) => Promise.resolve({ preference, dark: preference !== "light" }),
     onThemeChanged: () => () => undefined,
     setTitleBarOverlay: () => Promise.resolve(),
@@ -580,7 +602,8 @@ function installBridge(
        fresh install, and it is the path that has to look right by default. */
     getLayout: () => Promise.resolve({}),
     setLayout: () => Promise.resolve(),
-    readDoc: (path: string) => Promise.resolve(readFixtureDoc(path)),
+    readDoc: (path: string) =>
+      Promise.resolve(assessmentPreview ? readAssessmentDoc(path) : readFixtureDoc(path)),
     revealCourse: () => Promise.resolve(),
     /* Two editors found, none chosen yet — the state a learner with VS Code
        and Zed installed sees first, which is the one the control exists for. */
@@ -657,6 +680,7 @@ type Screen =
   | "first-run"
   | "courses"
   | "course"
+  | "assessment"
   | "labs"
   | "scroll-seminar"
   | "scroll-onboarding"
@@ -674,6 +698,7 @@ const SCREENS: Screen[] = [
   "first-run",
   "courses",
   "course",
+  "assessment",
   "labs",
   "scroll-seminar",
   "scroll-onboarding",
@@ -692,9 +717,20 @@ const SCREENS: Screen[] = [
 ];
 
 function Harness(): React.JSX.Element {
-  const [screen, setScreen] = useState<Screen>("course");
+  const [screen, setScreen] = useState<Screen>(
+    () =>
+      SCREENS.find(
+        (entry) => entry === new URLSearchParams(window.location.search).get("screen"),
+      ) ?? "course",
+  );
   const [update, setUpdate] = useState<UpdateFixture>("none");
-  const [bar, setBar] = useState(true);
+  const [bar, setBar] = useState(
+    () => new URLSearchParams(window.location.search).get("bar") !== "hidden",
+  );
+  useEffect(() => {
+    const theme = new URLSearchParams(window.location.search).get("theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset["theme"] = theme;
+  }, []);
   useEffect(() => {
     applyUpdateFixture(update);
   }, [update]);
@@ -711,6 +747,7 @@ function Harness(): React.JSX.Element {
     screen === "controls-restored",
     screen === "model-onboarding" ? "new" : screen === "model-recovery" ? "recovery" : null,
     screen === "context-seminar" || screen === "context-onboarding",
+    screen === "assessment",
   );
 
   if (!bar) {
@@ -829,6 +866,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
   /* The course view brings its OWN AppShell — it is a surface that owns its
      frame contents (ADR-019), not a child of someone else's. */
   if (screen === "labs") return <LabFixture />;
+  if (screen === "assessment") return <AssessmentFixture />;
   if (
     screen === "course" ||
     screen === "scroll-seminar" ||

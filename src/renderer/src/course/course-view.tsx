@@ -91,13 +91,18 @@ function SessionStatus({ seminar }: { seminar: SeminarController }): React.JSX.E
 export function CourseView({
   course,
   onLeaveCourse,
+  renderBrief,
+  initialTab = "lesson",
 }: {
   course: CourseSnapshot;
   onLeaveCourse: () => void;
+  /** Optional composed material. The course reader remains the default. */
+  renderBrief?: (moduleId: string) => React.ReactNode;
+  initialTab?: MaterialTab;
 }): React.JSX.Element {
   const data = course.data;
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<MaterialTab>("lesson");
+  const [tab, setTab] = useState<MaterialTab>(initialTab);
   const [docs, setDocs] = useState<CourseDocs>({});
   const [overlay, setOverlay] = useState<"record" | "lab" | null>(null);
   const [recordTab, setRecordTab] = useState<RecordTab>("quiz");
@@ -243,6 +248,7 @@ export function CourseView({
         page={
           <MaterialPane
             activeModule={active}
+            briefContent={active === null ? undefined : renderBrief?.(active.id)}
             docs={docs}
             quiz={data.quiz}
             labs={data.labs}

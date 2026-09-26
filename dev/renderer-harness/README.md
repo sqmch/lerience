@@ -73,6 +73,32 @@ both layouts. No tutor event is replayed before Start tutor. Select a model or r
 default to inspect the staged label, then start to expose the synthetic first reply. Hiding the
 fixture bar remounts the fixture so its controls and listeners share the same bridge.
 
+## Assessment interaction preview
+
+Open `/?screen=assessment&bar=hidden&theme=light` or use the `assessment` harness button.
+The preview mounts an original synthetic trace in the production course shell and Brief tab.
+The harness imports the same bundled Inter, Literata and JetBrains Mono faces as the desktop
+entrypoint. `theme=dark` selects the other theme, including its status-bar preference label.
+
+The small `Assessment preview` menu selects initial, editing, validation, submitted, feedback,
+revision, history and save-error examples. Direct links use `&assessment=feedback` and the
+other menu values. These choices reset the example. All responses and attempts live only in
+the mounted fixture's memory. Reloading, leaving the fixture or hiding/showing the general
+harness bar resets them. Switching Lesson/Brief or modules within the course retains them.
+No assessment code is loaded by the production entrypoint, and no disk, IPC, engine, provider,
+progress or spaced-recall writes are added.
+
+Try Submit with an empty response, then enter the trace and explanation. Enter in the
+explanation inserts a newline. Submit freezes that attempt; Preview tutor feedback exposes
+a clearly labelled fixed example, not an evaluation of the typed explanation. Revise opens
+a new draft and Earlier attempts keeps prior responses readable. The save-error example
+retains all input and requires Retry save before submission. This verifies interaction only,
+not disk durability, grading accuracy, learner understanding or accepted production authority.
+
+For a clean review, compare a 1440 by 1000 desktop with a 1100 by 1000 window whose material
+pane reaches the supported 420-pixel floor. Use the existing separators to resize. The
+learner's content scrolls within its pane; primary actions remain in document order.
+
 ## Tool adapter
 
 The `context-seminar` and `context-onboarding` fixtures show a synthetic provider context sample

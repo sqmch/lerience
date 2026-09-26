@@ -26,6 +26,14 @@ private-course probe was needed, and no source change required a full local `pnp
 
 ## Learner problem
 
+Visual follow-up, 2026-09-26: the learner authorized disposable assessment and reading previews
+to judge fit with the existing design language. Assessment proceeds first in task `01a0ddef`,
+branch `codex/lb-016-assessment-visual-prototype`, from main `f1f88a2`. It mounts a synthetic
+trace and explanation in the real course shell and Brief. Saves and reviews are simulated
+in the development renderer harness; no production assessment, disk persistence, provider
+review or private-course conversion is enabled. Visual acceptance and portable-record authority
+are separate decisions. Reading preview work remains LB-015.
+
 The learner repeatedly had to open a repository and enter answers as JSON values even when
 the task was conceptual reasoning or interview preparation. They propose in-app questions
 and tutor-authored interactions, including more creative ways to demonstrate knowledge. They
