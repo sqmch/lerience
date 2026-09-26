@@ -197,6 +197,12 @@ separate live membership and outcome events; they do not extend the foreground t
 change the existing message queue. Live task state is included in reconnect snapshots and
 cleared when the runtime ends, rather than restored from a transcript (ADR-043).
 
+Context samples use a separate replace-only event and live snapshot field. Adapters report
+estimated current or latest-request occupancy only against provider-reported capacity, never
+cumulative billing or account allowance. Model/context changes invalidate old samples; new
+runtimes and ended sessions carry none. Optional telemetry cannot delay turn completion or
+admission. These samples do not promise to predict or prevent provider-controlled compaction.
+
 Claude first via the supported Agent SDK / `claude -p --output-format stream-json`
 (ADR-004). The Codex adapter (App Server) is implemented behind the same interface; the normalized
 `AgentEvent` vocabulary is the compatibility surface, and the renderer never sees provider

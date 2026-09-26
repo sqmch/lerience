@@ -11,6 +11,41 @@ function reduce(state: SeminarState, actions: readonly SeminarAction[]): Seminar
 }
 
 describe("seminarReducer", () => {
+  it("replaces context samples and never revives them from a new or closed session", () => {
+    const usage = { usedTokens: 12000, capacityTokens: 200000, source: "last-request" as const };
+    let state = seminarReducer(createSeminarState(), {
+      type: "event",
+      event: { type: "context_usage", usage },
+    });
+    state = seminarReducer(state, {
+      type: "event",
+      event: { type: "usage_update", totalCostUsd: 50 },
+    });
+    expect(state.contextUsage).toEqual(usage);
+    state = seminarReducer(state, {
+      type: "event",
+      event: { type: "context_usage", usage: { ...usage, usedTokens: 4000 } },
+    });
+    expect(state.contextUsage?.usedTokens).toBe(4000);
+    state = seminarReducer(state, {
+      type: "hydrate",
+      snapshot: {
+        lifecycle: "open",
+        sessionId: "replacement",
+        messages: [],
+        totalCostUsd: 0,
+        turnInProgress: false,
+        steerable: false,
+      },
+    });
+    expect(state.contextUsage).toBeNull();
+    state = seminarReducer(state, { type: "event", event: { type: "context_usage", usage } });
+    state = seminarReducer(state, {
+      type: "event",
+      event: { type: "session_ended", reason: "ended" },
+    });
+    expect(state.contextUsage).toBeNull();
+  });
   it("preserves provider activity when a concurrent retry or close is refused", () => {
     const state = reduce(createSeminarState(), [
       { type: "retry_started" },

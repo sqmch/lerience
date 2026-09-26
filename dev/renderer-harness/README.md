@@ -75,6 +75,10 @@ fixture bar remounts the fixture so its controls and listeners share the same br
 
 ## Tool adapter
 
+The `context-seminar` and `context-onboarding` fixtures show a synthetic provider context sample
+below the production composer. Open its disclosure with the keyboard to inspect the estimate,
+sample timing and compaction explanation at narrow and wide widths. Other fixtures omit the sample.
+
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is
 an optional preview adapter only: it does not contain the harness, ship in the app, configure the
 Claude provider, or replace root `CLAUDE.md` repository guidance.

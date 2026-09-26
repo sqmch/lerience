@@ -254,6 +254,19 @@ Start with [`conductor.ts`](../../src/main/session/conductor.ts),
 
 P2, requested feature with telemetry discovery. Source S13.
 
+Owner: task `01a0ddd5-efa8-7fa0-86bd-331b77dc2043`, branch `codex/lb-009-context-usage`.
+Ready for merge review, 2026-09-26, [PR #100](https://github.com/sqmch/lerience/pull/100).
+Baseline PR #99 merge `ccdc9da`; merged state and final-head Windows
+CI verified. The [finite telemetry inventory](context-telemetry-2026-09-26.md) records official
+sources, pinned/runtime contracts, design and successful native samples from both providers.
+Implementation adds a neutral estimated-context disclosure in the shared composer, with live
+snapshot replacement, invalidation and no inferred model capacity. Standards and Spec reviews
+cleared corrected source `0a3f269`. Its complete `pnpm check` passed on Windows x64 with
+Node 24.18.0 / pnpm 11.9.0: 591 application tests, 61 Course Engine tests and six platform
+skips, plus publication hygiene, typechecks, renderer harness, lint/format and production build.
+Both native samples, actual renderer layouts and isolated `pnpm dev` startup passed.
+The PR records final-head CI. Merge, release and installed-course acceptance remain separate.
+
 The learner wants to see used tokens versus the session maximum to decide when to start a new
 session and avoid compaction. First distinguish current context occupancy from cumulative
 session token usage and account allowance. Only context occupancy against a known capacity

@@ -26,7 +26,15 @@ export interface BackgroundTask {
 
 export type TaskOutcome = "completed" | "failed" | "stopped";
 
+/** A provider sample, not a billing total or a prediction of compaction. */
+export interface ContextUsage {
+  usedTokens: number;
+  capacityTokens: number;
+  source: "current-context" | "last-request";
+}
+
 export type AgentEvent =
+  | { type: "context_usage"; usage: ContextUsage | null }
   /** A provider-initiated foreground turn, without a new learner send. */
   | { type: "turn_started" }
   /** Authoritative live background membership; replace rather than pair edges. */

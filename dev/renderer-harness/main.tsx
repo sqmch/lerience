@@ -348,6 +348,7 @@ function installBridge(
   scrollFixture = false,
   restoredControls = false,
   modelChoice: "new" | "recovery" | null = null,
+  contextFixture = false,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -383,6 +384,9 @@ function installBridge(
       : { modelChoice: { runtimeId: 1, recovery: modelChoice === "recovery" } }),
     messages: [],
     totalCostUsd: 0,
+    contextUsage: contextFixture
+      ? { usedTokens: 15487, capacityTokens: 1000000, source: "current-context" }
+      : null,
     turnInProgress: false,
     steerable: false,
   };
@@ -661,6 +665,8 @@ type Screen =
   | "model-onboarding"
   | "model-recovery"
   | "controls-restored"
+  | "context-seminar"
+  | "context-onboarding"
   | "connect";
 const SCREENS: Screen[] = [
   "choose-tutor",
@@ -677,6 +683,8 @@ const SCREENS: Screen[] = [
   "settled",
   "control-error",
   "controls-restored",
+  "context-seminar",
+  "context-onboarding",
   "model-onboarding",
   "model-recovery",
   "connect",
@@ -702,6 +710,7 @@ function Harness(): React.JSX.Element {
     screen === "scroll-seminar" || screen === "scroll-onboarding",
     screen === "controls-restored",
     screen === "model-onboarding" ? "new" : screen === "model-recovery" ? "recovery" : null,
+    screen === "context-seminar" || screen === "context-onboarding",
   );
 
   if (!bar) {
@@ -826,6 +835,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
     screen === "working" ||
     screen === "control-error" ||
     screen === "controls-restored" ||
+    screen === "context-seminar" ||
     screen === "model-recovery" ||
     screen === "background" ||
     screen === "continuing" ||

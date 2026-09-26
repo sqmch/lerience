@@ -118,6 +118,61 @@ async function closeSession(
 }
 
 describe("ClaudeTutorAgent", () => {
+  it("samples after completion without blocking and rejects stale model/compaction/turn/end responses", async () => {
+    const sdkQuery = new FakeClaudeQuery();
+    const pending: Array<(value: unknown) => void> = [];
+    const query = Object.assign(sdkQuery, {
+      getContextUsage: vi.fn(() => new Promise<unknown>((resolve) => pending.push(resolve))),
+    });
+    const session = new ClaudeTutorAgent(() => query).startSession({ courseDir: "C:/course" });
+    const received: AgentEvent[] = [];
+    const pump = (async () => {
+      for await (const event of session.events) received.push(event);
+    })();
+    const finish = async (): Promise<void> => {
+      const count = query.getContextUsage.mock.calls.length;
+      sdkQuery.push(sdkMessage({ type: "result", subtype: "success", total_cost_usd: 2 }));
+      await vi.waitFor(() => expect(query.getContextUsage).toHaveBeenCalledTimes(count + 1));
+      expect(session.busy).toBe(false);
+    };
+    const value = { totalTokens: 12345, rawMaxTokens: 200000 };
+    session.send("first");
+    await finish();
+    pending.shift()!(value);
+    await vi.waitFor(() =>
+      expect(received.at(-1)).toMatchObject({
+        type: "context_usage",
+        usage: { usedTokens: 12345 },
+      }),
+    );
+    session.send("second");
+    await finish();
+    await session.applyControls({ model: "haiku" });
+    pending.shift()!(value);
+    await Promise.resolve();
+    expect(received.filter((e) => e.type === "context_usage" && e.usage !== null)).toHaveLength(1);
+    session.send("third");
+    await finish();
+    sdkQuery.push(
+      sdkMessage({
+        type: "system",
+        subtype: "compact_boundary",
+        compact_metadata: { trigger: "auto", pre_tokens: 190000 },
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    pending.shift()!(value);
+    await Promise.resolve();
+    session.send("fourth");
+    await finish();
+    session.send("fifth");
+    pending.shift()!(value);
+    await finish();
+    await closeSession(session, sdkQuery);
+    pending.shift()!(value);
+    await pump;
+    expect(received.filter((e) => e.type === "context_usage" && e.usage !== null)).toHaveLength(1);
+  });
   it("retires ambiguous root output after an interrupt loses its result", async () => {
     const sdkQuery = new FakeClaudeQuery();
     const session = new ClaudeTutorAgent(() => sdkQuery, 5).startSession({

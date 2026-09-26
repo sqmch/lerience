@@ -225,6 +225,7 @@ export function SeminarColumn({
             controls={seminar.controls}
             onControls={(patch) => void seminar.setControls(patch)}
             controlNotice={state.controlNotice}
+            contextUsage={state.contextUsage}
             queued={seminar.queued}
             onUnqueue={seminar.unqueue}
             onRetryQueued={seminar.retryQueued}
