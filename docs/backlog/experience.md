@@ -60,8 +60,8 @@ Evidence:
   unrelated `EPERM` temporary-directory rename failure in `course-session.test.ts`. All four
   tests in that file passed on the targeted rerun without changes. The remaining gates ran
   separately: all 61 Course Engine tests, ESLint/Prettier, and production build passed.
-- Windows CI passed for implementation commit `81b7f11`, including the complete `pnpm check`,
-  published prose check, and dependency audit. The PR tracks CI for the final documentation commit.
+- Windows CI passed for the final PR head, including the complete `pnpm check`, published prose
+  check, and dependency audit. PR #93 merged at `8db35b6` on 2026-09-26.
 
 Limits: this establishes the ambiguous-label mechanism with public synthetic data; no private
 course was inspected to claim the historical report had identical inputs. Browser verification
@@ -90,6 +90,45 @@ the reading position stable during subsequent tokens and late layout changes. Re
 must work by both paths, and following must continue when already pinned. Verify long replies
 and growing rich content in the harness; account for rounding at the bottom without reintroducing
 a large release buffer. Check both seminar and onboarding consumers of the shared hook.
+
+### Investigation and source fix, 2026-09-26
+
+Source fix: [PR #94](https://github.com/sqmch/lerience/pull/94), implementation commit `226d8e0`.
+Ready for review; merge and release remain separate.
+
+The production hook kept following after an 8px upward scroll because its release threshold was
+one quarter of the viewport. The next token and resize moved the regression viewport from 1592px
+to 1700px instead of preserving 1592px. A second regression showed resize pinning could also run
+between upward wheel input and its scroll event, moving 1600px to 1680px.
+
+The shared hook now releases immediately on upward wheel or scrolling-key input. Upward scroll
+movement covers the scrollbar path. Programmatic pinning records its applied position so queued,
+unchanged scroll events do not reattach after user input. Detached text stays stationary through
+tokens and late content layout. Downward movement back to the bottom uses a 1px rounding tolerance;
+the existing jump button also reattaches. No consumer-specific follow behavior was added.
+
+Evidence:
+
+- `pnpm exec vitest run src/renderer/src/seminar/follow-bottom.test.tsx`: the two reproduction
+  tests failed before the fix; all 12 focused regressions pass after it. Coverage includes small
+  and fractional upward movement, input before resize, queued scroll events, four upward keys,
+  both reattachment paths, continued pinning, control/editing keys, and observer/listener cleanup.
+- The production seminar and onboarding layouts pass headless Chromium checks using the public
+  `scroll-seminar` and `scroll-onboarding` harness fixtures. Protocol-delivered 1px and 8px wheel
+  input and ArrowUp release follow. An 8px `scrollTop` change with a browser-generated scroll event
+  separately verifies release without a wheel/key handler, as used by scrollbar movement.
+- Streamed prose and highlighted code leave the detached position unchanged. Expanding a table
+  disclosure adds 912px in seminar and 913px in onboarding while preserving scrollTop at 3395px
+  and 2541px respectively. The same late growth remains pinned when follow is active.
+- The jump button and downward wheel scrolling back to the bottom both resume following through
+  another streamed chunk. Both consumers finish at a 0px bottom gap. Browser runtime errors: none.
+- Windows x64, Node 24.18.0, pnpm 11.9.0. Source gate: `pnpm check`; the PR records its local
+  result and final-head Windows CI, including publication prose and dependency audit.
+
+Limits: browser checks exercise production renderer components with synthetic events and content,
+not native Electron acceptance. Physical trackpad gestures and native scrollbar-thumb dragging
+were not exercised; the headless browser did not expose a draggable thumb. No provider/model turns,
+native package, release, or private-course changes are included. LB-004 and LB-005 remain blocked.
 
 <a id="lb-012"></a>
 ## LB-012: Elapsed time wraps during module building
