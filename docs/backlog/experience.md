@@ -9,6 +9,9 @@ provider behavior remains a separate claim.
 
 P2, reported regression. Source S01.
 
+Owner: task `01a0dd48-87be-7901-a0ff-337c384d55f9`, branch
+`codex/lb-010-lab-choices`, started from current `main` on 2026-09-26.
+
 After the lab dropdown layering fix in 0.0.14, labs appear multiple times in the top-left
 menu, with different repetition counts. The earlier fixed bug made the dropdown inaccessible;
 this report concerns the choices inside it.
@@ -23,6 +26,46 @@ Done when a logical lab choice appears once, genuinely distinct choices remain u
 and selectable, selection is stable across refresh/module changes, and the dropdown stays
 accessible above the overlay. Cover the data identity in
 [`course-data.test.ts`](../../tests/course-data.test.ts) and verify the rendered menu.
+
+### Investigation and source fix, 2026-09-26
+
+Source fix and validation: [PR #93](https://github.com/sqmch/lerience/pull/93), implementation
+commit `81b7f11`. Ready for review; merge and release remain separate.
+
+The synthetic multi-module reproduction produces three identical-looking "The loop" choices.
+Their identities are different module/file pairs. `labEntries` already collapses repeated stock
+claims by registry ID and repeated HTML claims by module plus file, after stripping `visuals/`.
+It is the overlay's title-only labels that conceal the difference. The fixture's stock lab
+appears once and retains a different configuration for each claiming module.
+
+The fix adds module titles only to ambiguous visual names, with the module/file address as a
+fallback when module titles also collide. It preserves the original keys, files, and configuration
+lookup. It does not infer equality from a title, copy content between modules, or alter course files.
+
+Evidence:
+
+- A renderer regression failed before the fix with `The loop` instead of `The loop · Position`.
+- Data regressions cover repeated claims, the `visuals/` alias, separate module files, different
+  stock configurations, repeated inventory paths, reordered snapshots, and title changes.
+- The production overlay in the repository's `labs` harness fixture shows four unique menu
+  choices. Headless Chromium hit tests confirm all rows are reachable inside the open dialog.
+  Selecting Velocity opens `01-velocity/loop.html` with `allow-scripts` sandboxing. Selection
+  survives snapshot refresh and a change to Force context.
+- Keyboard opening and selection work. Escape closes the menu while preserving the overlay
+  and returning focus to the trigger. Switching stock context renders the Force and Velocity
+  configurations separately. The browser reports no runtime errors.
+- Windows x64, Node 24.18.0, pnpm 11.9.0: `pnpm check` passed publication hygiene,
+  application/harness typechecks and harness build. Vitest had 534 passes and 6 skips, with one
+  unrelated `EPERM` temporary-directory rename failure in `course-session.test.ts`. All four
+  tests in that file passed on the targeted rerun without changes. The remaining gates ran
+  separately: all 61 Course Engine tests, ESLint/Prettier, and production build passed.
+- Windows CI passed for implementation commit `81b7f11`, including the complete `pnpm check`,
+  published prose check, and dependency audit. The PR tracks CI for the final documentation commit.
+
+Limits: this establishes the ambiguous-label mechanism with public synthetic data; no private
+course was inspected to claim the historical report had identical inputs. Browser verification
+checks iframe identity and sandbox attributes, not Electron's custom-protocol document loading.
+No provider, native package, release, or existing-course update is part of this fix.
 
 <a id="lb-011"></a>
 ## LB-011: Small upward scrolls should release streaming auto-follow

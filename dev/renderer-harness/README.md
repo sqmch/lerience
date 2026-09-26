@@ -49,6 +49,13 @@ lifetimes. Background shows two tasks after foreground completion, without Think
 Continuing shows a provider-initiated foreground turn after task completion. Settled shows its
 finalized reply with Thinking and Stop cleared. These are synthetic states, not live-provider proof.
 
+The `labs` fixture assembles three synthetic modules with different stock configurations and
+same-title HTML visuals. Repeated claims of one file, including its `visuals/` alias, should
+produce one choice per module. Open the lab menu to inspect the module-qualified labels.
+Close the overlay, refresh the fixture or change its context, then reopen it to check selection
+and stock configuration. Custom iframe addresses are inspectable here; their
+`praxeum-visual:` content is served only by Electron, not this browser harness.
+
 ## Tool adapter
 
 The repository-level `.claude/launch.json` points compatible developer tooling at port 5199. It is
