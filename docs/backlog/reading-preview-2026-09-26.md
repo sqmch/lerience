@@ -5,6 +5,7 @@ Owner task `01a0ddfc-3365-7a51-bc76-1503db3a117a`, branch
 `codex/lb-015-reading-visual-prototype`, baseline `df8fc6289621e784c2a67d85d0571fb53a4c9f3f`.
 Status: development-only visual prototype ready for review. Production highlighting, durable
 storage and learner usefulness remain unproven. No accepted architecture or engine format changes.
+Review: [PR #104](https://github.com/sqmch/lerience/pull/104).
 
 ## What to try
 

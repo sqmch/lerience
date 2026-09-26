@@ -301,6 +301,8 @@ change; final-head hosted CI remains the merge gate. No runtime or learner accep
 
 ### Authorized visual prototype, 2026-09-26
 
+Review: [PR #104](https://github.com/sqmch/lerience/pull/104).
+
 The [reading preview](reading-preview-2026-09-26.md) implements the optional mark/return/remove
 interaction in a development-only synthetic Lesson. Owner task remains
 `01a0ddfc-3365-7a51-bc76-1503db3a117a`, now on `codex/lb-015-reading-visual-prototype` from
