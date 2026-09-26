@@ -14,6 +14,13 @@ the seminar. A fixed set of number, choice and text fields is sufficient for thi
 it is not a restriction on the existing open-ended lab stage. Keep genuine code work in the
 learner's editor. Use chat for a one-off reasoning probe that needs no structured trace.
 
+Learner clarification, 2026-09-26: assessment is optional per activity, never a mandatory
+course mode or universal question-answer template. The Brief keeps its arbitrary prose,
+instructions, code and commands. A mixed module can add a response area alongside that
+material while retaining Open in editor and Run checks. The tutor chooses the interaction
+for the topic and learning objective. Provisional acceptance of the visual direction does
+not accept production persistence or limit the course to this interaction.
+
 The consequential product decision is whether submitted responses, drafts and feedback become
 portable Course Engine learning records, with the app allowed to save them through a narrow
 engine contract. Recommend yes for this prototype, subject to a proposed ADR being accepted
