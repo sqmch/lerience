@@ -8,6 +8,10 @@ This is the original discovery record. The later authorized development-only
 [visual preview](reading-preview-2026-09-26.md) has separate evidence and limits; it does not
 accept the production persistence proposal below.
 
+The later new-course implementation accepts the bounded persistence contract under
+[ADR-045](../DECISIONS/ADR-045-portable-reading-highlights.md). Its
+[production evidence](reading-production-2026-09-26.md) supersedes prototype-only limits.
+
 ## Recommendation
 
 Try one disposable Lesson-only experiment: save a highlighted passage and return to it from a

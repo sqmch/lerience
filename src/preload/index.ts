@@ -1,3 +1,4 @@
+import { READING_CHANNEL } from "../shared/ipc";
 import { contextBridge, ipcRenderer } from "electron";
 import {
   ASSESSMENT_CHANNEL,
@@ -64,6 +65,8 @@ import type { RunChecksReply, SeminarSnapshot } from "../shared/session";
 import type { BrowseEditorReply, EditorCatalog, OpenInEditorReply } from "../shared/editor";
 
 const api: PraxeumApi = {
+  reading: (courseRoot, command) =>
+    ipcRenderer.invoke(READING_CHANNEL, courseRoot, command) as ReturnType<PraxeumApi["reading"]>,
   assessment: (courseRoot, command) =>
     ipcRenderer.invoke(ASSESSMENT_CHANNEL, courseRoot, command) as ReturnType<
       PraxeumApi["assessment"]

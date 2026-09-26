@@ -1,3 +1,5 @@
+export const READING_CHANNEL = "praxeum:reading";
+import type { ReadingCommand, ReadingReply } from "./reading";
 /* The IPC contract between renderer and main. Pattern: every channel gets a
    named constant and a typed reply here, the preload exposes a method per
    channel, and the renderer consumes `PraxeumApi` — never `ipcRenderer`,
@@ -165,6 +167,7 @@ export interface TitleBarOverlayColors {
 
 /** What the preload bridges onto `window.praxeum`. */
 export interface PraxeumApi {
+  reading(courseRoot: string, command: ReadingCommand): Promise<ReadingReply>;
   assessment(courseRoot: string, command: AssessmentCommand): Promise<AssessmentReply>;
   ping(): Promise<PingReply>;
   /** Folder picker → load. */

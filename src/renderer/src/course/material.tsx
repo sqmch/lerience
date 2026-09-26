@@ -112,19 +112,26 @@ function Tab({ value, label }: { value: MaterialTab; label: string }): React.JSX
  * a course whose arc is still being written. Reachable only when a module-less
  * course somehow lands in the course view; onboarding owns that state normally.
  */
-function UnwrittenCourse({ courseDoc }: { courseDoc: string | null }): React.JSX.Element {
+function UnwrittenCourse({
+  courseDoc,
+  content,
+}: {
+  courseDoc: string | null;
+  content?: React.ReactNode;
+}): React.JSX.Element {
   return (
     <Pane
       head={<p className="text-hi py-3.5 text-sm font-medium">The arc</p>}
       children={
-        courseDoc === null ? (
+        content ??
+        (courseDoc === null ? (
           <EmptyNote
             title="Nothing written yet"
             desc="Your tutor interviews you first. What you decide together lands here as an arc, then as modules on the track."
           />
         ) : (
           <CourseMarkdown className="prose max-w-none" markdown={courseDoc} />
-        )
+        ))
       }
     />
   );
@@ -234,7 +241,7 @@ function QuizSchedule({ items }: { items: CourseQuizItem[] }): React.JSX.Element
 }
 
 export function MaterialPane({
-  lessonPreview,
+  lessonContent,
   activeModule,
   docs,
   quiz,
@@ -245,7 +252,7 @@ export function MaterialPane({
   onOpenLab,
   briefSupplement,
 }: {
-  lessonPreview?: React.ReactNode;
+  lessonContent?: React.ReactNode;
   activeModule: CourseModule | null;
   docs: CourseDocs;
   quiz: CourseQuizItem[];
@@ -270,7 +277,8 @@ export function MaterialPane({
     setCheckRun(null);
   }, [activeModule?.id]);
 
-  if (activeModule === null) return <UnwrittenCourse courseDoc={courseDoc} />;
+  if (activeModule === null)
+    return <UnwrittenCourse courseDoc={courseDoc} content={lessonContent} />;
 
   const moduleQuiz = quiz.filter((item) => item.module === activeModule.id);
   const moduleVisuals = labs.filter((entry) => entry.modules.includes(activeModule.id));
@@ -382,7 +390,7 @@ export function MaterialPane({
         )}
 
         <Tabs.Content value="lesson">
-          {lessonPreview ??
+          {lessonContent ??
             doc(lesson, activeModule.lessonPath !== null, {
               title: "No lesson yet",
               desc: "Your tutor writes this module's lesson when you start it.",

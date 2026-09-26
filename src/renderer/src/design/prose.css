@@ -210,3 +210,14 @@
 .doc-mermaid button {
   text-decoration: underline;
 }
+
+.reading-marks {
+  --reading-mark-fill: var(--accent-wash);
+  --reading-mark-underline: var(--ink-faint);
+}
+.reading-marks ::highlight(reading-marks) {
+  background-color: var(--reading-mark-fill);
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--reading-mark-underline);
+}

@@ -19,6 +19,10 @@ previews only provenance-bound engine paths, refuses learner edits/collisions, a
 validated engine commit only from a future learner action. Increment `engineVersion` whenever a
 reviewed template delta should become such an offered update.
 
+Engine 0.4.0 adds optional portable Lesson highlights for new courses through a separate
+reading capability, bounded canonical writer and conservative passage matching. Existing
+courses receive no implicit changes. See template/docs/READING.md and ADR-045.
+
 Engine 0.3.0 adds optional numeric prediction and explanation for new courses. An explicit
 assessment capability enables portable drafts, immutable local submissions and separately bound
 tutor reviews through the canonical writer. Briefs remain open-ended and may mix assessment

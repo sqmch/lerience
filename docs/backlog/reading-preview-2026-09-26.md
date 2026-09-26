@@ -1,5 +1,8 @@
 # Reading visual preview
 
+Historical prototype evidence. The later [new-course implementation](reading-production-2026-09-26.md)
+uses the production component and accepted ADR-045; its persistence has separate evidence.
+
 LB-015, following [the saved-highlight discovery](reading-design-2026-09-26.md).
 Owner task `01a0ddfc-3365-7a51-bc76-1503db3a117a`, branch
 `codex/lb-015-reading-visual-prototype`, baseline `df8fc6289621e784c2a67d85d0571fb53a4c9f3f`.

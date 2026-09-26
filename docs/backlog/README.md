@@ -31,8 +31,8 @@ independently; they do not need to wait for the recovery investigation.
 | 8 | LB-007, then LB-008, tutor controls | LB-007 implemented in [PR #97](https://github.com/sqmch/lerience/pull/97), merged at `4b0e5b0`. LB-008 implemented in [PR #98](https://github.com/sqmch/lerience/pull/98), merged at `4c0258c`. Both passed final-head Windows CI; release remains separate. |
 | 9 | LB-014, Windows window flashes | [Bounded native investigation](console-investigation-2026-09-26.md) found no visible console during the app-owned doctor run. No launch change justified. Capture an actual flash before reopening; proceed to LB-009. |
 | 10 | LB-009, context visibility | Implemented in [PR #100](https://github.com/sqmch/lerience/pull/100), merged at `affd3a4` after green final-head Windows CI, with both native samples and renderer evidence. Release remains separate. |
-| 11 | LB-016, in-app assessment | [Production acceptance](assessment-production-2026-09-26.md) for new courses is in review under ADR-044; development-only [visual preview PR #103](https://github.com/sqmch/lerience/pull/103) merged at `df8fc62` after green final-head CI. The learner provisionally accepted the direction with optional, open-ended or mixed Briefs; the learner subsequently authorized the narrow portable-record contract for new courses. |
-| 12 | LB-015, interactive reading | [Visual preview ready](reading-preview-2026-09-26.md): contextual selection/menu actions, with no permanent row or counts; synthetic Lesson marks held in memory only. Review before production storage authority or next-day learner evaluation. |
+| 11 | LB-016, in-app assessment | [Implemented for new courses](assessment-production-2026-09-26.md) in [PR #105](https://github.com/sqmch/lerience/pull/105), merge `d9d3d08`, engine 0.3.0 / ADR-044. Hosted fullcheck passed. Existing-course conversion and release excluded. |
+| 12 | LB-015, interactive reading | [Production work](reading-production-2026-09-26.md): portable optional marks for new courses, contextual-only controls, engine authority under ADR-045. [PR #106](https://github.com/sqmch/lerience/pull/106) is in review; native persistence and contextual renderer checks passed. |
 
 These are work packages, not estimates or a promise to finish each package in one sitting.
 
@@ -59,8 +59,8 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | PR #96 merged at `406c399`; renderer and CI verified | S04 | Implemented |
 | [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Native doctor/Git path observed; flash not reproduced; actual window ancestry missing | S12 | Blocked |
-| [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | [Reading preview](reading-preview-2026-09-26.md); owner task `01a0ddfc`, branch `codex/lb-015-reading-visual-prototype`; no durable storage or learner-usefulness claim | S15 | Visual prototype ready |
-| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Optional assessment | P2 | New-course production wiring under ADR-044; owner task `01a0ddef`, branch `codex/lb-016-new-course-assessment`; native and renderer acceptance passed; full source validation and CI pending; no existing-course conversion or release | S17 | In progress |
+| [LB-015](experience.md#lb-015) | Save and return to Lesson passages | Optional reading | P3 | [Production work](reading-production-2026-09-26.md); owner task `01a0ddfc`, branch `codex/lb-015-new-course-highlights`; [PR #106](https://github.com/sqmch/lerience/pull/106); no existing-course conversion or release | S15 | In review |
+| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Optional assessment | P2 | [PR #105](https://github.com/sqmch/lerience/pull/105) merged `d9d3d08`; native/renderer checks and hosted fullcheck passed; local fullcheck has one existing piped PowerShell launcher limitation, documented in acceptance | S17 | Implemented |
 
 ## Source coverage
 
