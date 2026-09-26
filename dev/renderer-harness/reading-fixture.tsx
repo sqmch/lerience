@@ -1,6 +1,6 @@
 import { READING_COURSE, READING_LESSONS, READING_MODULE } from "./reading-material";
 /* Original synthetic reading material. No course writes, provider calls or durable store. */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CourseView } from "../../src/renderer/src/course/course-view";
 import { DocMarkdown } from "../../src/renderer/src/components/markdown-view";
@@ -79,16 +79,32 @@ function ReadingLesson({
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  const popover = useRef<HTMLButtonElement>(null);
   const [dialog, setDialog] = useState<"list" | "choose" | null>(null);
   const [chosen, setChosen] = useState(0);
   const [candidate, setCandidate] = useState<{
     mark: ReadingMark;
     left: number;
     top: number;
+    bottom: number;
   } | null>(null);
   const [notice, setNotice] = useState("");
   const [selectionNotice, setSelectionNotice] = useState("");
   const passages = (): Passage[] => (root.current ? readPassages(root.current) : []);
+
+  useLayoutEffect(() => {
+    const button = popover.current;
+    if (!button || !candidate) return;
+    const styles = getComputedStyle(button);
+    const gap = Number.parseFloat(styles.getPropertyValue("--space-2"));
+    const padding = Number.parseFloat(styles.getPropertyValue("--space-3"));
+    const scale = button.getBoundingClientRect().width / button.offsetWidth || 1;
+    const viewportWidth = window.innerWidth / scale;
+    const viewportHeight = window.innerHeight / scale;
+    const below = candidate.bottom / scale + gap;
+    button.style.left = `${Math.max(padding, Math.min(candidate.left / scale, viewportWidth - button.offsetWidth - padding))}px`;
+    button.style.top = `${Math.max(padding, below + button.offsetHeight <= viewportHeight - padding ? below : candidate.top / scale - gap - button.offsetHeight)}px`;
+  }, [candidate, revision]);
 
   useEffect(() => {
     const element = root.current;
@@ -160,8 +176,9 @@ function ReadingLesson({
     const rect = selected.range.getBoundingClientRect();
     setCandidate({
       mark,
-      left: Math.min(window.innerWidth - 130, Math.max(12, rect.left)),
-      top: Math.min(window.innerHeight - 90, rect.bottom + 8),
+      left: rect.left,
+      top: rect.top,
+      bottom: rect.bottom,
     });
   };
   const save = (mark: ReadingMark): void => {
@@ -237,9 +254,9 @@ function ReadingLesson({
         candidate.mark.revision === revision &&
         createPortal(
           <button
+            ref={popover}
             type="button"
             className={`${PRIMARY} shadow-popover fixed z-50 text-xs`}
-            style={{ left: candidate.left, top: candidate.top }}
             onPointerDown={(event) => event.preventDefault()}
             onClick={() => save(candidate.mark)}
           >
@@ -249,6 +266,9 @@ function ReadingLesson({
         )}
       {dialog === "list" && (
         <ReadingDialog title="Your highlights" onClose={closeDialog}>
+          <div role="status" className="sr-only">
+            {notice}
+          </div>
           <p className="text-ink-dim mb-5 text-xs leading-normal">
             The parcel tray · Held in preview memory. Reloading clears your marks.
           </p>
