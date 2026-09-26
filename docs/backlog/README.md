@@ -30,8 +30,8 @@ independently; they do not need to wait for the recovery investigation.
 | 7 | LB-012, then LB-013, compact UI | LB-012 implemented in PR #95, merged at `715c559` after green CI. LB-013 implemented in [PR #96](https://github.com/sqmch/lerience/pull/96), merged at `406c399` after green CI, with renderer evidence and the ADR-040 amendment. Releases remain separate. |
 | 8 | LB-007, then LB-008, tutor controls | LB-007 implemented in [PR #97](https://github.com/sqmch/lerience/pull/97), merged at `4b0e5b0`. LB-008 implemented in [PR #98](https://github.com/sqmch/lerience/pull/98), merged at `4c0258c`. Both passed final-head Windows CI; release remains separate. |
 | 9 | LB-014, Windows window flashes | [Bounded native investigation](console-investigation-2026-09-26.md) found no visible console during the app-owned doctor run. No launch change justified. Capture an actual flash before reopening; proceed to LB-009. |
-| 10 | LB-009, context visibility | Source ready in [PR #100](https://github.com/sqmch/lerience/pull/100), with both native samples, renderer checks and clear reviews. Final-head CI and merge tracked in the PR; release remains separate. |
-| 11 | LB-016, in-app assessment | Define how learners answer non-code exercises, compare standard and tutor-authored interactions, and select one bounded prototype. |
+| 10 | LB-009, context visibility | Implemented in [PR #100](https://github.com/sqmch/lerience/pull/100), merged at `affd3a4` after green final-head Windows CI, with both native samples and renderer evidence. Release remains separate. |
+| 11 | LB-016, in-app assessment | [Discovery recommendation ready](assessment-design-2026-09-26.md): one standard in-app trace and explanation prototype. Decide portable engine-owned attempts and bounded app write authority before implementation; then proceed to separate LB-015 discovery. |
 | 12 | LB-015, interactive reading | Choose or reject a small learner-useful experiment. Discovery does not commit to building every idea. |
 
 These are work packages, not estimates or a promise to finish each package in one sitting.
@@ -53,14 +53,14 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Pinned types, runtime schema, adapter and renderer fixtures | S02, S11 | Implemented |
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Native Claude/Codex transitions; capability and control regressions; PR #97 | S06 | Implemented |
 | [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | PR #98 merged at `4c0258c`; reviewed gate, native first-turn evidence and green Windows CI | S08 | Implemented |
-| [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | PR #100; reviewed source, both native samples, renderer checks and passing pnpm check; task `01a0ddd5`, branch `codex/lb-009-context-usage` | S13 | Ready |
+| [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | PR #100 merged at `affd3a4`; green final-head Windows CI, both native samples and renderer evidence | S13 | Implemented |
 | [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Reproduced ambiguous labels; identity regressions and renderer verified | S01 | Implemented |
 | [LB-011](experience.md#lb-011) | Streaming chat pulls the reader back down | Bug / behavior change | P2 | Reproduced snap-back; 12 hook regressions and both renderer consumers verified | S05 | Implemented |
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | PR #96 merged at `406c399`; renderer and CI verified | S04 | Implemented |
 | [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Native doctor/Git path observed; flash not reproduced; actual window ancestry missing | S12 | Blocked |
 | [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | Ideas, not committed scope | S15 | Open |
-| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | Requested; 13-module course inspected | S17 | Open |
+| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | [Design PR #101](https://github.com/sqmch/lerience/pull/101); owner task `01a0ddef`, branch `codex/lb-016-assessment-design`; portable-record authority decision remains | S17 | Discovery-ready |
 
 ## Source coverage
 
@@ -101,8 +101,10 @@ status to investigating. Keep diagnosis separate from assumptions. For provider-
 consult current official documentation and the exact installed or pinned SDK/runtime version.
 
 At handoff, update the item with the cause or unresolved question, validation performed, and
-commit/PR link. Use statuses open, investigating, ready, in progress, blocked, implemented,
-or closed. A blocked item names the missing evidence and exact next action. Implementation and
+commit/PR link. Use statuses open, investigating, ready, discovery-ready, in progress, blocked,
+implemented, or closed. Discovery-ready means a concrete recommendation is ready for product
+review; it does not mean the feature is implemented. A blocked item names the missing evidence
+and exact next action. Implementation and
 release are separate: record source validation, native acceptance, merge, and shipped version
 only when each is verified. Link follow-up work instead of silently widening a session.
 

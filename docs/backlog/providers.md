@@ -255,7 +255,8 @@ Start with [`conductor.ts`](../../src/main/session/conductor.ts),
 P2, requested feature with telemetry discovery. Source S13.
 
 Owner: task `01a0ddd5-efa8-7fa0-86bd-331b77dc2043`, branch `codex/lb-009-context-usage`.
-Ready for merge review, 2026-09-26, [PR #100](https://github.com/sqmch/lerience/pull/100).
+Implemented in source, 2026-09-26, [PR #100](https://github.com/sqmch/lerience/pull/100),
+merged at `affd3a480b17e8b8116a8f645069efc5e5de0e21`.
 Baseline PR #99 merge `ccdc9da`; merged state and final-head Windows
 CI verified. The [finite telemetry inventory](context-telemetry-2026-09-26.md) records official
 sources, pinned/runtime contracts, design and successful native samples from both providers.
@@ -265,7 +266,9 @@ cleared corrected source `0a3f269`. Its complete `pnpm check` passed on Windows 
 Node 24.18.0 / pnpm 11.9.0: 591 application tests, 61 Course Engine tests and six platform
 skips, plus publication hygiene, typechecks, renderer harness, lint/format and production build.
 Both native samples, actual renderer layouts and isolated `pnpm dev` startup passed.
-The PR records final-head CI. Merge, release and installed-course acceptance remain separate.
+Final head `075e9a508ecd383f79a0bdffc206900e2a2ed49c` passed
+[Quality / Windows x64](https://github.com/sqmch/lerience/actions/runs/36245509945/job/108413845241).
+Release and installed-course acceptance remain separate.
 
 The learner wants to see used tokens versus the session maximum to decide when to start a new
 session and avoid compaction. First distinguish current context occupancy from cumulative
