@@ -12,6 +12,8 @@ export interface SeminarTranscriptMessage {
 
 export interface SeminarSnapshot {
   lifecycle: SeminarLifecycle;
+  /** Live pre-turn gate. Never persisted or reconstructed from a transcript. */
+  modelChoice?: { runtimeId: number; recovery: boolean; notice?: string };
   sessionId: string | null;
   messages: SeminarTranscriptMessage[];
   totalCostUsd: number;

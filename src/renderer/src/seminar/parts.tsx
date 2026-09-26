@@ -502,7 +502,7 @@ export function SessionControlBar({
             /* When the provider reports a model the app has no row for, the
              trigger shows that id rather than claiming "default" — the
              learner must always be able to see what is actually answering. */
-            trigger={`${model?.label ?? selected.model ?? "Model"}${suffix("model")}`}
+            trigger={`${model?.label ?? selected.model ?? "Provider default"}${suffix("model")}`}
             options={controls.models.map((option) => ({
               value: option.id,
               label: option.label,

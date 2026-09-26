@@ -347,9 +347,11 @@ function installBridge(
   activityFixture: ActivityFixture | null = null,
   scrollFixture = false,
   restoredControls = false,
+  modelChoice: "new" | "recovery" | null = null,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
+  const snapshotListeners: Array<(snapshot: SeminarSnapshot) => void> = [];
   let courseSnapshot = courseFor(stage);
   let editorCatalog: EditorCatalog = {
     selectedEditorId: "vscode",
@@ -376,6 +378,9 @@ function installBridge(
   const snapshot: SeminarSnapshot = {
     lifecycle: "open",
     sessionId: "harness",
+    ...(modelChoice === null
+      ? {}
+      : { modelChoice: { runtimeId: 1, recovery: modelChoice === "recovery" } }),
     messages: [],
     totalCostUsd: 0,
     turnInProgress: false,
@@ -484,6 +489,23 @@ function installBridge(
     selectTutorProvider: () => Promise.resolve(providerCatalog),
     loginTutorProvider: () => new Promise(() => undefined),
     cancelTutorProviderLogin: () => Promise.resolve(),
+    confirmSeminarModel: () => {
+      delete snapshot.modelChoice;
+      snapshot.turnInProgress = true;
+      if (sessionControls.pending) {
+        sessionControls.current = { ...sessionControls.current, ...sessionControls.pending };
+        delete sessionControls.pending;
+      }
+      snapshotListeners.forEach((listener) => listener({ ...snapshot }));
+      eventListeners.forEach((listener) =>
+        listener({
+          type: "message_delta",
+          delta: "Synthetic first reply after model confirmation.",
+        }),
+      );
+      eventListeners.forEach((listener) => listener({ type: "turn_complete" }));
+      return Promise.resolve();
+    },
     startSeminar: () => Promise.resolve({ ok: true }),
     currentSeminar: () => Promise.resolve(snapshot),
     currentCourse: () => Promise.resolve(courseSnapshot),
@@ -501,7 +523,9 @@ function installBridge(
     setSeminarControls: (patch: SessionControlPatch) =>
       rejectControlChanges
         ? Promise.reject(new Error("The fixture provider rejected the control change."))
-        : Promise.resolve({ ...sessionControls, pending: patch }),
+        : Promise.resolve(
+            Object.assign(sessionControls, { pending: { ...sessionControls.pending, ...patch } }),
+          ),
     interruptSeminar: () => Promise.resolve(),
     endSeminar: () => Promise.resolve(),
     onSeminarEvent: (listener: (event: AgentEvent) => void) => {
@@ -509,6 +533,7 @@ function installBridge(
       // Replay after the initial zero-part snapshot enters the build stage,
       // so the streaming prose belongs to the build rather than the interview.
       setTimeout(() => {
+        if (modelChoice !== null) return;
         for (const event of script.events) {
           // Let the build's prose animate before tool activity ends the
           // message. A single React batch hides stale overflow measurements.
@@ -532,7 +557,10 @@ function installBridge(
       }
       return () => undefined;
     },
-    onSeminarSnapshot: () => () => undefined,
+    onSeminarSnapshot: (listener: (snapshot: SeminarSnapshot) => void) => {
+      snapshotListeners.push(listener);
+      return () => undefined;
+    },
     onCourseChanged: (listener: (paths: string[]) => void) => {
       changeListeners.push(listener);
       return () => {
@@ -630,6 +658,8 @@ type Screen =
   | "scroll-onboarding"
   | "working"
   | "control-error"
+  | "model-onboarding"
+  | "model-recovery"
   | "controls-restored"
   | "connect";
 const SCREENS: Screen[] = [
@@ -647,6 +677,8 @@ const SCREENS: Screen[] = [
   "settled",
   "control-error",
   "controls-restored",
+  "model-onboarding",
+  "model-recovery",
   "connect",
   ...STAGES,
 ];
@@ -669,6 +701,7 @@ function Harness(): React.JSX.Element {
     screen === "background" || screen === "continuing" || screen === "settled" ? screen : null,
     screen === "scroll-seminar" || screen === "scroll-onboarding",
     screen === "controls-restored",
+    screen === "model-onboarding" ? "new" : screen === "model-recovery" ? "recovery" : null,
   );
 
   if (!bar) {
@@ -683,7 +716,7 @@ function Harness(): React.JSX.Element {
         >
           harness
         </button>
-        <Surface key={screen} screen={screen} stage={stage} />
+        <Surface key={`${screen}:${bar}`} screen={screen} stage={stage} />
       </div>
     );
   }
@@ -758,7 +791,7 @@ function Harness(): React.JSX.Element {
           hide
         </button>
       </div>
-      <Surface key={screen} screen={screen} stage={stage} />
+      <Surface key={`${screen}:${bar}`} screen={screen} stage={stage} />
     </div>
   );
 }
@@ -793,6 +826,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
     screen === "working" ||
     screen === "control-error" ||
     screen === "controls-restored" ||
+    screen === "model-recovery" ||
     screen === "background" ||
     screen === "continuing" ||
     screen === "settled"

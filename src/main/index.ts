@@ -53,6 +53,7 @@ import {
   SEMINAR_SEND_CHANNEL,
   SEMINAR_SNAPSHOT_CHANNEL,
   SEMINAR_START_CHANNEL,
+  SEMINAR_CONFIRM_MODEL_CHANNEL,
   type ChooseCourseParentReply,
   type CourseSnapshot,
   type DashboardReply,
@@ -940,6 +941,12 @@ void app.whenReady().then(async () => {
       });
     },
   );
+
+  ipcMain.handle(SEMINAR_CONFIRM_MODEL_CHANNEL, async (_event, runtimeId: unknown) => {
+    if (typeof runtimeId !== "number" || !Number.isSafeInteger(runtimeId))
+      throw new Error("Invalid tutor session.");
+    await sessionConductor().confirmModel(runtimeId);
+  });
 
   ipcMain.handle(SEMINAR_CURRENT_CHANNEL, async (): Promise<SeminarSnapshot> => {
     const root = currentCourseRoot();

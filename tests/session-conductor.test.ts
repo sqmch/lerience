@@ -149,6 +149,7 @@ function harness(options: {
   agent?: FakeAgent;
   inspections?: CourseContextInspection[];
   controlMemory?: ControlMemory;
+  createAgent?: () => TutorAgent;
 }) {
   const courseDir = options.courseDir ?? temporaryRoot();
   const userData = options.userData ?? temporaryRoot();
@@ -157,7 +158,7 @@ function harness(options: {
   const events: AgentEvent[] = [];
   const queued = [...(options.inspections ?? [inspection()])];
   const conductor = new SessionConductor({
-    createAgent: () => agent,
+    createAgent: options.createAgent ?? (() => agent),
     userDataPath: userData,
     clock: () => new Date("2026-08-12T03:00:00.000Z"),
     createId: () => {
@@ -193,6 +194,21 @@ async function settleUntil(predicate: () => boolean | Promise<boolean>): Promise
     if (Date.now() >= deadline) throw new Error("Timed out waiting for conductor state");
     await new Promise<void>((resolve) => setTimeout(resolve, 1));
   }
+}
+
+async function startConfirmed(
+  conductor: SessionConductor,
+  options: Parameters<SessionConductor["start"]>[0],
+) {
+  const reply = await conductor.start(options);
+  if (reply.ok) {
+    const choice = (await conductor.current(options.courseDir)).modelChoice;
+    if (choice) {
+      if (choice.notice) await conductor.applySessionControls({ model: null });
+      await conductor.confirmModel(choice.runtimeId);
+    }
+  }
+  return reply;
 }
 
 describe("SessionConductor", () => {
@@ -235,7 +251,7 @@ describe("SessionConductor", () => {
         emitSnapshot: () => undefined,
       });
       conductors.push(conductor);
-      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
       const originalAppend = FileTranscriptStore.prototype.append;
       let release!: () => void;
       let blocked = false;
@@ -301,7 +317,7 @@ describe("SessionConductor", () => {
     "stops after an accepted %s cannot be saved without inviting a duplicate",
     async (operation) => {
       const { conductor, courseDir, agent, events } = harness({});
-      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
       const session = agent.sessions[0]!;
       session.emit({ type: "turn_complete" });
       await settleUntil(() => events.some((event) => event.type === "turn_complete"));
@@ -332,7 +348,7 @@ describe("SessionConductor", () => {
 
   it("drains the previous result before a closing request can own completion", async () => {
     const { conductor, courseDir, agent, events } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
     const session = agent.sessions[0]!;
     const originalAppend = FileTranscriptStore.prototype.append;
     let release!: () => void;
@@ -368,7 +384,7 @@ describe("SessionConductor", () => {
     "admits %s before its persistence await and gates the reply",
     async (operation) => {
       const { conductor, courseDir, agent, events } = harness({});
-      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
       const session = agent.sessions[0]!;
       session.emit({ type: "turn_complete" });
       await settleUntil(() => events.some((event) => event.type === "turn_complete"));
@@ -431,7 +447,7 @@ describe("SessionConductor", () => {
 
   it("writes nothing when automatic activity wins synchronous admission", async () => {
     const { conductor, courseDir, agent, events } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
     const session = agent.sessions[0]!;
     session.emit({ type: "turn_complete" });
     await settleUntil(() => events.some((event) => event.type === "turn_complete"));
@@ -445,7 +461,7 @@ describe("SessionConductor", () => {
 
   it("forwards allowance state without saving it as course evidence", async () => {
     const { conductor, courseDir, agent, events } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
     const session = agent.sessions[0]!;
     session.emit({
       type: "limit_warning",
@@ -466,7 +482,7 @@ describe("SessionConductor", () => {
 
   it("rehydrates background activity only while its provider runtime is alive", async () => {
     const { conductor, courseDir, agent, events } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
     const session = agent.sessions[0]!;
     session.emit({ type: "background_tasks", tasks: [{ id: "a", description: "Review lesson" }] });
     session.emit({ type: "task_notification", taskId: "b", status: "failed" });
@@ -494,7 +510,7 @@ describe("SessionConductor", () => {
     const { conductor, courseDir, agent } = harness({});
 
     await expect(
-      conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false }),
+      startConfirmed(conductor, { courseDir, currentModuleId: "02-vectors", onboarding: false }),
     ).resolves.toEqual({ ok: true });
     expect(fs.existsSync(path.join(courseDir, ".praxeum.json"))).toBe(true);
     expect(agent.sessions[0]?.sent[0]).toContain("Doctor report:\nOK: clean");
@@ -513,7 +529,7 @@ describe("SessionConductor", () => {
 
   it("persists accepted learner input before allowing replies through", async () => {
     const { conductor, courseDir, agent } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: true });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: true });
     expect(agent.sessions[0]?.sent[0]).toMatch(/new course$/);
     agent.sessions[0]?.emit({ type: "turn_complete" });
 
@@ -527,7 +543,7 @@ describe("SessionConductor", () => {
 
   it("asks the last request again, as the kind of message it was", async () => {
     const { conductor, courseDir, agent } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: true });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: true });
 
     // A turn that answered nothing: the opener is the outstanding request, so
     // asking again repeats it verbatim rather than inventing a nudge.
@@ -562,7 +578,7 @@ describe("SessionConductor", () => {
 
   it("auto-allows later course edits after the grant, with evidence, without UI noise", async () => {
     const { conductor, courseDir, agent, events, userData } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: true });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: true });
     const session = agent.sessions[0];
     if (session === undefined) throw new Error("no session started");
 
@@ -607,7 +623,7 @@ describe("SessionConductor", () => {
 
   it("refuses to ask again while a turn is still running", async () => {
     const { conductor, courseDir, agent } = harness({});
-    await conductor.start({ courseDir, currentModuleId: null, onboarding: true });
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: true });
     const session = agent.sessions[0];
     if (session === undefined) throw new Error("no session started");
 
@@ -620,7 +636,11 @@ describe("SessionConductor", () => {
     const { conductor, courseDir, agent, events } = harness({
       inspections: [inspection(), inspection()],
     });
-    await conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    await startConfirmed(conductor, {
+      courseDir,
+      currentModuleId: "02-vectors",
+      onboarding: false,
+    });
     agent.sessions[0]?.emit({ type: "turn_complete" });
     await settleUntil(() => events.some((event) => event.type === "turn_complete"));
 
@@ -637,7 +657,11 @@ describe("SessionConductor", () => {
     const { conductor, courseDir, agent, events } = harness({
       inspections: [inspection(), inspection(true)],
     });
-    await conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    await startConfirmed(conductor, {
+      courseDir,
+      currentModuleId: "02-vectors",
+      onboarding: false,
+    });
     agent.sessions[0]?.emit({ type: "turn_complete" });
     await settleUntil(() => events.some((event) => event.type === "turn_complete"));
     await conductor.end();
@@ -652,7 +676,11 @@ describe("SessionConductor", () => {
 
   it("refuses to send or End while a turn is in flight, persisting nothing", async () => {
     const { conductor, courseDir, agent } = harness({});
-    await conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    await startConfirmed(conductor, {
+      courseDir,
+      currentModuleId: "02-vectors",
+      onboarding: false,
+    });
     const session = agent.sessions[0];
     if (session === undefined) throw new Error("no session started");
     session.busy = true;
@@ -672,7 +700,11 @@ describe("SessionConductor", () => {
 
   it("steers a busy steerable session and persists the message only after acceptance", async () => {
     const { conductor, courseDir, agent } = harness({});
-    await conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    await startConfirmed(conductor, {
+      courseDir,
+      currentModuleId: "02-vectors",
+      onboarding: false,
+    });
     const session = agent.sessions[0];
     if (session === undefined) throw new Error("no session started");
     session.busy = true;
@@ -698,7 +730,11 @@ describe("SessionConductor", () => {
 
   it("waits for an in-flight turn before releasing the provider for update handoff", async () => {
     const { conductor, courseDir, agent } = harness({});
-    await conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    await startConfirmed(conductor, {
+      courseDir,
+      currentModuleId: "02-vectors",
+      onboarding: false,
+    });
     const session = agent.sessions[0];
     if (session === undefined) throw new Error("no session started");
     session.busy = true;
@@ -722,7 +758,11 @@ describe("SessionConductor", () => {
     const { conductor, courseDir, agent, events } = harness({
       inspections: [inspection(), inspection()],
     });
-    await conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    await startConfirmed(conductor, {
+      courseDir,
+      currentModuleId: "02-vectors",
+      onboarding: false,
+    });
     agent.sessions[0]?.emit({ type: "turn_complete" });
     await settleUntil(() => events.some((event) => event.type === "turn_complete"));
 
@@ -769,7 +809,11 @@ describe("SessionConductor", () => {
     const userData = temporaryRoot();
     const agent = new FakeAgent();
     const first = harness({ courseDir, userData, agent, inspections: [inspection()] });
-    await first.conductor.start({ courseDir, currentModuleId: "02-vectors", onboarding: false });
+    await startConfirmed(first.conductor, {
+      courseDir,
+      currentModuleId: "02-vectors",
+      onboarding: false,
+    });
     agent.sessions[0]?.emit({ type: "turn_complete" });
     await first.conductor.send("I was halfway through chunking");
     agent.sessions[0]?.emit({ type: "message_delta", delta: "Let's continue" });
@@ -785,7 +829,7 @@ describe("SessionConductor", () => {
       agent,
       inspections: [inspection(), inspection(), inspection()],
     });
-    await second.conductor.start({
+    await startConfirmed(second.conductor, {
       courseDir,
       currentModuleId: "02-vectors",
       onboarding: false,
@@ -794,7 +838,7 @@ describe("SessionConductor", () => {
     expect(agent.sessions[1]?.sent[0]).toContain("I was halfway through chunking");
 
     agent.sessions[1]?.emit({ type: "turn_complete" });
-    await settleUntil(() => agent.sessions[2]?.sent.length === 1);
+    await settleUntil(() => second.snapshots.at(-1)?.lifecycle === "open");
     expect(agent.sessions[2]?.sent[0]).toMatch(/start session$/);
     expect(second.snapshots.at(-1)).toMatchObject({
       lifecycle: "open",
@@ -811,7 +855,7 @@ describe("remembered session controls (ADR-040)", () => {
     async (effort) => {
       const memory = new FileControlMemory(temporaryRoot());
       const { conductor, courseDir, agent } = harness({ controlMemory: memory });
-      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
       await conductor.applySessionControls({ effort: "ultra" });
       expect(memory.read(COURSE_ID, "claude").effort).toBe("ultra");
       const session = agent.sessions[0]!;
@@ -828,7 +872,7 @@ describe("remembered session controls (ADR-040)", () => {
     const userData = temporaryRoot();
     const memory = new FileControlMemory(userData);
     const first = harness({ userData, controlMemory: memory });
-    await first.conductor.start({
+    await startConfirmed(first.conductor, {
       courseDir: first.courseDir,
       currentModuleId: null,
       onboarding: false,
@@ -845,7 +889,7 @@ describe("remembered session controls (ADR-040)", () => {
     // The next runtime for this course — here the recovery of the abandoned
     // one, an app-initiated open — re-applies the choice before its opener.
     const second = harness({ courseDir: first.courseDir, userData, controlMemory: memory });
-    await second.conductor.start({
+    await startConfirmed(second.conductor, {
       courseDir: first.courseDir,
       currentModuleId: null,
       onboarding: false,
@@ -884,8 +928,170 @@ describe("remembered session controls (ADR-040)", () => {
       conductor.start({ courseDir, currentModuleId: null, onboarding: false }),
     ).resolves.toEqual({ ok: true });
     expect(agent.sessions[0]?.applied).toEqual([{ model: "sonnet" }]);
-    expect(agent.sessions[0]?.sent[0]).toMatch(/start session$/);
+    expect(agent.sessions[0]?.sent).toEqual([]);
+    const choice = (await conductor.current(courseDir)).modelChoice!;
+    expect(choice.notice).toContain("could not be restored");
+    await expect(conductor.confirmModel(choice.runtimeId)).rejects.toThrow("saved choice");
     // Nothing restored, so nothing is labelled as remembered.
     expect((await conductor.sessionControls())?.remembered).toBeUndefined();
   });
+});
+
+describe("model choice before tutor work (LB-008)", () => {
+  it.each([true, false])(
+    "gates the first turn and all other send paths, onboarding=%s",
+    async (onboarding) => {
+      const { conductor, courseDir, agent } = harness({});
+      await conductor.start({ courseDir, currentModuleId: null, onboarding });
+      const prepared = await conductor.current(courseDir);
+      expect(prepared.modelChoice).toMatchObject({ recovery: false });
+      expect(prepared.turnInProgress).toBe(false);
+      expect(agent.sessions[0]!.sent).toEqual([]);
+      await expect(conductor.send("bypass")).rejects.toThrow("Choose a model");
+      await expect(conductor.retry()).rejects.toThrow("Choose a model");
+      await expect(conductor.end()).rejects.toThrow("Choose a model");
+      await conductor.confirmModel(prepared.modelChoice!.runtimeId);
+      expect(agent.sessions[0]!.sent).toHaveLength(1);
+      expect(agent.sessions[0]!.sent[0]).toMatch(onboarding ? /new course$/ : /start session$/);
+      await expect(conductor.confirmModel(prepared.modelChoice!.runtimeId)).rejects.toThrow(
+        "changed",
+      );
+    },
+  );
+
+  it("cancels a fresh preflight without creating recovery work or accepting a stale confirmation", async () => {
+    const { conductor, courseDir, agent } = harness({});
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: true });
+    const choice = (await conductor.current(courseDir)).modelChoice!;
+    await conductor.abandon();
+    expect((await conductor.current(courseDir)).lifecycle).toBe("closed");
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: true });
+    await expect(conductor.confirmModel(choice.runtimeId)).rejects.toThrow("changed");
+    expect((await conductor.current(courseDir)).modelChoice!.recovery).toBe(false);
+    expect(agent.sessions.every((session) => session.sent.length === 0)).toBe(true);
+  });
+
+  it("preserves an unverified transcript byte for byte when recovery preflight is cancelled", async () => {
+    const { conductor, courseDir, userData, agent } = harness({});
+    await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
+    agent.sessions[0]!.emit({ type: "message_delta", delta: "Synthetic learning evidence" });
+    agent.sessions[0]!.emit({ type: "turn_complete" });
+    await conductor.abandon();
+    const files = fs
+      .readdirSync(userData, { recursive: true })
+      .filter((file) => String(file).endsWith(".jsonl"))
+      .map((file) => path.join(userData, String(file)));
+    const before = files.map((file) => fs.readFileSync(file, "utf8"));
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    expect((await conductor.current(courseDir)).modelChoice!.recovery).toBe(true);
+    await conductor.abandon();
+    expect(files.map((file) => fs.readFileSync(file, "utf8"))).toEqual(before);
+    expect(agent.sessions[1]!.sent).toEqual([]);
+    expect((await conductor.current(courseDir)).lifecycle).toBe("recoverable");
+  });
+
+  it("cannot release an opener when cancellation arrives during model validation", async () => {
+    const { conductor, courseDir, agent } = harness({});
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    const choice = (await conductor.current(courseDir)).modelChoice!;
+    let release!: () => void;
+    let entered = false;
+    agent.sessions[0]!.describeControls = async () => {
+      entered = true;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return agent.sessions[0]!.controls;
+    };
+    const confirmation = conductor.confirmModel(choice.runtimeId);
+    const rejected = expect(confirmation).rejects.toThrow("waiting to start");
+    await settleUntil(() => entered);
+    const cancelled = conductor.abandon();
+    release();
+    await rejected;
+    await cancelled;
+    expect(agent.sessions[0]!.sent).toEqual([]);
+  });
+
+  it("keeps staged choices distinct, refuses removed choices, and forgets explicit default resets", async () => {
+    const memory = new FileControlMemory(temporaryRoot());
+    const { conductor, courseDir, agent } = harness({ controlMemory: memory });
+    await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+    const session = agent.sessions[0]!;
+    session.controls.models.push({ id: "other", label: "Other", efforts: [] });
+    session.applyControls = async (patch) => {
+      session.controls = {
+        ...session.controls,
+        pending: { model: patch.model === null ? "sonnet" : patch.model },
+      };
+      return session.controls;
+    };
+    const staged = await conductor.applySessionControls({ model: "other" });
+    expect(staged?.current.model).toBe("sonnet");
+    expect(staged?.pending?.model).toBe("other");
+    const choice = (await conductor.current(courseDir)).modelChoice!;
+    session.controls.models = session.controls.models.filter((row) => row.id !== "other");
+    await expect(conductor.confirmModel(choice.runtimeId)).rejects.toThrow("no longer offered");
+    expect(session.sent).toEqual([]);
+    await conductor.applySessionControls({ model: null });
+    expect(memory.read(COURSE_ID, "claude").model).toBeUndefined();
+    await conductor.confirmModel(choice.runtimeId);
+    expect(session.sent).toHaveLength(1);
+  });
+});
+
+describe("model choice through recovery replacement", () => {
+  it.each(["same", "removed", "provider"])(
+    "handles %s model authority without a hidden fallback turn",
+    async (change) => {
+      const memory = new FileControlMemory(temporaryRoot());
+      const agent = new FakeAgent();
+      let starts = 0;
+      const createAgent = (): TutorAgent => ({
+        providerId: starts === 2 && change === "provider" ? "codex" : "claude",
+        startSession: (options) => {
+          const session = agent.startSession(options) as FakeSession;
+          if (starts !== 2 || change !== "removed")
+            session.controls.models.push({ id: "chosen", label: "Chosen", efforts: [] });
+          const apply = session.applyControls.bind(session);
+          session.applyControls = async (patch) => {
+            if (
+              patch.model === "chosen" &&
+              !session.controls.models.some((row) => row.id === "chosen")
+            )
+              throw new Error("Removed model");
+            return apply(patch);
+          };
+          starts++;
+          return session;
+        },
+      });
+      const { conductor, courseDir, snapshots } = harness({
+        agent,
+        controlMemory: memory,
+        createAgent,
+      });
+      await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
+      agent.sessions[0]!.emit({ type: "turn_complete" });
+      await conductor.applySessionControls({ model: "chosen" });
+      await conductor.abandon();
+      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      expect((await conductor.sessionControls())?.current.model).toBe("chosen");
+      expect(agent.sessions[1]!.sent).toEqual([]);
+      await conductor.confirmModel((await conductor.current(courseDir)).modelChoice!.runtimeId);
+      agent.sessions[1]!.emit({ type: "turn_complete" });
+      await settleUntil(() => starts === 3 && snapshots.at(-1)?.lifecycle === "open");
+      if (change === "same") {
+        expect(agent.sessions[2]!.sent).toHaveLength(1);
+        expect(agent.sessions[2]!.controls.current.model).toBe("chosen");
+        expect(snapshots.at(-1)?.modelChoice).toBeUndefined();
+      } else {
+        expect(agent.sessions[2]!.sent).toEqual([]);
+        expect(snapshots.at(-1)?.modelChoice).toBeDefined();
+        if (change === "removed")
+          expect(snapshots.at(-1)?.modelChoice?.notice).toContain("could not be restored");
+        else expect(agent.sessions[2]!.applied).toEqual([]);
+      }
+    },
+  );
 });

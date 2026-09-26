@@ -305,6 +305,8 @@ async function run(variant: string) {
           onboarding: false,
         }),
       });
+      const prepared = await conductor.current(dir);
+      if (prepared.modelChoice) await conductor.confirmModel(prepared.modelChoice.runtimeId);
       while (!finished && !abortController.signal.aborted)
         await new Promise((resolve) => setTimeout(resolve, 250));
       if (abortController.signal.aborted) return;

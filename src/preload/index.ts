@@ -37,6 +37,7 @@ import {
   SEMINAR_SNAPSHOT_CHANNEL,
   SEMINAR_CURRENT_CHANNEL,
   SEMINAR_START_CHANNEL,
+  SEMINAR_CONFIRM_MODEL_CHANNEL,
   THEME_CHANGED_CHANNEL,
   THEME_GET_CHANNEL,
   THEME_SET_CHANNEL,
@@ -145,6 +146,8 @@ const api: PraxeumApi = {
       ipcRenderer.removeListener(UPDATE_STATUS_CHANGED_CHANNEL, wrapped);
     };
   },
+  confirmSeminarModel: (runtimeId) =>
+    ipcRenderer.invoke(SEMINAR_CONFIRM_MODEL_CHANNEL, runtimeId) as Promise<void>,
   startSeminar: (currentModuleId) =>
     ipcRenderer.invoke(SEMINAR_START_CHANNEL, currentModuleId) as Promise<StartSeminarReply>,
   currentSeminar: () => ipcRenderer.invoke(SEMINAR_CURRENT_CHANNEL) as Promise<SeminarSnapshot>,

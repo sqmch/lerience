@@ -44,19 +44,21 @@ function SessionStatus({ seminar }: { seminar: SeminarController }): React.JSX.E
   const working = phase === "thinking" || phase === "streaming" || phase === "tool-activity";
 
   const label =
-    recoveryHandoff === "finishing-previous"
-      ? "Finishing previous session"
-      : recoveryHandoff === "opening-next"
-        ? "Opening new session"
-        : seminar.recoveryPending
-          ? "Unfinished session"
-          : phase === "closed"
-            ? "No session open"
-            : phase === "opening"
-              ? "Opening session"
-              : working
-                ? "Tutor working"
-                : "Session open";
+    phase === "choosing-model"
+      ? "Choose a tutor model"
+      : recoveryHandoff === "finishing-previous"
+        ? "Finishing previous session"
+        : recoveryHandoff === "opening-next"
+          ? "Opening new session"
+          : seminar.recoveryPending
+            ? "Unfinished session"
+            : phase === "closed"
+              ? "No session open"
+              : phase === "opening"
+                ? "Opening session"
+                : working
+                  ? "Tutor working"
+                  : "Session open";
 
   const explain =
     recoveryHandoff === "finishing-previous"

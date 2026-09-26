@@ -134,7 +134,13 @@ at creation. It keys app-data and marks format compatibility (ADR-002, ADR-010).
 
 ## 6. Session lifecycle
 
-**Open.** App runs doctor and the quiz due-list script, reads the journal tail and progress,
+**Open.** The app prepares a provider runtime and shows its supported model choices, including
+restored per-course choices and an explicit provider-default reset. The learner presses Start
+tutor before any tutor input, including onboarding and recovery. Cancelling a new preflight
+creates no recovery work; cancelling recovery preserves the previous transcript. A supported
+choice carries across the recovery follow-on without another prompt (ADR-040).
+
+App runs doctor and the quiz due-list script, reads the journal tail and progress,
 then starts the agent session in the course folder with the protocol plus a compact factual
 context block (doctor verdict, due items most-overdue first, journal tail, current module).
 The block is additive — computed by the same scripts the protocol already trusts over the

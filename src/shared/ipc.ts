@@ -222,8 +222,9 @@ export interface PraxeumApi {
   /** Open the offered version's release page in the browser. No-op without an offer. */
   openUpdateReleasePage(): Promise<void>;
   onUpdateStatusChanged(listener: (status: UpdateStatus) => void): () => void;
-  /** Start a fresh tutor session in the open course and send its conducted opener. */
+  /** Prepare a tutor runtime; confirmation gates its first conducted turn. */
   startSeminar(currentModuleId: string | null): Promise<StartSeminarReply>;
+  confirmSeminarModel(runtimeId: number): Promise<void>;
   /** Rehydrate app-owned transcript/lifecycle for the open course. */
   currentSeminar(): Promise<SeminarSnapshot>;
   /** Send one learner turn through the transparent conversation pipe (ADR-011). */
@@ -247,3 +248,5 @@ export interface PraxeumApi {
   /** Run only the selected module's declared check script through the guarded lens. */
   runChecks(moduleId: string): Promise<RunChecksReply>;
 }
+
+export const SEMINAR_CONFIRM_MODEL_CHANNEL = "praxeum:seminar-confirm-model";
