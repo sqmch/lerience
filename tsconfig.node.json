@@ -9,6 +9,7 @@
     "src/preload",
     "src/shared",
     "tests",
+    "dev/recovery/run.ts",
     "electron.vite.config.ts",
     "vitest.config.ts",
     "eslint.config.js"

@@ -318,6 +318,23 @@ failure is supported, but is not identified as the learner's reported incident. 
 means the investigation and follow-up are ready for review, not that a latency fix exists.
 No lifecycle, source, installed-course or release change was made.
 
+### Bounded comparison outcome, 2026-09-26
+
+Task `01a0dd2a-44c5-7001-b027-19d6d7004085`, branch `codex/lb-004-recovery-boundary`,
+completed [one native baseline/candidate comparison](recovery-comparison-2026-09-26.md).
+Both left generation pending without QA/review, so the fixture does not reproduce the
+historical heavy recovery. Candidate verified close took 111.1 seconds; baseline produced its
+result at 165.6 seconds but failed doctor verification with missing output. Stable-output
+replay passed unchanged, and a disposable exit-code substitution timed out. No production
+fix or protocol amendment is justified. The reported EPIPE popup may have come from the
+developer probe's inherited output pipe; attribution is unconfirmed.
+
+Status Blocked means the historical issue remains unresolved, with the finite experiment
+finished. Reopen on a representative capture of actual extra QA/review or a naturally occurring
+incident with stable stdout/stderr, stream/exit ordering and structured provider error evidence.
+Do not repeat this fixture to chase a result. Proceed to LB-010; source, release and
+existing-course application remain separate.
+
 <a id="lb-005"></a>
 ## LB-005: Journal growth may waste context and recovery work
 
@@ -356,6 +373,14 @@ measurable from retained tool metadata, and entry counts do not prove redundant 
 The follow-up specifies read-range/byte capture and before/after learning-record deltas for
 no-op, study and interrupted-generation fixtures. Preserve the existing journal. Status
 Ready means a concrete experiment is prepared; no context-saving implementation is claimed.
+
+The [bounded native comparison](recovery-comparison-2026-09-26.md) is now complete. Both variants
+preserved older journal text and appended one entry, but this small fixture cannot establish
+long-journal read cost or duplicate learning records. The candidate also differed in how it
+recorded a repeated independent answer. No journaling-policy change, pruning or migration is
+justified. Status Blocked names the remaining evidence: a representative long-course capture
+of requested read ranges/returned content sizes and session-to-entry learning deltas. Preserve
+history and advance the backlog rather than expanding this experiment.
 
 <a id="lb-014"></a>
 ## LB-014: Windows console windows flash during tutor work
