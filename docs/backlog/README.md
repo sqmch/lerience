@@ -31,8 +31,8 @@ independently; they do not need to wait for the recovery investigation.
 | 8 | LB-007, then LB-008, tutor controls | LB-007 implemented in [PR #97](https://github.com/sqmch/lerience/pull/97), merged at `4b0e5b0`. LB-008 implemented in [PR #98](https://github.com/sqmch/lerience/pull/98), merged at `4c0258c`. Both passed final-head Windows CI; release remains separate. |
 | 9 | LB-014, Windows window flashes | [Bounded native investigation](console-investigation-2026-09-26.md) found no visible console during the app-owned doctor run. No launch change justified. Capture an actual flash before reopening; proceed to LB-009. |
 | 10 | LB-009, context visibility | Implemented in [PR #100](https://github.com/sqmch/lerience/pull/100), merged at `affd3a4` after green final-head Windows CI, with both native samples and renderer evidence. Release remains separate. |
-| 11 | LB-016, in-app assessment | [Discovery recommendation ready](assessment-design-2026-09-26.md): one standard in-app trace and explanation prototype. Decide portable engine-owned attempts and bounded app write authority before implementation; then proceed to separate LB-015 discovery. |
-| 12 | LB-015, interactive reading | Choose or reject a small learner-useful experiment. Discovery does not commit to building every idea. |
+| 11 | LB-016, in-app assessment | [Discovery PR #101](https://github.com/sqmch/lerience/pull/101) merged at `f1c022f` after green final-head Windows CI. The standard Brief trace/explanation prototype and portable-record authority remain proposals awaiting a decision. |
+| 12 | LB-015, interactive reading | [Discovery recommendation ready](reading-design-2026-09-26.md): one disposable Lesson-only saved-highlight experiment for returning to passages. Evaluate usefulness before accepting production storage authority or expanding the feature. |
 
 These are work packages, not estimates or a promise to finish each package in one sitting.
 
@@ -59,8 +59,8 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | PR #96 merged at `406c399`; renderer and CI verified | S04 | Implemented |
 | [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Native doctor/Git path observed; flash not reproduced; actual window ancestry missing | S12 | Blocked |
-| [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | Ideas, not committed scope | S15 | Open |
-| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | [Design PR #101](https://github.com/sqmch/lerience/pull/101); owner task `01a0ddef`, branch `codex/lb-016-assessment-design`; portable-record authority decision remains | S17 | Discovery-ready |
+| [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | [Saved-highlight proposal](reading-design-2026-09-26.md); owner task `01a0ddfc`, branch `codex/lb-015-reading-design`; learner evaluation and production authority remain | S15 | Discovery-ready |
+| [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | [Design PR #101](https://github.com/sqmch/lerience/pull/101) merged at `f1c022f`, green final-head CI; prototype and portable-record authority remain unaccepted proposals | S17 | Discovery-ready |
 
 ## Source coverage
 

@@ -232,6 +232,10 @@ Release remains separate.
 
 P3, product discovery. Source S15. No feature set is committed.
 
+Owner: task `01a0ddfc-3365-7a51-bc76-1503db3a117a`, branch
+`codex/lb-015-reading-design`, started from current `main` at `f1c022f` on 2026-09-26.
+Coordinating task: `01a0d98c-a787-7223-9b86-5fd61f99abf6`.
+
 [LB-016](assessment.md#lb-016) separately covers answering exercises and recording assessment
 attempts. Coordinate lesson selection and tutor context where useful, but annotation and
 assessment have different completion criteria.
@@ -267,3 +271,27 @@ Start with [`material.tsx`](../../src/renderer/src/course/material.tsx),
 [DESIGN](../DESIGN.md), [SPEC](../SPEC.md), and the course/app-data ownership decisions.
 Permanent learner annotations or lesson editing may warrant an ADR. Mechanical UI tests can
 prove persistence and selection behavior; learning usefulness needs a real reading exercise.
+
+### Discovery recommendation, 2026-09-26
+
+The [reading design](reading-design-2026-09-26.md) selects one disposable experiment: saved
+highlights in Lesson prose, with a small list to return to those passages after an interruption.
+Plain selection remains useful while reading; the proposed addition must earn its persistence
+by helping with a later return. Selection-to-tutor, notes, editing, folding and Brief support
+remain deferred with explicit reasons.
+
+The design walks through original synthetic material and a tutor edit. It defines conservative
+anchors, visible unmatched quotes, keyboard access, tutor-independent operation and a finite
+learner comparison. Durable marks belong to the learner; the proposed portable engine contract
+would require a separate accepted ownership/compatibility decision before production writes.
+This proposal does not change lesson text, assessment records or progress authority.
+
+Discovery-ready means this recommendation can be reviewed. No sketch was built, no learner run
+was conducted, and no persistent highlighting or production authority has been implemented or
+accepted. The related LB-016 design merged in PR #101 at `f1c022f` with green final-head Windows
+CI; that merge accepts neither its assessment prototype nor its proposed portable-record authority.
+
+Documentation validation on Windows x64, Node 24.18.0: publication preflight and diff whitespace
+checks passed; all 37 local links and anchors across the three changed documents resolved.
+Repository formatting excludes `docs/`. No full local `pnpm check` was needed for this docs-only
+change; final-head hosted CI remains the merge gate. No runtime or learner acceptance is claimed.
