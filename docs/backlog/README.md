@@ -25,7 +25,7 @@ independently; they do not need to wait for the recovery investigation.
 | 2 | LB-002 + LB-003, Claude activity | Implemented in source. PR #89 records CI and merge; native Claude and renderer evidence is recorded. Release remains separate. |
 | 3 | LB-006, usage warnings | Implemented in source. PR #90 records CI and merge; unit/bucket evidence and native-warning limitations are recorded. Release remains separate. |
 | 4 | LB-004 + LB-005, recovery and journal | [Bounded comparison complete](recovery-comparison-2026-09-26.md); fixture did not reproduce historical extra QA/review. No protocol change justified. Missing evidence is recorded; proceed to LB-010. |
-| 5 | LB-010, duplicate labs | Establish lab identity and fix repeated choices without merging distinct module configurations. |
+| 5 | LB-010, duplicate labs | Source fix in [PR #93](https://github.com/sqmch/lerience/pull/93); ambiguous titles identify their module, with data and renderer evidence. Await merge; release remains separate. |
 | 6 | LB-011, streaming scroll | Make a small upward scroll release auto-follow and verify reattachment at the bottom. |
 | 7 | LB-012, then LB-013, compact UI | Two independent small fixes. Keep each change separately reviewable; LB-013 also updates the remembered-label decision. |
 | 8 | LB-007, then LB-008, tutor controls | Verify effort capabilities, then provide an explicit model choice before the opening turn. These can be separate sessions. |
@@ -54,7 +54,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Reported; filtering observed | S06 | Open |
 | [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | Requested | S08 | Open |
 | [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | Requested; telemetry discovery needed | S13 | Open |
-| [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Synthetic identity investigation | S01 | Investigating |
+| [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Reproduced ambiguous labels; identity regressions and renderer verified | S01 | Ready |
 | [LB-011](experience.md#lb-011) | Streaming chat pulls the reader back down | Bug / behavior change | P2 | Reported; follow threshold observed | S05 | Open |
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reported | S03 | Open |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | Requested; suffix observed | S04 | Open |

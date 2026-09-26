@@ -29,6 +29,9 @@ accessible above the overlay. Cover the data identity in
 
 ### Investigation and source fix, 2026-09-26
 
+Source fix and validation: [PR #93](https://github.com/sqmch/lerience/pull/93), implementation
+commit `81b7f11`. Ready for review; merge and release remain separate.
+
 The synthetic multi-module reproduction produces three identical-looking "The loop" choices.
 Their identities are different module/file pairs. `labEntries` already collapses repeated stock
 claims by registry ID and repeated HTML claims by module plus file, after stripping `visuals/`.
@@ -51,6 +54,13 @@ Evidence:
 - Keyboard opening and selection work. Escape closes the menu while preserving the overlay
   and returning focus to the trigger. Switching stock context renders the Force and Velocity
   configurations separately. The browser reports no runtime errors.
+- Windows x64, Node 24.18.0, pnpm 11.9.0: `pnpm check` passed publication hygiene,
+  application/harness typechecks and harness build. Vitest had 534 passes and 6 skips, with one
+  unrelated `EPERM` temporary-directory rename failure in `course-session.test.ts`. All four
+  tests in that file passed on the targeted rerun without changes. The remaining gates ran
+  separately: all 61 Course Engine tests, ESLint/Prettier, and production build passed.
+- Windows CI passed for implementation commit `81b7f11`, including the complete `pnpm check`,
+  published prose check, and dependency audit. The PR tracks CI for the final documentation commit.
 
 Limits: this establishes the ambiguous-label mechanism with public synthetic data; no private
 course was inspected to claim the historical report had identical inputs. Browser verification
