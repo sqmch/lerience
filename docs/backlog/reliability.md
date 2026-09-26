@@ -401,3 +401,19 @@ Start with [`process-runner.ts`](../../src/main/scripts/process-runner.ts),
 adapters, and generated QA/check commands. Done when the identified background path runs
 without a visible console while preserving output, exit/error handling, and intended native
 interactions. A native Windows reproduction and rerun are required evidence.
+
+### Bounded investigation outcome, 2026-09-26
+
+Task `01a0ddc8-a5fe-75f0-a687-f6dc3cc27551`, branch `codex/lb-014-console-flashes`,
+baseline PR #98 merge `4c0258c`, completed one representative native doctor/Git observation.
+The [investigation record](console-investigation-2026-09-26.md) records the launch audit,
+disposable fixture, process ancestry, output and observation limits. Electron 43.4.0 ran
+the production utility-process adapter and all three doctor Git queries. The observer saw
+Git and console-host descendants, but no visible console window; doctor returned valid JSON,
+exit 0 and empty stderr.
+
+No production launch change or candidate rerun is justified by this result. Status Blocked
+names missing incident evidence, not an external-provider diagnosis. Reopen on a captured
+visible window and its parent chain during actual tutor work, identifying the provider/version
+and tool stage. Do not rerun the same doctor fixture to chase a failure. Proceed to LB-009.
+Source investigation, installed-app acceptance and release remain separate.

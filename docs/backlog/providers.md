@@ -217,8 +217,10 @@ The single local `pnpm check` passed publication hygiene, typechecks, harness ch
 formatting while review corrections were being edited. After correction, all 52 affected tests,
 both TypeScript projects, complete lint/format checks and the production build passed.
 An isolated `pnpm dev` startup also passed its IPC round-trip and exposed both prepare/confirm
-preload methods, then exited. The PR records full final-head Windows CI. Merge, installed-app
-acceptance and release remain separate; the orchestration task owns merge.
+preload methods, then exited. PR #98 merged at `4c0258c3d33379460877ed431776ffd7996beb74`.
+Its final-head Windows CI passed on 2026-09-26, including 574 application tests and 61 Course
+Engine tests. Both correction re-reviews were clear. Installed-app acceptance and release
+remain separate.
 
 Original request and discovery:
 

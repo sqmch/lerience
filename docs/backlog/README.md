@@ -28,8 +28,8 @@ independently; they do not need to wait for the recovery investigation.
 | 5 | LB-010, duplicate labs | Implemented in [PR #93](https://github.com/sqmch/lerience/pull/93), merged at `8db35b6` after final-head CI; ambiguous titles identify their module, with data and renderer evidence. Release remains separate. |
 | 6 | LB-011, streaming scroll | Source fix in [PR #94](https://github.com/sqmch/lerience/pull/94); small upward input releases follow, with hook regressions and both renderer consumers verified. Merged at `546026c` after green CI; release remains separate. |
 | 7 | LB-012, then LB-013, compact UI | LB-012 implemented in PR #95, merged at `715c559` after green CI. LB-013 implemented in [PR #96](https://github.com/sqmch/lerience/pull/96), merged at `406c399` after green CI, with renderer evidence and the ADR-040 amendment. Releases remain separate. |
-| 8 | LB-007, then LB-008, tutor controls | LB-007 implemented in [PR #97](https://github.com/sqmch/lerience/pull/97), merged at `4b0e5b0` after green final-head Windows CI. LB-008 is ready for orchestration merge in [PR #98](https://github.com/sqmch/lerience/pull/98), with source, renderer and native first-turn evidence. |
-| 9 | LB-014, Windows window flashes | Identify the process that opens a console, then fix that launch path if unintended. |
+| 8 | LB-007, then LB-008, tutor controls | LB-007 implemented in [PR #97](https://github.com/sqmch/lerience/pull/97), merged at `4b0e5b0`. LB-008 implemented in [PR #98](https://github.com/sqmch/lerience/pull/98), merged at `4c0258c`. Both passed final-head Windows CI; release remains separate. |
+| 9 | LB-014, Windows window flashes | [Bounded native investigation](console-investigation-2026-09-26.md) found no visible console during the app-owned doctor run. No launch change justified. Capture an actual flash before reopening; proceed to LB-009. |
 | 10 | LB-009, context visibility | Establish available context telemetry and implement an honest readout. Can move earlier if it helps LB-004. |
 | 11 | LB-016, in-app assessment | Define how learners answer non-code exercises, compare standard and tutor-authored interactions, and select one bounded prototype. |
 | 12 | LB-015, interactive reading | Choose or reject a small learner-useful experiment. Discovery does not commit to building every idea. |
@@ -52,13 +52,13 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-005](reliability.md#lb-005) | Journal growth and repeated recovery overhead | Investigation | P2 | Injection hypothesis rejected; long-course read/duplication evidence missing | S14 | Blocked |
 | [LB-006](providers.md#lb-006) | Claude percentage and overage labels mislead | Bug | P1 | Pinned types, runtime schema, adapter and renderer fixtures | S02, S11 | Implemented |
 | [LB-007](providers.md#lb-007) | Effort choices need provider-specific verification | Compatibility investigation | P2 | Native Claude/Codex transitions; capability and control regressions; PR #97 | S06 | Implemented |
-| [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | PR #98; reviewed gate, renderer and native first-turn evidence | S08 | Ready |
+| [LB-008](providers.md#lb-008) | Choose a model before the first session work | Feature | P2 | PR #98 merged at `4c0258c`; reviewed gate, native first-turn evidence and green Windows CI | S08 | Implemented |
 | [LB-009](providers.md#lb-009) | Show context use and capacity | Feature | P2 | Requested; telemetry discovery needed | S13 | Open |
 | [LB-010](experience.md#lb-010) | Lab dropdown repeats entries | Bug | P2 | Reproduced ambiguous labels; identity regressions and renderer verified | S01 | Implemented |
 | [LB-011](experience.md#lb-011) | Streaming chat pulls the reader back down | Bug / behavior change | P2 | Reproduced snap-back; 12 hook regressions and both renderer consumers verified | S05 | Implemented |
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | PR #96 merged at `406c399`; renderer and CI verified | S04 | Implemented |
-| [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Reported on Windows | S12 | Open |
+| [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Native doctor/Git path observed; flash not reproduced; actual window ancestry missing | S12 | Blocked |
 | [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | Ideas, not committed scope | S15 | Open |
 | [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | Requested; 13-module course inspected | S17 | Open |
 
