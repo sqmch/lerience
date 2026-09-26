@@ -25,6 +25,8 @@ import { useTutorConnection } from "../../src/renderer/src/tutor/use-tutor-conne
 import { COURSE_ROOT, FIXTURE_COURSE, readFixtureDoc } from "./course-fixture";
 import { LabFixture } from "./lab-choice-fixture";
 import { AssessmentFixture, readAssessmentDoc } from "./assessment-fixture";
+import { ReadingFixture, readingBridge } from "./reading-fixture";
+import { readReadingDoc } from "./reading-material";
 import { SCROLL_REPLY, SCROLL_CHUNK } from "./scroll-fixture";
 import "./harness.css";
 
@@ -355,6 +357,7 @@ function installBridge(
   modelChoice: "new" | "recovery" | null = null,
   contextFixture = false,
   assessmentPreview = false,
+  readingPreview = false,
 ): void {
   const eventListeners: Array<(event: AgentEvent) => void> = [];
   const changeListeners: Array<(paths: string[]) => void> = [];
@@ -368,31 +371,43 @@ function installBridge(
       { id: "zed", label: "Zed" },
     ],
   };
-  const script = assessmentPreview
+  const script = readingPreview
     ? {
         events: [
           {
             type: "message_delta",
             delta:
-              "Take your time with the trace in the Brief. Each row starts from the previous result.\n\nWhen you are ready, submit your prediction and explanation together. You can revise them after feedback.",
+              "The lesson is yours to read at your own pace. If a passage is worth returning to, you can highlight it.\n\nYou can also sketch the tray, talk through an example, or simply keep reading.",
           },
           { type: "turn_complete" },
         ] as AgentEvent[],
         busy: false,
       }
-    : scrollFixture
+    : assessmentPreview
       ? {
           events: [
-            { type: "message_delta", delta: SCROLL_REPLY },
+            {
+              type: "message_delta",
+              delta:
+                "Take your time with the trace in the Brief. Each row starts from the previous result.\n\nWhen you are ready, submit your prediction and explanation together. You can revise them after feedback.",
+            },
             { type: "turn_complete" },
           ] as AgentEvent[],
           busy: false,
         }
-      : activityFixture !== null
-        ? activityScript(activityFixture)
-        : working
-          ? WORKING
-          : scriptFor(stage);
+      : scrollFixture
+        ? {
+            events: [
+              { type: "message_delta", delta: SCROLL_REPLY },
+              { type: "turn_complete" },
+            ] as AgentEvent[],
+            busy: false,
+          }
+        : activityFixture !== null
+          ? activityScript(activityFixture)
+          : working
+            ? WORKING
+            : scriptFor(stage);
 
   const snapshot: SeminarSnapshot = {
     lifecycle: "open",
@@ -408,6 +423,34 @@ function installBridge(
     turnInProgress: false,
     steerable: false,
   };
+  if (readingPreview)
+    readingBridge.setTutor = (state) => {
+      if (state === "ready") {
+        for (const event of [
+          { type: "turn_started" },
+          {
+            type: "message_delta",
+            delta:
+              "The preview tutor is ready again. Your highlights are still yours to use independently.",
+          },
+          { type: "turn_complete" },
+        ] as AgentEvent[])
+          eventListeners.forEach((listener) => listener(event));
+        return;
+      }
+      const event: AgentEvent =
+        state === "busy"
+          ? { type: "turn_started" }
+          : state === "unavailable"
+            ? {
+                type: "error",
+                code: "process-exited",
+                message:
+                  "Tutor unavailable in this preview. Reading and highlights remain available.",
+              }
+            : { type: "turn_complete" };
+      eventListeners.forEach((listener) => listener(event));
+    };
   const providerCatalog: ProviderCatalog = {
     selectedProviderId: connected ? "codex" : "claude",
     providers: [
@@ -603,7 +646,13 @@ function installBridge(
     getLayout: () => Promise.resolve({}),
     setLayout: () => Promise.resolve(),
     readDoc: (path: string) =>
-      Promise.resolve(assessmentPreview ? readAssessmentDoc(path) : readFixtureDoc(path)),
+      Promise.resolve(
+        readingPreview
+          ? readReadingDoc(path)
+          : assessmentPreview
+            ? readAssessmentDoc(path)
+            : readFixtureDoc(path),
+      ),
     revealCourse: () => Promise.resolve(),
     /* Two editors found, none chosen yet — the state a learner with VS Code
        and Zed installed sees first, which is the one the control exists for. */
@@ -681,6 +730,7 @@ type Screen =
   | "courses"
   | "course"
   | "assessment"
+  | "reading"
   | "labs"
   | "scroll-seminar"
   | "scroll-onboarding"
@@ -699,6 +749,7 @@ const SCREENS: Screen[] = [
   "courses",
   "course",
   "assessment",
+  "reading",
   "labs",
   "scroll-seminar",
   "scroll-onboarding",
@@ -748,6 +799,7 @@ function Harness(): React.JSX.Element {
     screen === "model-onboarding" ? "new" : screen === "model-recovery" ? "recovery" : null,
     screen === "context-seminar" || screen === "context-onboarding",
     screen === "assessment",
+    screen === "reading",
   );
 
   if (!bar) {
@@ -867,6 +919,7 @@ function Surface({ screen, stage }: { screen: Screen; stage: Stage }): React.JSX
      frame contents (ADR-019), not a child of someone else's. */
   if (screen === "labs") return <LabFixture />;
   if (screen === "assessment") return <AssessmentFixture />;
+  if (screen === "reading") return <ReadingFixture />;
   if (
     screen === "course" ||
     screen === "scroll-seminar" ||

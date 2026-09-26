@@ -92,12 +92,15 @@ export function CourseView({
   course,
   onLeaveCourse,
   renderBriefSupplement,
+  renderLessonPreview,
   initialTab = "lesson",
 }: {
   course: CourseSnapshot;
   onLeaveCourse: () => void;
   /** Optional activity beside the course's own Brief, which always stays visible. */
   renderBriefSupplement?: (moduleId: string) => React.ReactNode;
+  /** Composition point for a development-only reading preview. No production caller. */
+  renderLessonPreview?: (moduleId: string) => React.ReactNode;
   initialTab?: MaterialTab;
 }): React.JSX.Element {
   const data = course.data;
@@ -249,6 +252,7 @@ export function CourseView({
           <MaterialPane
             activeModule={active}
             briefSupplement={active === null ? undefined : renderBriefSupplement?.(active.id)}
+            lessonPreview={active === null ? undefined : renderLessonPreview?.(active.id)}
             docs={docs}
             quiz={data.quiz}
             labs={data.labs}

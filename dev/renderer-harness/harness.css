@@ -3,3 +3,16 @@
    layout the app does not have. Point it at src explicitly. */
 @import "../../src/renderer/src/design/index.css";
 @source "../../src";
+
+/* A saved reading mark has a quiet fill and a second, non-colour cue.
+   These aliases derive entirely from the established Lens palette. */
+.reading-preview {
+  --reading-mark-fill: var(--accent-wash);
+  --reading-mark-underline: var(--ink-faint);
+}
+.reading-preview ::highlight(reading-preview) {
+  background-color: var(--reading-mark-fill);
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--reading-mark-underline);
+}
