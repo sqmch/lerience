@@ -595,8 +595,12 @@ export class SessionConductor {
       this.options.emitSnapshot(await this.snapshotFor(active.transcript, true));
     } catch (error) {
       if (active.pendingOpener === null) {
-        active.suppressEndedUi = true;
-        void active.session.end();
+        this.active = null;
+        this.followOn = null;
+        this.followOnEpoch += 1;
+        this.resolveIdleWaiters(active);
+        await active.session.interrupt().catch(() => undefined);
+        await active.session.end().catch(() => undefined);
         this.options.emitAgentEvent({
           type: "error",
           code: "process-exited",

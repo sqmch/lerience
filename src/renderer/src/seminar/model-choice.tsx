@@ -28,7 +28,7 @@ export function ModelChoice({ seminar }: { seminar: SeminarController }): React.
       ) : null}
       <fieldset disabled={working} className="m-0 w-full min-w-0 border-0 p-0 disabled:opacity-60">
         {controls === null ? (
-          <p className="text-ink-dim text-sm">Loading model choices�</p>
+          <p className="text-ink-dim text-sm">Loading model choices.</p>
         ) : (
           <SessionControlBar
             controls={controls}

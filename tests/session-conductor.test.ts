@@ -1095,3 +1095,63 @@ describe("model choice through recovery replacement", () => {
     },
   );
 });
+
+describe("accepted opener persistence failure", () => {
+  it.each(["lifecycle", "request"])(
+    "stops buffered recovery completion after failed %s persistence",
+    async (failure) => {
+      const { conductor, courseDir, agent } = harness({});
+      await startConfirmed(conductor, { courseDir, currentModuleId: null, onboarding: false });
+      agent.sessions[0]!.emit({ type: "message_delta", delta: "Keep the prior study evidence" });
+      agent.sessions[0]!.emit({ type: "turn_complete" });
+      await conductor.abandon();
+      await conductor.start({ courseDir, currentModuleId: null, onboarding: false });
+      const choice = (await conductor.current(courseDir)).modelChoice!;
+      const session = agent.sessions[1]!;
+      const send = session.send.bind(session);
+      session.send = (message) => {
+        send(message);
+        session.emit({ type: "turn_complete" });
+      };
+      const append = FileTranscriptStore.prototype.append;
+      vi.spyOn(FileTranscriptStore.prototype, "append").mockImplementation(async function (
+        this: FileTranscriptStore,
+        entry,
+      ) {
+        if (
+          (failure === "request" && entry.kind === "operator") ||
+          (failure === "lifecycle" && entry.kind === "lifecycle")
+        )
+          throw new Error("Synthetic disk failure");
+        return append.call(this, entry);
+      });
+      const end = session.end.bind(session);
+      let ending = false;
+      let releaseEnd!: () => void;
+      session.end = async () => {
+        ending = true;
+        await new Promise<void>((resolve) => {
+          releaseEnd = resolve;
+        });
+        await end();
+      };
+      const confirmation = conductor.confirmModel(choice.runtimeId);
+      const rejected = expect(confirmation).rejects.toThrow("Synthetic disk failure");
+      await settleUntil(() => ending);
+      session.emit({ type: "message_delta", delta: "Must not persist after failed admission" });
+      session.emit({ type: "turn_complete" });
+      expect((await conductor.current(courseDir)).lifecycle).toBe("recoverable");
+      releaseEnd();
+      await rejected;
+      await conductor.abandon();
+      expect(session.ended).toBe(true);
+      expect(agent.sessions).toHaveLength(2);
+      const snapshot = await conductor.current(courseDir);
+      expect(snapshot.lifecycle).toBe("recoverable");
+      expect(snapshot.messages.map((entry) => entry.content)).toEqual([
+        "Keep the prior study evidence",
+      ]);
+      await expect(conductor.send("bypass stopped runtime")).rejects.toThrow("No tutor session");
+    },
+  );
+});
