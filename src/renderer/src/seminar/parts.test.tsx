@@ -3,7 +3,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { ApprovalCard, BackgroundActivity, ConversationTranscript } from "./parts";
+import { ApprovalCard, BackgroundActivity, ConversationTranscript, LimitNotice } from "./parts";
 import { createSeminarState } from "./seminar-state";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -26,6 +26,40 @@ afterEach(() => {
 });
 
 describe("ConversationTranscript", () => {
+  it("shows limit state, fractional usage mapped to percent, and the reset date", () => {
+    const host = document.createElement("div");
+    root = createRoot(host);
+    const reset = 1_800_000_000;
+    const warning = {
+      type: "limit_warning" as const,
+      label: "Claude model-specific weekly limit",
+      usedPercent: 77,
+      resetsAt: reset,
+      status: "warning" as const,
+    };
+    act(() => root?.render(<LimitNotice warning={warning} />));
+    expect(host.querySelector('[role="status"]')).not.toBeNull();
+    expect(host.textContent).toContain("Approaching limit · 77% used");
+    expect(host.textContent).toContain(
+      new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date(reset * 1000)),
+    );
+    expect(host.textContent).not.toContain("overage");
+    act(() =>
+      root?.render(<LimitNotice warning={{ ...warning, status: "rejected", usedPercent: 100 }} />),
+    );
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    expect(host.textContent).toContain("Limit reached · 100% used");
+    act(() =>
+      root?.render(<LimitNotice warning={{ ...warning, usedPercent: null, resetsAt: null }} />),
+    );
+    expect(host.textContent).toBe("Claude model-specific weekly limitApproaching limit");
+  });
+
   it("shows running task descriptions and terminal outcomes without a Thinking timer", () => {
     const host = document.createElement("div");
     root = createRoot(host);

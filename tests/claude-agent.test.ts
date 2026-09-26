@@ -292,7 +292,11 @@ describe("ClaudeTutorAgent", () => {
     sdkQuery.push(
       sdkMessage({
         type: "rate_limit_event",
-        rate_limit_info: { status: "allowed_warning", rateLimitType: "seven_day", utilization: 77 },
+        rate_limit_info: {
+          status: "allowed_warning",
+          rateLimitType: "seven_day",
+          utilization: 0.77,
+        },
       }),
     );
     sdkQuery.push(sdkMessage({ type: "result", subtype: "success", total_cost_usd: 0.02 }));
@@ -865,6 +869,84 @@ describe("Claude adapter normalization", () => {
     );
   });
 
+  // SDK 0.3.233 supplies these fields. Claude Code 2.1.282's rate-limit
+  // schema documents fractions and Unix seconds; these are synthetic values.
+  it.each([
+    ["five_hour", "Claude 5-hour limit", 0.92, 92],
+    ["seven_day", "Claude weekly limit", 0.77, 77],
+    ["seven_day_opus", "Claude Opus weekly limit", 0.8, 80],
+    ["seven_day_sonnet", "Claude Sonnet weekly limit", 0.8, 80],
+    ["seven_day_overage_included", "Claude model-specific weekly limit", 0.77, 77],
+    ["overage", "Claude usage credit limit", 1.2, 120],
+    ["future_bucket", "Claude usage limit", 0, 0],
+    ["constructor", "Claude usage limit", 1, 100],
+  ])(
+    "maps %s without confusing allowance buckets",
+    (rateLimitType, label, utilization, percent) => {
+      expect(
+        normalizeClaudeMessage(
+          sdkMessage({
+            type: "rate_limit_event",
+            rate_limit_info: { status: "allowed_warning", rateLimitType, utilization },
+          }),
+        ),
+      ).toEqual([
+        { type: "limit_warning", label, usedPercent: percent, resetsAt: null, status: "warning" },
+      ]);
+    },
+  );
+
+  it.each([undefined, null, -1, NaN, Infinity, "0.92"])(
+    "omits invalid utilization %s",
+    (utilization) => {
+      expect(
+        normalizeClaudeMessage(
+          sdkMessage({
+            type: "rate_limit_event",
+            rate_limit_info: {
+              status: "rejected",
+              utilization,
+              surpassedThreshold: 0.75,
+              overageStatus: "allowed",
+              overageResetsAt: 1_800_000_000,
+            },
+          }),
+        ),
+      ).toEqual([
+        {
+          type: "limit_warning",
+          label: "Claude usage limit",
+          usedPercent: null,
+          resetsAt: null,
+          status: "rejected",
+        },
+      ]);
+    },
+  );
+
+  it.each([undefined, null, 0, -1, NaN, Infinity, 1e20, "1800000000"])(
+    "omits invalid reset %s",
+    (resetsAt) => {
+      expect(
+        normalizeClaudeMessage(
+          sdkMessage({
+            type: "rate_limit_event",
+            rate_limit_info: { status: "allowed_warning", resetsAt },
+          }),
+        )[0],
+      ).toMatchObject({ resetsAt: null });
+    },
+  );
+
+  it.each([undefined, null, {}, { status: "future_status" }])(
+    "ignores unknown status payload %s",
+    (info) => {
+      expect(
+        normalizeClaudeMessage(sdkMessage({ type: "rate_limit_event", rate_limit_info: info })),
+      ).toEqual([]);
+    },
+  );
+
   it("normalizes only direct Claude subscription-limit warnings", () => {
     expect(
       normalizeClaudeMessage(
@@ -873,7 +955,7 @@ describe("Claude adapter normalization", () => {
           rate_limit_info: {
             status: "allowed_warning",
             rateLimitType: "five_hour",
-            utilization: 91.2,
+            utilization: 0.912,
             resetsAt: 1_800_000_000,
           },
         }),
@@ -891,6 +973,6 @@ describe("Claude adapter normalization", () => {
       normalizeClaudeMessage(
         sdkMessage({ type: "rate_limit_event", rate_limit_info: { status: "allowed" } }),
       ),
-    ).toEqual([]);
+    ).toEqual([{ type: "limit_cleared" }]);
   });
 });

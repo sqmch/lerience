@@ -300,25 +300,36 @@ export function normalizeClaudeMessage(
   }
   if (message.type === "rate_limit_event") {
     const info = message.rate_limit_info;
-    if (info.status === "allowed") return [];
+    if (!isRecord(info)) return [];
+    if (info.status === "allowed") return [{ type: "limit_cleared" }];
+    if (info.status !== "allowed_warning" && info.status !== "rejected") return [];
     const labels: Record<NonNullable<typeof info.rateLimitType>, string> = {
       five_hour: "Claude 5-hour limit",
       seven_day: "Claude weekly limit",
       seven_day_opus: "Claude Opus weekly limit",
       seven_day_sonnet: "Claude Sonnet weekly limit",
-      seven_day_overage_included: "Claude weekly overage limit",
-      overage: "Claude overage limit",
+      seven_day_overage_included: "Claude model-specific weekly limit",
+      overage: "Claude usage credit limit",
     };
     return [
       {
         type: "limit_warning",
-        label: info.rateLimitType === undefined ? "Claude usage limit" : labels[info.rateLimitType],
+        label:
+          info.rateLimitType !== undefined && Object.hasOwn(labels, info.rateLimitType)
+            ? labels[info.rateLimitType]
+            : "Claude usage limit",
         usedPercent:
-          typeof info.utilization === "number" && Number.isFinite(info.utilization)
-            ? Math.min(100, Math.max(0, info.utilization))
+          // SDK rate-limit events use a fraction, unlike the /usage readout.
+          // Values above 1 are possible; do not hide usage beyond the cap.
+          typeof info.utilization === "number" &&
+          info.utilization >= 0 &&
+          Number.isFinite(info.utilization * 100)
+            ? info.utilization * 100
             : null,
         resetsAt:
-          typeof info.resetsAt === "number" && Number.isFinite(info.resetsAt) && info.resetsAt > 0
+          typeof info.resetsAt === "number" &&
+          info.resetsAt > 0 &&
+          Number.isFinite(new Date(info.resetsAt * 1_000).getTime())
             ? info.resetsAt
             : null,
         status: info.status === "allowed_warning" ? "warning" : "rejected",

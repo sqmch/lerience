@@ -9,16 +9,57 @@ current official documentation and the relevant runtime/SDK versions when taking
 
 P1, bug. Sources S02 and S11 are consolidated here.
 
+Investigation owner: task `01a0d9c2-efab-73d3-8d60-00aa9866e30b`, branch
+`codex/lb-006-claude-allowance`, starting from `5361f65` on 2026-09-25.
+
 The yellow weekly banner said "Claude weekly overage limit", 1% used, resetting at 8:00 PM,
 while the Claude app showed 77% weekly usage. A five-hour banner likewise showed 1% against
 92% in Claude. The learner interprets yellow as approaching the limit, and finds both the
 percentage and overage wording confusing. A persistent Thinking state co-occurred in one
 report; LB-002 owns that symptom and the relationship is unproven.
 
-Code observed: [`claude.ts`](../../src/main/agent/claude.ts) clamps `info.utilization` directly
-to 0..100 and maps `seven_day_overage_included` to "Claude weekly overage limit". Investigate
-the units and semantics of the exact provider payload before changing arithmetic or labels.
-The provider app comparison must use the same time and allowance bucket.
+Verified cause: [`claude.ts`](../../src/main/agent/claude.ts) treated fractional utilization
+as a percentage. The renderer rounded 0.77 and 0.92 to 1%. The old fixture also supplied
+percentages, so it did not catch the error. The weekly overage label additionally confused
+a model-specific subscription bucket with usage credits.
+
+Contract evidence, checked 2026-09-25:
+
+- The pinned `@anthropic-ai/claude-agent-sdk` 0.3.233 `SDKRateLimitInfo` declares the six
+  bucket values, three statuses, and optional utilization/reset fields. Neither its types
+  nor the current [official TypeScript reference](https://code.claude.com/docs/en/agent-sdk/typescript#sdkratelimitevent)
+  explains the utilization units or all bucket semantics.
+- The installed Windows Claude Code reports 2.1.282. Its binary SHA-256 is
+  `fc0e3af017705624b9e1bce913f72761864ff994804514da1f5e41380fca4484`.
+  Read-only inspection of its embedded rate-limit schema confirms that utilization is a
+  fraction, can exceed 1, and uses Unix seconds for resets. Its native warning formatter
+  multiplies the fraction by 100. The schema describes the top-level fields as the currently
+  limiting window, and `seven_day_overage_included` as a model-specific weekly window.
+  Its native labels distinguish that bucket from `overage`, the usage credit limit.
+- The [official status-line reference](https://code.claude.com/docs/en/statusline#available-data)
+  separately defines `used_percentage` as 0..100. That is a different field, not the SDK
+  event's utilization unit. No status-line values or token counts are used by this fix.
+
+The adapter converts fractions to percent, preserves values above 100%, and labels the
+model-specific weekly bucket without guessing a model name absent from the pinned event.
+Usage credits remain distinct. Unknown buckets use a generic label; missing or invalid
+numbers stay absent; unknown statuses are ignored rather than invented rejections. Healthy
+provider events clear the prior warning. The notice names warning/rejected state even when a
+percentage exists, and includes the local reset date as well as time. It never substitutes
+`surpassedThreshold`, an overage reset, or a different bucket's utilization.
+
+Adapter/state fixtures and rendered-component tests cover all six pinned buckets, fractional
+and above-cap values, warning/rejected/healthy transitions, unknown payloads, missing fields,
+invalid reset timestamps, date display, and separation from foreground completion. No preserved native warning payload was available in
+the earlier activity probes, which logged only the event type. No model turns will be spent
+to manufacture a warning. The learner's original 77%/92% comparisons lack paired timestamps
+and exact bucket identities; these are useful regression values, not proof that the weekly
+model-specific and all-model buckets were equivalent.
+
+Delivery: implemented in source; [PR #90](https://github.com/sqmch/lerience/pull/90) records
+full source checks, native application smoke, CI and merge outcomes. Native warning acceptance,
+installed-app update, and release remain separate. No provider, engine, model, effort, context,
+or session admission changes are included.
 
 Done when fixtures derived from the documented contract produce accurate percentages, window
 names, warning state, and reset times, including unknown/missing data. Show a true overage

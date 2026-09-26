@@ -77,6 +77,8 @@ export type AgentEvent =
       resetsAt: number | null;
       status: "warning" | "rejected";
     }
+  /** The provider reports that its current limiting state is healthy again. */
+  | { type: "limit_cleared" }
   /** The turn finished; the composer reopens. */
   | { type: "turn_complete" }
   /** The session is gone (ended deliberately or the process died). */

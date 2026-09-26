@@ -190,7 +190,7 @@ describe("seminarReducer", () => {
     expect(state.totalCostUsd).toBe(0.35);
   });
 
-  it("keeps a direct subscription-limit warning visible until the session ends", () => {
+  it("keeps a warning across turns and clears it when healthy or ended", () => {
     const warning = {
       type: "limit_warning" as const,
       label: "Claude 5-hour limit",
@@ -204,6 +204,13 @@ describe("seminarReducer", () => {
       { type: "event", event: { type: "turn_complete" } },
     ]);
     expect(active.limitWarning).toEqual(warning);
+
+    const cleared = seminarReducer(active, {
+      type: "event",
+      event: { type: "limit_cleared" },
+    });
+    expect(cleared.limitWarning).toBeNull();
+    expect(cleared.phase).toBe(active.phase);
 
     const ended = seminarReducer(active, {
       type: "event",
