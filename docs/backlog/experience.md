@@ -94,7 +94,8 @@ a large release buffer. Check both seminar and onboarding consumers of the share
 ### Investigation and source fix, 2026-09-26
 
 Source fix: [PR #94](https://github.com/sqmch/lerience/pull/94), implementation commit `226d8e0`.
-Ready for review; merge and release remain separate.
+Merged on 2026-09-26 at `546026cad809a1f42c6d9180b61a2fbdac785d71` after green CI.
+Implemented in source; release remains separate.
 
 The production hook kept following after an 8px upward scroll because its release threshold was
 one quarter of the viewport. The next token and resize moved the regression viewport from 1592px
@@ -135,6 +136,9 @@ native package, release, or private-course changes are included. LB-004 and LB-0
 
 P2, visual bug. Source S03.
 
+Owner: task `01a0dd70-f853-7632-acf9-ef2842d020b7`, branch
+`codex/lb-012-duration-layout`, started from current `main` at `546026c` on 2026-09-26.
+
 A duration such as "5m 33s" breaks across lines during module building. A long following task
 description squeezing the clock is the learner's hypothesis, not an established layout cause.
 
@@ -145,6 +149,34 @@ and the shared activity rows in [`parts.tsx`](../../src/renderer/src/seminar/par
 Done when the duration stays together and readable while the description wraps appropriately,
 with no overlap or horizontal overflow. Verify minutes and longer durations in the actual
 build states. Keep the change local to the affected row.
+
+### Investigation and source fix, 2026-09-26
+
+The build row allowed its clock to shrink while a long activity description competed for
+space. In the production `BuildStage` at the native minimum window width of 960px, synthetic
+activity text reduced `5m 33s` to two line boxes and a 36px-high timer. The description was
+truncated. The shared seminar `Thinking` clock already resists shrinking and is unchanged.
+
+The build clock now resists shrinking and wrapping. Activity text wraps, including unbroken
+paths, and both spans align on their first baseline. The fix changes only this row's layout.
+
+Evidence from headless Chromium against the existing `building` renderer fixture:
+
+- A controlled browser clock and synthetic `tool_activity` events exercise the real elapsed
+  formatter and build states without provider calls or direct DOM text replacement.
+- `5m 33s` and `123m 33s` occupy one line and 18px height after the fix. The long description
+  wraps to 38px at 960px and 1280px window widths. Bounding-box and scroll-width checks find
+  no overlap, clipped activity, row overflow, or document overflow.
+- A 640px viewport, below the native minimum and used only as a stress check, also passes.
+  An unbroken synthetic file path wraps at both 640px and 960px without horizontal overflow.
+- Waiting for approval, activity cleared by tutor prose, and the settled ready state pass
+  the same geometry checks. The ready label is `built in 123m 33s`. Browser runtime errors: none.
+- Source gate: `pnpm check` on Windows x64, Node 24.18.0, pnpm 11.9.0. The PR records the
+  local result and CI for its final head.
+
+Ready for review on `codex/lb-012-duration-layout`; merge and release remain separate.
+This is production-renderer evidence with synthetic data. Native Electron, packaging, provider
+turns, releases, and private-course changes are outside this fix. LB-013 remains separate.
 
 <a id="lb-013"></a>
 ## LB-013: Remove the remembered suffix from session controls
