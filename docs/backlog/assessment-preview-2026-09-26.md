@@ -3,6 +3,10 @@
 LB-016. Branch `codex/lb-016-assessment-visual-prototype`, owner task `01a0ddef`,
 baseline `f1f88a243c23e57b913630d31b472f03e2dc1e38`.
 
+[PR #103](https://github.com/sqmch/lerience/pull/103) contains the recoverable visual preview.
+Independent Standards and Spec reviews cleared source `a76fbad`. User visual acceptance remains
+open; neither review accepts production persistence or changes learner authority.
+
 The learner asked to judge a solid design using Lerience's existing visual language. This
 implements the selected trace and explanation as a disposable renderer preview. The production
 CourseView and Brief accept optional composed content; ordinary course rendering stays the default.

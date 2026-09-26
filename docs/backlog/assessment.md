@@ -34,7 +34,8 @@ in the development renderer harness; no production assessment, disk persistence,
 review or private-course conversion is enabled. Visual acceptance and portable-record authority
 are separate decisions. Reading preview work remains LB-015.
 
-The [preview and evidence](assessment-preview-2026-09-26.md) are ready for review. Source checks
+The [preview and evidence](assessment-preview-2026-09-26.md) in
+[PR #103](https://github.com/sqmch/lerience/pull/103) are ready for review. Source checks
 and synthetic interaction checks do not establish saved course attempts or learner acceptance.
 
 ## Learner problem
