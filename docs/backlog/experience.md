@@ -274,6 +274,9 @@ prove persistence and selection behavior; learning usefulness needs a real readi
 
 ### Discovery recommendation, 2026-09-26
 
+Review: [PR #102](https://github.com/sqmch/lerience/pull/102). Documentation only; merge and
+product acceptance are separate decisions.
+
 The [reading design](reading-design-2026-09-26.md) selects one disposable experiment: saved
 highlights in Lesson prose, with a small list to return to those passages after an interruption.
 Plain selection remains useful while reading; the proposed addition must earn its persistence

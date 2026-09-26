@@ -59,7 +59,7 @@ and "discovery" needs a product or provider-contract decision before implementat
 | [LB-012](experience.md#lb-012) | Build elapsed time wraps vertically | Bug | P2 | Reproduced clock shrink; renderer verified; PR #95 merged at `715c559` | S03 | Implemented |
 | [LB-013](experience.md#lb-013) | Remove the remembered suffix from controls | UX change | P2 | PR #96 merged at `406c399`; renderer and CI verified | S04 | Implemented |
 | [LB-014](reliability.md#lb-014) | Brief console windows during tutor work | Bug investigation | P2 | Native doctor/Git path observed; flash not reproduced; actual window ancestry missing | S12 | Blocked |
-| [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | [Saved-highlight proposal](reading-design-2026-09-26.md); owner task `01a0ddfc`, branch `codex/lb-015-reading-design`; learner evaluation and production authority remain | S15 | Discovery-ready |
+| [LB-015](experience.md#lb-015) | Interactive lesson reading | Product discovery | P3 | [Design PR #102](https://github.com/sqmch/lerience/pull/102); owner task `01a0ddfc`, branch `codex/lb-015-reading-design`; learner evaluation and production authority remain | S15 | Discovery-ready |
 | [LB-016](assessment.md#lb-016) | Answer non-code exercises in the app | Product / assessment discovery | P2 | [Design PR #101](https://github.com/sqmch/lerience/pull/101) merged at `f1c022f`, green final-head CI; prototype and portable-record authority remain unaccepted proposals | S17 | Discovery-ready |
 
 ## Source coverage
