@@ -4,8 +4,8 @@
   "acceptedComponentTrees": {
     "win32-x64": {
       "course-engine": {
-        "fileCount": 22,
-        "treeSha256": "ea55dcb28474a32e72dc1574c594ba00ad599c8182b1894011febba2bf163513"
+        "fileCount": 35,
+        "treeSha256": "d32d9d26163696f49be1c46f1abe234c644ba6f26cb7f1e9c3b3785bd05b0fb0"
       },
       "git": {
         "fileCount": 384,
@@ -18,8 +18,8 @@
     },
     "darwin-arm64": {
       "course-engine": {
-        "fileCount": 22,
-        "treeSha256": "74cfb09b6d150f1fc1657894fab7eebb648d6c4c122af378953d46f1bc357419"
+        "fileCount": 35,
+        "treeSha256": "9cfee44a905de2cd5eb08a9ec20fd05fca8cc72470839304af8a083b77e74b85"
       },
       "git": {
         "fileCount": 460,
@@ -32,8 +32,8 @@
     },
     "darwin-x64": {
       "course-engine": {
-        "fileCount": 22,
-        "treeSha256": "74cfb09b6d150f1fc1657894fab7eebb648d6c4c122af378953d46f1bc357419"
+        "fileCount": 35,
+        "treeSha256": "9cfee44a905de2cd5eb08a9ec20fd05fca8cc72470839304af8a083b77e74b85"
       },
       "git": {
         "fileCount": 460,
