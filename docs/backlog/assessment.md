@@ -7,6 +7,17 @@ P2, product and assessment discovery. Source S17. See the [register](README.md) 
 This item records a product direction to investigate, not an accepted architecture or a UI
 implementation. Schedule it ahead of optional reading annotations in LB-015.
 
+Discovery owner: task `01a0ddef-68d1-7222-ba4d-785225359c96`, branch
+`codex/lb-016-assessment-design`, under orchestrator `01a0d98c-a787-7223-9b86-5fd61f99abf6`.
+Source baseline: `affd3a480b17e8b8116a8f645069efc5e5de0e21`, current main on 2026-09-26.
+
+Discovery is ready for product review. The [concrete recommendation](assessment-design-2026-09-26.md)
+compares three original tasks and selects one standard in-app trace with explanation, portable
+drafts and attempt history. The remaining decision is whether to accept engine-owned attempt
+records and a bounded app writer, amending ADR-002/010 before implementation. Custom submission
+is deferred; ADR-012's sandbox stays unchanged. This completes the discovery stopping point
+below, not the feature. Implementation stages and evaluation limits are in the recommendation.
+
 ## Learner problem
 
 The learner repeatedly had to open a repository and enter answers as JSON values even when
