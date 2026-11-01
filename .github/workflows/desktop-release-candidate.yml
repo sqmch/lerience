@@ -95,7 +95,7 @@ jobs:
         run: pnpm release:collect-sources -- --output dist/release-sources
 
       - name: Upload exact corresponding sources
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-release-sources-${{ steps.release.outputs.source_commit }}
           path: dist/release-sources/
@@ -156,7 +156,7 @@ jobs:
           Copy-Item -LiteralPath "dist/package/windows-x64/$env:PRAXEUM_EXECUTABLE_NAME-Setup-$version-x64.exe" -Destination 'dist/release-artifacts/'
 
       - name: Upload exact Windows artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-release-windows-${{ needs.source.outputs.source_commit }}
           path: dist/release-artifacts/*.exe
@@ -221,7 +221,7 @@ jobs:
           cp "dist/package/macos-arm64/$PRAXEUM_EXECUTABLE_NAME-${{ needs.source.outputs.version }}-arm64.dmg" dist/release-artifacts/
 
       - name: Upload exact macOS arm64 artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-release-macos-arm64-${{ needs.source.outputs.source_commit }}
           path: dist/release-artifacts/*.dmg
@@ -289,7 +289,7 @@ jobs:
           cp "dist/package/macos-x64/$PRAXEUM_EXECUTABLE_NAME-${{ needs.source.outputs.version }}-x64.dmg" dist/release-artifacts/
 
       - name: Upload exact macOS x64 artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-release-macos-x64-${{ needs.source.outputs.source_commit }}
           path: dist/release-artifacts/*.dmg
@@ -402,7 +402,7 @@ jobs:
           }
 
       - name: Upload staged desktop release bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-release-bundle-${{ needs.source.outputs.source_commit }}
           path: dist/release-bundle/
